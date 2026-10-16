@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 560" font-family="Bahnschrift, 'Segoe UI', 'SF Pro Display', Helvetica, Arial, sans-serif">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#111"/>
+    </marker>
+    <pattern id="dots" width="20" height="20" patternUnits="userSpaceOnUse"><circle cx="2" cy="2" r="1.1" fill="#d9d4c7"/></pattern>
+  </defs>
+  <rect width="1200" height="560" fill="#F3EEE3"/>
+  <rect width="1200" height="560" fill="url(#dots)"/>
+
+  <!-- the boundary: everything happens on your machine -->
+  <rect x="24" y="64" width="1152" height="430" rx="24" fill="none" stroke="#111" stroke-width="2.5" stroke-dasharray="10 8"/>
+  <rect x="44" y="50" width="330" height="30" rx="15" fill="#FFD23F" stroke="#111" stroke-width="2.5"/>
+  <text x="209" y="71" text-anchor="middle" font-size="16" font-weight="800" fill="#111">🔒 your laptop: nothing leaves this box</text>
+  <text x="600" y="34" text-anchor="middle" font-size="26" font-weight="800" fill="#111">how lowkey works</text>
+
+  <!-- 1 tracker -->
+  <g>
+    <rect x="58" y="110" width="230" height="150" rx="16" fill="#111" transform="translate(5 5)"/>
+    <rect x="58" y="110" width="230" height="150" rx="16" fill="#FFFDF7" stroke="#111" stroke-width="2.5"/>
+    <text x="78" y="142" font-size="13" font-weight="800" fill="#5d5a53" letter-spacing="1.5">1 · TRACKER</text>
+    <text x="78" y="170" font-size="19" font-weight="800" fill="#111">foreground window</text>
+    <text x="78" y="194" font-size="15" fill="#333">every 5 s: app + title + idle</text>
+    <text x="78" y="216" font-size="15" fill="#333">Win32 · osascript · xdotool</text>
+    <text x="78" y="242" font-size="13.5" fill="#5d5a53">skips idle, go dark, never_track</text>
+  </g>
+  <line x1="296" y1="185" x2="352" y2="185" stroke="#111" stroke-width="2.5" marker-end="url(#a)"/>
+
+  <!-- jsonl -->
+  <g>
+    <rect x="360" y="135" width="170" height="100" rx="14" fill="#111" transform="translate(5 5)"/>
+    <rect x="360" y="135" width="170" height="100" rx="14" fill="#B8FF3B" stroke="#111" stroke-width="2.5"/>
+    <text x="445" y="170" text-anchor="middle" font-size="17" font-weight="800" fill="#111">activity-*.jsonl</text>
+    <text x="445" y="194" text-anchor="middle" font-size="14" fill="#111">plain text on disk</text>
+    <text x="445" y="214" text-anchor="middle" font-size="14" fill="#111">read it, delete it</text>
+  </g>
+  <line x1="538" y1="185" x2="594" y2="185" stroke="#111" stroke-width="2.5" marker-end="url(#a)"/>
+
+  <!-- 2 labeler -->
+  <g>
+    <rect x="602" y="96" width="300" height="190" rx="16" fill="#111" transform="translate(5 5)"/>
+    <rect x="602" y="96" width="300" height="190" rx="16" fill="#FFFDF7" stroke="#111" stroke-width="2.5"/>
+    <text x="622" y="128" font-size="13" font-weight="800" fill="#5d5a53" letter-spacing="1.5">2 · LABELER</text>
+    <text x="622" y="156" font-size="19" font-weight="800" fill="#111">15-min slots → Gemma 4</text>
+    <text x="622" y="180" font-size="15" fill="#333">{client, task, billable}</text>
+    <text x="622" y="202" font-size="15" fill="#333">JSON schema · client is an enum</text>
+    <text x="622" y="224" font-size="15" fill="#333">merge slots → one invoice line</text>
+    <rect x="622" y="238" width="260" height="32" rx="16" fill="#7AA2FF" stroke="#111" stroke-width="2"/>
+    <text x="752" y="259" text-anchor="middle" font-size="14" font-weight="800" fill="#111">Ollama on 127.0.0.1 · your GPU</text>
+  </g>
+  <line x1="910" y1="190" x2="966" y2="190" stroke="#111" stroke-width="2.5" marker-end="url(#a)"/>
+
+  <!-- 3 check -->
+  <g>
+    <rect x="974" y="110" width="186" height="160" rx="16" fill="#111" transform="translate(5 5)"/>
+    <rect x="974" y="110" width="186" height="160" rx="16" fill="#FFFDF7" stroke="#111" stroke-width="2.5"/>
+    <text x="992" y="142" font-size="13" font-weight="800" fill="#5d5a53" letter-spacing="1.5">3 · CODE CHECK</text>
+    <text x="992" y="170" font-size="17" font-weight="800" fill="#111">"backed by your</text>
+    <text x="992" y="192" font-size="17" font-weight="800" fill="#111">windows" %</text>
+    <text x="992" y="218" font-size="14" fill="#333">titles vs client hints</text>
+    <text x="992" y="240" font-size="14" fill="#333">low % → "check me"</text>
+  </g>
+
+  <!-- outputs -->
+  <line x1="1066" y1="278" x2="1066" y2="320" stroke="#111" stroke-width="2.5"/>
+  <line x1="300" y1="320" x2="1066" y2="320" stroke="#111" stroke-width="2.5"/>
+  <line x1="300" y1="320" x2="300" y2="350" stroke="#111" stroke-width="2.5" marker-end="url(#a)"/>
+  <line x1="680" y1="320" x2="680" y2="350" stroke="#111" stroke-width="2.5" marker-end="url(#a)"/>
+
+  <g>
+    <rect x="120" y="358" width="360" height="110" rx="16" fill="#111" transform="translate(5 5)"/>
+    <rect x="120" y="358" width="360" height="110" rx="16" fill="#0b0b0b" stroke="#111" stroke-width="2.5"/>
+    <circle cx="150" cy="392" r="7" fill="#B8FF3B"/>
+    <text x="168" y="398" font-size="19" font-weight="800" fill="#f5f5f5">🏝️ the island (PySide6)</text>
+    <text x="140" y="426" font-size="15" fill="#cfcfcf">notch on any screen edge · springs open</text>
+    <text x="140" y="450" font-size="15" fill="#cfcfcf">go dark · not work · live pop-outs</text>
+  </g>
+  <g>
+    <rect x="500" y="358" width="380" height="110" rx="16" fill="#111" transform="translate(5 5)"/>
+    <rect x="500" y="358" width="380" height="110" rx="16" fill="#FF7AD9" stroke="#111" stroke-width="2.5"/>
+    <text x="520" y="398" font-size="19" font-weight="800" fill="#111">🧾 dashboard · 127.0.0.1:7777</text>
+    <text x="520" y="426" font-size="15" fill="#111">review: bill it ✅ / nah 🙅 · why?</text>
+    <text x="520" y="450" font-size="15" fill="#111">invoice PDF/CSV · wrapped · settings</text>
+  </g>
+  <g>
+    <rect x="904" y="372" width="250" height="82" rx="16" fill="#FFFDF7" stroke="#111" stroke-width="2.5" stroke-dasharray="6 5"/>
+    <text x="1029" y="406" text-anchor="middle" font-size="15" font-weight="800" fill="#111">no Ollama?</text>
+    <text x="1029" y="430" text-anchor="middle" font-size="14" fill="#333">falls back to keyword rules</text>
+  </g>
+
+  <text x="600" y="530" text-anchor="middle" font-size="15" fill="#5d5a53">network calls made by lowkey: one, to Ollama on 127.0.0.1:11434. no accounts, no cloud, no telemetry.</text>
+</svg>

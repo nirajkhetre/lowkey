@@ -106,7 +106,8 @@ header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22p
 .receipt h3{font-family:var(--display);font-size:30px;margin:0;letter-spacing:-1px}
 .receipt table{width:100%;border-collapse:collapse;font-size:13px;margin:14px 0}
 .receipt td{padding:5px 2px;border-bottom:1px dashed #999;vertical-align:top}
-.receipt td.n{text-align:right;white-space:nowrap}
+.receipt td.n,.receipt td:first-child{text-align:right;white-space:nowrap}
+.receipt td:first-child{text-align:left;padding-right:10px}
 .receipt .tot{font-size:22px;font-weight:800;text-align:right;border-top:2px solid #111;padding-top:8px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 .row select,.row input{border:var(--line);border-radius:12px;padding:8px 10px;background:var(--paper);font-weight:700}
@@ -257,7 +258,7 @@ async function boot(){
   $('#foot').innerHTML = `<b>0 bytes</b> of your screen time left this laptop. labels by <b>${st.model}</b> via ollama on 127.0.0.1${st.demo ? ' · <b>demo week</b>' : ''}<br>open source — read every line of what watches you.`;
   S.day = S.days.at(-1) || iso(new Date());
   await load();
-  if (location.hash === '#settings') settings();
+  ({'#settings': settings, '#wrapped': wrapped, '#bill': bill})[location.hash]?.();  // deep links (docs screenshots)
 }
 
 async function load(){

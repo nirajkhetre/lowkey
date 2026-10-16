@@ -1,5 +1,5 @@
 {
-  "me": { "name": "Your Name", "email": "you@example.com", "currency": "₹" },
+  "me": { "name": "Your Name", "email": "you@example.com", "currency": "₹", "daily_goal_h": 6 },
   "clients": [
     { "name": "Acme Studio", "rate": 1200, "color": "#B8FF3B", "hints": ["acme", "acme-website", "acme.studio"] },
     { "name": "Chai & Co", "rate": 900, "color": "#FF7AD9", "hints": ["chaico", "chai & co", "chai-and-co", "shopify"] },

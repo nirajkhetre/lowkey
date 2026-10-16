@@ -59,11 +59,11 @@ So I built **lowkey**: it bills your hours, lowkey. It's a Dynamic Island for Wi
 6. Wrapped
 7. Task Manager / airplane mode showing it still works offline -->
 
-Try the bundled demo week without tracking anything: `python lowkey.py --demo`.
+Try the bundled demo week without tracking anything: `python -m lowkey --demo`.
 
 ## Code
 
-{% github REPLACE_WITH_YOUR_USERNAME/lowkey %}
+{% github nirajkhetre/lowkey %}
 
 ## How I Built It
 
