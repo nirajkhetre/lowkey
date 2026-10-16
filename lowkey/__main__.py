@@ -16,8 +16,12 @@ from .tracker import track
 
 def main():
     ready = "ready" if model_ok() else "not found, using keyword rules"
-    print(f"lowkey {'(demo) ' if DEMO else ''}-> http://127.0.0.1:{PORT}   model: {MODEL} ({ready})")
-    server = make_server()
+    try:
+        server = make_server()  # binding first doubles as a lock: a second lowkey stops here instead of tracking twice
+    except OSError:
+        sys.exit(f"lowkey: port {PORT} is already in use. Is lowkey already running? "
+                 f"(run another copy on a different port with LOWKEY_PORT=7788)")
+    print(f"lowkey {'(demo) ' if DEMO else ''}-> http://127.0.0.1:{PORT}   model: {MODEL} ({ready})", flush=True)
     if not DEMO:
         threading.Thread(target=track, daemon=True).start()
         threading.Thread(target=refresh, daemon=True).start()
@@ -34,7 +38,10 @@ def main():
         threading.Thread(target=server.serve_forever, daemon=True).start()
         island.run()  # Qt needs the main thread (required on macOS)
     else:
-        server.serve_forever()
+        try:
+            server.serve_forever()
+        except KeyboardInterrupt:
+            print("lowkey: bye")
 
 
 if __name__ == "__main__":

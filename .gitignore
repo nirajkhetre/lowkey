@@ -2,3 +2,5 @@ data/
 __pycache__/
 settings.json
 clients.json
+*.corrupt-*
+.*.tmp

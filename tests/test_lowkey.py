@@ -76,6 +76,44 @@ def test_settings_only_take_known_choices():
         LIVE["settings"].update(before)
 
 
+def test_a_corrupt_file_is_kept_aside_not_lost():
+    from lowkey import config
+    d = Path(tempfile.mkdtemp())
+    (d / "edits.json").write_text('{"half": ', encoding="utf-8")  # what a crash mid-write used to leave
+    assert config.read_json(d / "edits.json", {}) == {}
+    kept = list(d.glob("edits.json.corrupt-*"))
+    assert len(kept) == 1 and kept[0].read_text(encoding="utf-8") == '{"half": '
+    config.write_atomic(d / "edits.json", '{"ok": 1}')
+    assert config.read_json(d / "edits.json", {}) == {"ok": 1} and not list(d.glob(".*.tmp"))
+
+
+def test_api_answers_only_this_machines_pages():
+    import http.client
+    import threading
+    from lowkey import server
+    srv = server.make_server(0)  # any free port
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    port = srv.server_address[1]
+
+    def call(method, path, body=None, **headers):
+        c = http.client.HTTPConnection("127.0.0.1", port, timeout=5)
+        c.request(method, path, body, headers)
+        return c.getresponse().status
+    js = {"Content-Type": "application/json"}
+    try:
+        assert call("GET", "/api/settings") == 200
+        assert call("GET", "/api/settings", Host="evil.example") == 403                      # DNS rebinding
+        assert call("POST", "/api/catch", "{}", **{"Content-Type": "text/plain"}) == 415     # cross-site "simple" POST
+        assert call("POST", "/api/catch", "{}", Origin="https://evil.example", **js) == 403  # another site driving it
+        assert call("POST", "/api/catch", "{oops", **js) == 400                              # bad JSON
+        assert call("POST", "/api/edit", '{"status": "billed"}', **js) == 400                # no session id
+        assert call("GET", "/api/range?from=2020-01-01&to=2026-01-01") == 400                # absurd range
+        assert call("POST", "/api/catch", '{"text": "hi"}', Origin=f"http://127.0.0.1:{port}", **js) == 200
+    finally:
+        srv.shutdown()
+        LIVE.pop("catches", None)
+
+
 def test_merge_joins_consecutive_same_client_slots():
     lab = lambda c: {"client": c, "task": f"work for {c}", "billable": c != "Personal", "by": "test"}
     w = lambda: defaultdict(float, {("a", "b"): 300})

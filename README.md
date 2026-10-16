@@ -121,6 +121,7 @@ Every client gets its own little blob: a shape picked from the client's name, in
 | 🎮 **not work** | island, behind ••• | Marks the current session as a side quest (personal), so it stays off the invoice. Undo stays on offer for 5 s; the shrinking underline is the countdown. Dimmed when there's nothing to move (already personal, or gone dark); hover it to see why. |
 | 📌 **pin** | island, behind ••• | Keeps the pill out instead of tucking it away. Click again to unpin. |
 | ⚙️ **settings** | island, behind ••• | Which edge it lives on, below or over the taskbar, tucked or a pill at rest. Hover an option for an animated preview of exactly where it goes; click to apply. The ‹ goes back. |
+| **quit lowkey** | island settings | Stops tracking and closes the island (it tucks away first). `Ctrl+C` in the terminal works too. Only one lowkey runs at a time: a second copy says so and exits. |
 | ◔ **today** | island, open card | Billable time today. The ring fills up towards your daily goal (`daily_goal_h`). Click to open the dashboard. |
 | ₹ **earned today** | island, open card | Earned today at your client rates; it glows when it ticks up. Click to make the invoice. |
 | ● **to review** | island, open card | Sessions you haven't approved yet. Its dot pulses while something waits; click to review them. |
@@ -189,6 +190,7 @@ If Ollama isn't running, lowkey falls back to keyword rules and says so in the U
 ## 🔒 Privacy
 
 - **Local only.** The dashboard and API bind to `127.0.0.1`. The page loads no external fonts, scripts or images.
+- **Only its own pages get an answer.** The API refuses any request whose `Host` isn't this machine (so a website can't use DNS rebinding to read your activity) and any POST from another site's origin or that isn't JSON (so a page you visit can't quietly edit your sessions).
 - **One network call.** lowkey talks only to Ollama on `127.0.0.1:11434`. No accounts, no cloud, no telemetry.
 - **Plain files.** Your activity is plain JSONL in `data/`. Open it, edit it, delete it.
 - **You choose what's never recorded.** `never_track` skips apps entirely (password managers, private browsing by default), and **go dark** pauses everything with one click.

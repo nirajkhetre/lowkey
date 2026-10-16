@@ -8,7 +8,7 @@ Settings open inside the island; hovering an option pops out a tiny screen actin
 Changes made in the dashboard fly here as little capsules (out of the browser and across the desktop when they
 have to); the island swallows each one, gulps and says what changed.
 """
-import ctypes, math, subprocess, sys, time, webbrowser
+import ctypes, math, signal, subprocess, sys, time, webbrowser
 
 from pathlib import Path
 
@@ -201,6 +201,7 @@ class Island(QWidget):
         self.undo, self.undo_until, self.disabled = None, 0.0, set()
         self.pin_s = Spring(0, 260, 20)
         self.in_settings, self.hold_until = False, 0.0  # after a change moves it, it waits open for you
+        self.quitting = 0.0  # when "quit lowkey" was pressed: it tucks away, then the app ends
         self.more, self.more_s = False, Spring(0, 300, 28)  # the footer's rarer actions
         self.notice, self.notice_until = "", 0.0
         self.thumbs = {}  # segmented-control thumbs, sliding between options
@@ -402,9 +403,13 @@ class Island(QWidget):
             if (self.H.x if side else self.W.x) < 1.5:
                 self.edge = self.want_edge()
                 self.W.x = self.H.x = self.W.v = self.H.v = 0.0
+        if self.quitting:  # goodbye: the content fades and the island tucks into its edge, then the app ends
+            th, tw = (0, tw) if self.edge in ("top", "bottom") else (th, 0)
+            if now - self.quitting > 0.4:
+                self.app.quit()
         self.W.target, self.H.target = tw, th
         for m, s in self.fade.items():
-            s.target = 1.0 if m == self.mode and not moving else 0.0
+            s.target = 1.0 if m == self.mode and not moving and not self.quitting else 0.0
         for thumb in self.thumbs.values():
             thumb.step(dt)
             if self.calm:
@@ -436,6 +441,15 @@ class Island(QWidget):
         self.place()
         self.update()
         self.place_peek(now, dt, moving)
+        # resting costs almost nothing: 60 fps only while something moves or you're on it, 30 for a resting pill
+        # (its creature still blinks), 15 for the breathing lip
+        settled = (all(abs(s.v) < 1 and abs(s.target - s.x) < 0.5 for s in (self.W, self.H, self.slide, self.money_view))
+                   and all(abs(s.target - s.x) < 0.01 for s in (self.dark, *self.fade.values())))
+        busy = (not settled or self.mode not in ("lip", "pill") or self.hover_since or self.incoming or self.quitting
+                or (self.left_at and now - self.left_at < 0.5) or now < self.toast_until or self.peek.x > 0.01)
+        ms = 16 if busy else 33 if self.mode == "pill" else 66
+        if self.timer.interval() != ms:
+            self.timer.setInterval(ms)
 
     def place(self, snap=False):
         """Attach to the chosen edge. By default the island hangs from the *work area*, so a taskbar on
@@ -1048,6 +1062,17 @@ class Island(QWidget):
         p.setPen(TXT)
         p.setFont(font(17, QFont.ExtraBold))
         p.drawText(QRectF(x + 40, y + 18, W - 40, 28), Qt.AlignLeft | Qt.AlignVCenter, "island settings")
+        h = self.hv("quit")  # the way out lives here, quietly, like a menu bar app's "Quit"
+        qf = font(12.5, QFont.DemiBold)
+        quit_ = QRectF(0, y + 20, QFontMetricsF(qf).horizontalAdvance("quit lowkey") + 24, 24)
+        quit_.moveRight(x + W)
+        self.buttons["quit"] = quit_
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(255, 255, 255, int(10 + 22 * h)))
+        p.drawRoundedRect(quit_, 12, 12)
+        p.setPen(mix(QColor(150, 150, 158), TXT, h))
+        p.setFont(qf)
+        p.drawText(quit_, Qt.AlignCenter, "quit lowkey")
 
         # info line: a fresh "saved" beats the hovered option, which beats the hint
         y = y0 + self.row(p, 1, "settings")
@@ -1421,7 +1446,8 @@ class Island(QWidget):
                 "mascot": "click me and i'll tell you something about your day",
                 "gear": "island settings: where it lives and how it rests",
                 "more": "back to the main controls" if self.more else "more: not work, pin and settings",
-                "back": "back to your session"}.get(key)
+                "back": "back to your session",
+                "quit": "quit lowkey: stops tracking and closes the island"}.get(key)
 
     def open_page(self, hash_=""):
         (self.actions.get("open") or (lambda h="": webbrowser.open("http://127.0.0.1:7777/" + h)))(hash_)
@@ -1476,6 +1502,8 @@ class Island(QWidget):
             elif key == "gear":
                 self.in_settings = self.click_open = True
                 self.more = False
+            elif key == "quit":
+                self.quitting = time.time()
             elif key == "back":
                 self.in_settings = False
             elif key.startswith("set:"):  # applies at once; if it moves the island, it waits open where it lands
@@ -1501,5 +1529,6 @@ class Island(QWidget):
             self.toast("pinned. double-click to tuck away" if self.pinned else f"tucked into the {self.edge} edge", GREY, 2)
 
     def run(self):
+        signal.signal(signal.SIGINT, signal.SIG_DFL)  # Ctrl+C in the terminal ends lowkey (Qt's loop would swallow it)
         self.app.exec()
 
