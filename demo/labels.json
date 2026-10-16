@@ -1,0 +1,1115 @@
+{
+ "da350316badaaebc": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website pull request",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "93bbe64bd9a620de": {
+  "client": "Acme Studio",
+  "task": "Modified login component for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "4fdc8f543a28f171": {
+  "client": "Acme Studio",
+  "task": "Developed login component for Acme website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "bc2b9c3d65f7eb47": {
+  "client": "Acme Studio",
+  "task": "Developed authentication logic for Acme website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "6e295cf4b218c9c1": {
+  "client": "Acme Studio",
+  "task": "Ran npm run dev for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "4fbd0701d5e5d074": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "48f90326f5e9388e": {
+  "client": "Acme Studio",
+  "task": "Logged in and worked on login component for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "24252b93eede8d4b": {
+  "client": "Personal",
+  "task": "Ordered food online via Swiggy",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "5f37d2e682d7ae51": {
+  "client": "Chai & Co",
+  "task": "Previewed Masala Chai 250g product",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "fc31d69cf71fd118": {
+  "client": "Chai & Co",
+  "task": "Modified product card for theme",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "59cddcaabcbfadfd": {
+  "client": "Chai & Co",
+  "task": "Reviewed product card liquid file",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "2d4fe39f217edef3": {
+  "client": "Chai & Co",
+  "task": "WhatsApp communication with Riya",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "691569645ee54435": {
+  "client": "Chai & Co",
+  "task": "Viewed Shopify admin orders",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "6af319d7de63e901": {
+  "client": "Chai & Co",
+  "task": "Browsed Shopify theme settings",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "c4fbe747e44ccdd0": {
+  "client": "Chai & Co",
+  "task": "Reviewed product card liquid file for theme",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "02a79dc9da9f16c3": {
+  "client": "Chai & Co",
+  "task": "Viewed Shopify admin orders",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "c22778e3760a06dd": {
+  "client": "Personal",
+  "task": "Used WhatsApp for personal communication",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "335d78211504f321": {
+  "client": "Personal",
+  "task": "Ordered food online via Swiggy",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "c80ad3bca5419b0b": {
+  "client": "Personal",
+  "task": "Ordered food online via Swiggy",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "5fdf3d3daed99a82": {
+  "client": "Personal",
+  "task": "Listened to Spotify Premium",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "adf3538132a83c47": {
+  "client": "Nimbus Labs",
+  "task": "Posted invoice via Postman for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "1acfefc89b41caa1": {
+  "client": "Nimbus Labs",
+  "task": "Reviewed Nimbus API spec v2 in Notion",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "f61e32ee6c0b4915": {
+  "client": "Nimbus Labs",
+  "task": "Posted invoice via Postman for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "ef3d893c56b170ac": {
+  "client": "Nimbus Labs",
+  "task": "Modified handlers.py for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "646932a5511248bb": {
+  "client": "Acme Studio",
+  "task": "Ran npm run dev for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "2bf122009106168c": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "df458d09e5ac9e5e": {
+  "client": "Acme Studio",
+  "task": "Updated Acme landing page in Figma",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "1eaf1ebed5616f29": {
+  "client": "Acme Studio",
+  "task": "Developed authentication logic for Acme website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "f54c3a6675feb2d2": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website repository",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "69efefa4883cb6cf": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "34ad8ce3ee209b29": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "1e13e4e5cff7300c": {
+  "client": "Acme Studio",
+  "task": "Developed authentication logic for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "40cbcf18f7cc1bfd": {
+  "client": "Acme Studio",
+  "task": "Ran development server for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "1665aec6a76e1412": {
+  "client": "Personal",
+  "task": "Ordered food online via Swiggy",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "38b90887d00859c7": {
+  "client": "Personal",
+  "task": "Listened to music on Spotify",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "349c09136e20d0ca": {
+  "client": "Nimbus Labs",
+  "task": "Ran failing test on nimbus-api via GitHub Actions",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "97568066d17b2506": {
+  "client": "Nimbus Labs",
+  "task": "Ran failing test on nimbus-api via GitHub Actions",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "61a74ec0ddca9387": {
+  "client": "Nimbus Labs",
+  "task": "Reviewed Nimbus API spec v2 in Notion",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "07657ff23f7af0fb": {
+  "client": "Nimbus Labs",
+  "task": "Modified handlers.py for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "e6ab1fc9fa1f5042": {
+  "client": "Personal",
+  "task": "Ordered food online via Swiggy",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "065de90034d8e322": {
+  "client": "Acme Studio",
+  "task": "Accessed localhost development environment",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "93511de26e1197d4": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "879910cdb82dd4b1": {
+  "client": "Acme Studio",
+  "task": "Logged into login.tsx for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "3958f55eb90d3a93": {
+  "client": "Acme Studio",
+  "task": "Modified auth.ts file for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "3e65629ad0024124": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "24df0cc75bfb7e26": {
+  "client": "Acme Studio",
+  "task": "Edited login.tsx file for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "9016f50adeda8240": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website pull request",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "4f776584f848b05b": {
+  "client": "Acme Studio",
+  "task": "Logged into login.tsx file for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "5f687b84668c85a9": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "dc8fb89edbf8a587": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "4e85374d18975f56": {
+  "client": "Personal",
+  "task": "Used WhatsApp for personal communication",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "0c34df6928fb981d": {
+  "client": "Personal",
+  "task": "Browsed Instagram",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "3982610b1fe4f0ce": {
+  "client": "Personal",
+  "task": "Browsed Reddit",
+  "billable": false,
+  "confidence": 0.2,
+  "by": "gemma4:e2b"
+ },
+ "7a85c17a9bda8396": {
+  "client": "Personal",
+  "task": "Browsed Reddit",
+  "billable": false,
+  "confidence": 0.9,
+  "by": "gemma4:e2b"
+ },
+ "bb97c0c71a1d3680": {
+  "client": "Personal",
+  "task": "Listened to lofi hip hop radio on YouTube",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "106a9877244a88e7": {
+  "client": "Chai & Co",
+  "task": "Reviewed Shopify orders in admin",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "606e361efe9b27e2": {
+  "client": "Chai & Co",
+  "task": "Reviewed product card liquid file",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "3e6456ab9966eebb": {
+  "client": "Chai & Co",
+  "task": "Accessed Shopify admin orders",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "d0de21df7d2e58f7": {
+  "client": "Chai & Co",
+  "task": "Modified product card for Chai & Co theme",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "1595024a91099bb2": {
+  "client": "Chai & Co",
+  "task": "Reviewed product card liquid file for theme",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "95f438de6bc71211": {
+  "client": "Chai & Co",
+  "task": "Previewed Masala Chai 250g product",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "15e9e60241a5e6d3": {
+  "client": "Acme Studio",
+  "task": "Ran development server for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "370869af54863946": {
+  "client": "Acme Studio",
+  "task": "Developed authentication logic for Acme website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "c858717e38547d93": {
+  "client": "Acme Studio",
+  "task": "Ran npm run dev for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "7a0254cff3bbf250": {
+  "client": "Acme Studio",
+  "task": "Updated Figma design for Acme landing page v3",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "05d1a708c4634b92": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website pull request",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "02f93baa9d711982": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website pull request",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "c24e24674b36033a": {
+  "client": "Chai & Co",
+  "task": "Reviewed Shopify theme product card liquid file",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "379a8d42e509218c": {
+  "client": "Chai & Co",
+  "task": "Viewed Shopify theme preview",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "53e58eedac67b2e0": {
+  "client": "Chai & Co",
+  "task": "Previewed Masala Chai 250g product",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "49056322b8b57231": {
+  "client": "Personal",
+  "task": "Browsed Reddit",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "48a643330f5d002f": {
+  "client": "Personal",
+  "task": "Ordered food online via Swiggy",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "86433507db2db216": {
+  "client": "Nimbus Labs",
+  "task": "Attended weekly sync meeting",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "a25306ce72d924c6": {
+  "client": "Nimbus Labs",
+  "task": "Worked on handlers.py for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "955816cef42ac570": {
+  "client": "Nimbus Labs",
+  "task": "Documented Nimbus API specification v2 in Notion",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "61a7cd56b2935abd": {
+  "client": "Nimbus Labs",
+  "task": "Attended weekly sync meeting",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "e14d1f68dddc1aab": {
+  "client": "Nimbus Labs",
+  "task": "Worked on handlers.py for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "1db7778df1d84247": {
+  "client": "Nimbus Labs",
+  "task": "Worked on handlers.py for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "0adbdba57ea66150": {
+  "client": "Nimbus Labs",
+  "task": "Posted invoice via Postman for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "8499804ec1d5d6e0": {
+  "client": "Nimbus Labs",
+  "task": "Modified handlers.py for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "c3a7cd4523bd6b6d": {
+  "client": "Nimbus Labs",
+  "task": "Posted invoice via Postman for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "109c1bdd60718b1a": {
+  "client": "Personal",
+  "task": "Browsed Reddit",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "23ec9ac92f38b3a8": {
+  "client": "Personal",
+  "task": "Ordered food online via Swiggy",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "a2911ee66f6417f4": {
+  "client": "Personal",
+  "task": "Browsed Instagram",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "040e61a891920865": {
+  "client": "Personal",
+  "task": "Watched lofi hip hop radio on YouTube",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "3cb7f87a1672c18c": {
+  "client": "Acme Studio",
+  "task": "Designed Acme landing page version 3 in Figma",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "11f68e27661c9690": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website pull request",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "47901871382db8b7": {
+  "client": "Acme Studio",
+  "task": "Designed Acme landing page in Figma",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "bb7b56229c4d6c19": {
+  "client": "Acme Studio",
+  "task": "Developed authentication logic for Acme website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "38981d3e10f99f29": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "e0c282bf23939d8a": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website pull request",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "b46ab297e3753539": {
+  "client": "Acme Studio",
+  "task": "Designed Acme landing page version 3 in Figma",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "81a970da6f45b7af": {
+  "client": "Personal",
+  "task": "Browsed Reddit",
+  "billable": false,
+  "confidence": 0.8,
+  "by": "gemma4:e2b"
+ },
+ "ae0104041e65cd46": {
+  "client": "Personal",
+  "task": "Watched lofi hip hop radio on YouTube",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "1e7cb8b2ce5a8876": {
+  "client": "Chai & Co",
+  "task": "Viewed product preview for Masala Chai 250g",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "5747163dbc5b250c": {
+  "client": "Chai & Co",
+  "task": "Previewed Masala Chai 250g product",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "ec912672e3b315b6": {
+  "client": "Chai & Co",
+  "task": "Communicated via WhatsApp regarding order",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "7d82ebdb257bd080": {
+  "client": "Chai & Co",
+  "task": "Reviewed product card liquid file for theme",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "da92715ffaee97fa": {
+  "client": "Chai & Co",
+  "task": "Reviewed themes for Shopify store",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "039713ee05e1f3c8": {
+  "client": "Chai & Co",
+  "task": "Checked WhatsApp messages",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "16c3134687c9c9f4": {
+  "client": "Acme Studio",
+  "task": "Updated Acme landing page in Figma",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "780fa9c40dbae303": {
+  "client": "Acme Studio",
+  "task": "Modified auth.ts for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "c8533a41bd406dbc": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website pull request",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "bb4f6f3d2b21c620": {
+  "client": "Acme Studio",
+  "task": "Developed login.tsx for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "99747f1191ea955d": {
+  "client": "Acme Studio",
+  "task": "Developed auth.ts for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "8dcfd9b4f6204586": {
+  "client": "Acme Studio",
+  "task": "Modified login.tsx file for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "92ba923c08ca1d17": {
+  "client": "Acme Studio",
+  "task": "Modified login component for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "a2321c14202c8179": {
+  "client": "Acme Studio",
+  "task": "Modified login.tsx file for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "a7e99cc3d6dbb8b6": {
+  "client": "Acme Studio",
+  "task": "Updated Figma design for Acme landing page v3",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "fae60380282c39ce": {
+  "client": "Personal",
+  "task": "Used WhatsApp for personal communication",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "b74b4688a7df2904": {
+  "client": "Personal",
+  "task": "Browsed Instagram",
+  "billable": false,
+  "confidence": 1,
+  "by": "gemma4:e2b"
+ },
+ "d13221d85861055c": {
+  "client": "Personal",
+  "task": "Listened to lofi hip hop radio on YouTube",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "02b6f6c4956f1f1d": {
+  "client": "Nimbus Labs",
+  "task": "Modified handlers.py for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "288deadf0995a415": {
+  "client": "Nimbus Labs",
+  "task": "Worked on handlers.py for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "5d81890dbb5d7db5": {
+  "client": "Nimbus Labs",
+  "task": "Reviewed Nimbus API spec v2 in Notion",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "a63d22f3b957fdda": {
+  "client": "Nimbus Labs",
+  "task": "Ran failing test on nimbus-api via GitHub Actions",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "aa0cf15f362de63e": {
+  "client": "Nimbus Labs",
+  "task": "Attended weekly sync meeting",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "fa8b6f8406ff4cd5": {
+  "client": "Personal",
+  "task": "Browsed Reddit",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "8983d7118ab32b5a": {
+  "client": "Personal",
+  "task": "Ordered food online via Swiggy",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "8155a6743556f26f": {
+  "client": "Chai & Co",
+  "task": "Previewed Masala Chai 250g product on Chrome",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "f5a3c83e1c21cd45": {
+  "client": "Chai & Co",
+  "task": "WhatsApp communication with Riya",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "3cd784dda83f5190": {
+  "client": "Chai & Co",
+  "task": "Previewed Masala Chai 250g product",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "f89ab0696275e061": {
+  "client": "Chai & Co",
+  "task": "Viewed Shopify admin orders",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "00c8dc85dd213870": {
+  "client": "Chai & Co",
+  "task": "Checked orders in Shopify admin",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "e98b1e0113e2c71a": {
+  "client": "Chai & Co",
+  "task": "Previewed Masala Chai 250g product",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "68ff01103a84d5ea": {
+  "client": "Chai & Co",
+  "task": "Browsed Shopify theme settings",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "3c7962d76bfe1468": {
+  "client": "Chai & Co",
+  "task": "Previewed Masala Chai 250g product",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "008850359d51ca97": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "f3faf7772cb2700d": {
+  "client": "Acme Studio",
+  "task": "Developed application for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "0e8855d7b2461ddf": {
+  "client": "Acme Studio",
+  "task": "Logged into login.tsx for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "3b24f350deac3f11": {
+  "client": "Chai & Co",
+  "task": "Modified product card code for theme",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "7d99cbe592724e49": {
+  "client": "Chai & Co",
+  "task": "Modified product card for chaico theme",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "87bd5ed3b84b6bfd": {
+  "client": "Chai & Co",
+  "task": "Previewed Masala Chai 250g product",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "cd80832b0a9fbb51": {
+  "client": "Chai & Co",
+  "task": "Reviewed product card liquid file for theme",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "bc79936cb9763c50": {
+  "client": "Chai & Co",
+  "task": "Accessed Shopify admin orders",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "8dde3383e5a0dd88": {
+  "client": "Chai & Co",
+  "task": "Reviewed product card liquid file for theme",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "afbad93b42a55dae": {
+  "client": "Personal",
+  "task": "Browsed Reddit",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "540f244f3832d6be": {
+  "client": "Personal",
+  "task": "Used WhatsApp for personal communication",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "47a2e1b25d9c3e34": {
+  "client": "Acme Studio",
+  "task": "Ran npm run dev for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "c7142b1aa2660b18": {
+  "client": "Acme Studio",
+  "task": "Updated Acme landing page in Figma",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "93dc61314b34e5c9": {
+  "client": "Acme Studio",
+  "task": "Developed authentication logic for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "53087330eb24337e": {
+  "client": "Acme Studio",
+  "task": "Edited login.tsx file for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "6a013407ac1e1ed2": {
+  "client": "Acme Studio",
+  "task": "Fixed OAuth redirect issue in acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "1d94b68ae035af99": {
+  "client": "Acme Studio",
+  "task": "Ran npm run dev for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "753be51f48d522fb": {
+  "client": "Acme Studio",
+  "task": "Ran development server for acme-website",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "67934f9ee566f879": {
+  "client": "Personal",
+  "task": "Used WhatsApp for personal communication",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "d70d29284af3c3b4": {
+  "client": "Personal",
+  "task": "Watched lofi hip hop radio on YouTube",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "f4ed5ffc15c4e73d": {
+  "client": "Personal",
+  "task": "Ordered food online via Swiggy",
+  "billable": false,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "b6df662ca993ede3": {
+  "client": "Nimbus Labs",
+  "task": "Attended weekly sync meeting",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "4cec6be05c861b0a": {
+  "client": "Nimbus Labs",
+  "task": "Coded handlers.py for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "721a198c6a10b745": {
+  "client": "Nimbus Labs",
+  "task": "Posted invoice via Postman for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "6044ea478ef94a4d": {
+  "client": "Nimbus Labs",
+  "task": "Ran failing test on nimbus-api via GitHub Actions",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "e986bb12533062be": {
+  "client": "Nimbus Labs",
+  "task": "Documented Nimbus API specification v2 in Notion",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "f7b391289439ce46": {
+  "client": "Nimbus Labs",
+  "task": "Ran failing test on nimbus-api via GitHub Actions",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "af480948bf1cf69e": {
+  "client": "Nimbus Labs",
+  "task": "Modified handlers.py for nimbus-api",
+  "billable": true,
+  "confidence": 1.0,
+  "by": "gemma4:e2b"
+ },
+ "sum:486ceb1470be122d": "Fixed OAuth redirect & modified login component for acme-website.",
+ "sum:81b8250ce6008c3d": "Previewed Masala Chai 250g, modified/reviewed product card liquid files, viewed orders/theme settings.",
+ "sum:b82205b1d0f223fe": "Used WhatsApp, ordered food via Swiggy, listened to Spotify Premium.",
+ "sum:756b90f3f5c9950c": "Posted invoice for nimbus-api; reviewed spec v2; modified handlers.py",
+ "sum:de186f38de8032ab": "Fixed OAuth redirect & developed auth logic for acme-website.",
+ "sum:a056d56297330c1b": "Ordered food via Swiggy; listened to music on Spotify.",
+ "sum:7edee725bab52b26": "Ran failing test on nimbus-api via GitHub Actions; reviewed Nimbus API spec v2; modified handlers.py.",
+ "sum:6eb775f7b223cb0d": "Fixed OAuth redirect in acme-website PR; modified auth.ts & login.tsx.",
+ "sum:fa5256ba457831e7": "Used WhatsApp, Instagram, Reddit, and YouTube lofi radio.",
+ "sum:6a217241c0828e71": "Reviewed Shopify orders, product card liquid, modified card for Chai & Co theme, previewed Masala Chai 250g",
+ "sum:16ac3d1106a8f1d7": "Dev server run, auth logic developed, Figma updated, OAuth fix PR.",
+ "sum:4e5c385cd7b44220": "Reviewed Shopify theme liquid, previewed theme, and Masala Chai 250g product.",
+ "sum:fbd47ee8e19d58cd": "Ordered food via Swiggy; browsed Reddit.",
+ "sum:ba2c8600879bc4b6": "Modified handlers.py for nimbus-api, documented v2 spec, posted invoice via Postman.",
+ "sum:3f0b507981990a86": "Browsed Reddit, ordered food via Swiggy, browsed Instagram, watched lofi hip hop on YouTube.",
+ "sum:fed08b8d1246f53a": "Designed Acme LP v3 in Figma; fixed OAuth redirect in acme-website PR.",
+ "sum:a1501862b1055b7a": "Browsed Reddit, watched lofi hip hop radio on YouTube.",
+ "sum:623916d21171419c": "Reviewed Masala Chai 250g preview, liquid file, and Shopify themes; communicated via WhatsApp.",
+ "sum:d29a982adaca3d51": "Updated Acme landing page Figma, modified auth.ts, fixed OAuth redirect, developed login.tsx.",
+ "sum:3784d0f9e0f032e4": "Used WhatsApp, browsed Instagram, listened to lofi hip hop on YouTube.",
+ "sum:8a76244763657c81": "Modified handlers.py for nimbus-api; reviewed spec v2; ran failing test.",
+ "sum:fdf5f3f7b8a3f12e": "Previewed Masala Chai 250g, checked Shopify orders, viewed theme settings.",
+ "sum:6b9af5555e9c5fd5": "Fixed OAuth redirect, developed app, logged into login.tsx for acme-website.",
+ "sum:f7225db7c1e58564": "Modified product card code/theme, previewed Masala Chai 250g, reviewed liquid file, accessed Shopify orders.",
+ "sum:be603e057cedb539": "Browsed Reddit; used WhatsApp for personal communication.",
+ "sum:8ccb504f7b0e43cd": "Developed auth logic, edited login.tsx, fixed OAuth redirect for acme-website.",
+ "sum:5e0d51d5ff4c8a3a": "Personal comms via WhatsApp, watched lofi hip hop on YouTube, ordered food via Swiggy.",
+ "sum:d4d68f87436abec3": "Coded handlers.py, posted invoice via Postman, ran tests, documented Nimbus API v2."
+}

@@ -1,0 +1,9 @@
+{
+  "me": { "name": "Your Name", "email": "you@example.com", "currency": "₹" },
+  "clients": [
+    { "name": "Acme Studio", "rate": 1200, "color": "#B8FF3B", "hints": ["acme", "acme-website", "acme.studio"] },
+    { "name": "Chai & Co", "rate": 900, "color": "#FF7AD9", "hints": ["chaico", "chai & co", "chai-and-co", "shopify"] },
+    { "name": "Nimbus Labs", "rate": 1500, "color": "#7AA2FF", "hints": ["nimbus", "nimbus-api", "nimbuslabs"] }
+  ],
+  "never_track": ["KeePass", "Bitwarden", "1Password", "InPrivate", "Incognito"]
+}
