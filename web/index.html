@@ -35,7 +35,7 @@ header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22p
 @keyframes blink{50%{opacity:.15}}
 .sticker{display:inline-block;background:var(--yellow);color:#111;border:var(--line);border-radius:999px;padding:4px 10px;font-size:13px;font-weight:800;transform:rotate(-4deg);box-shadow:var(--shadow-sm)}
 .datenav{display:flex;align-items:center;gap:6px;margin-left:auto}
-.datenav .day{font-weight:800;font-size:18px;min-width:150px;text-align:center}
+.datenav .day{font-weight:800;font-size:18px;min-width:110px;text-align:center}
 .pill{display:inline-flex;align-items:center;gap:7px;border:var(--line);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;background:var(--paper)}
 .pill i{width:10px;height:10px;border-radius:50%;background:var(--lime);border:1.5px solid var(--ink);display:inline-block}
 .pill.warn i{background:var(--orange)}
@@ -111,6 +111,46 @@ header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22p
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 .row select,.row input{border:var(--line);border-radius:12px;padding:8px 10px;background:var(--paper);font-weight:700}
 
+/* settings: option cards with live mini-screen previews */
+.sec{margin:4px 0 6px;font-size:20px;letter-spacing:-.5px}
+.hint{color:var(--muted);font-weight:600;font-size:13.5px;margin:0 0 10px}
+.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:14px;margin:0 0 24px}
+.opt{border:var(--line);border-radius:16px;padding:10px;background:var(--paper);cursor:pointer;box-shadow:var(--shadow-sm);transition:transform .12s,box-shadow .12s;position:relative;text-align:left}
+.opt:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
+.opt.on{background:var(--lime);color:#111}
+.opt.on::after{content:"✓";position:absolute;right:16px;top:16px;width:22px;height:22px;border-radius:50%;background:#111;color:var(--lime);display:grid;place-items:center;font-weight:900;font-size:13px;z-index:5}
+.opt.off{opacity:.45;cursor:not-allowed}
+.opt h4{margin:9px 2px 2px;font-size:16px}
+.opt p{margin:0 2px;font-size:12.5px;color:var(--muted);font-weight:600;line-height:1.3}
+.opt.on p{color:#333}
+.scr{aspect-ratio:16/10;border:2px solid #111;border-radius:10px;position:relative;overflow:hidden;background:linear-gradient(135deg,#2b5876,#7b4397 65%,#dc6a49)}
+.scr::before{content:"";position:absolute;left:20%;top:26%;width:44%;height:44%;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:4px}
+.tb{position:absolute;background:rgba(16,16,16,.93);z-index:1}
+.tb::before{content:"";position:absolute;background:radial-gradient(circle,#d8d8d8 42%,transparent 48%)}
+.tb-top,.tb-bottom{left:0;right:0;height:9%}.tb-top{top:0}.tb-bottom{bottom:0}
+.tb-left,.tb-right{top:0;bottom:0;width:6.5%}.tb-left{left:0}.tb-right{right:0}
+.tb-top::before,.tb-bottom::before{left:3%;top:22%;bottom:22%;width:24%;background-size:16% 100%;background-repeat:repeat-x}
+.tb-left::before,.tb-right::before{top:4%;left:22%;right:22%;height:24%;background-size:100% 16%;background-repeat:repeat-y}
+.tb-none{display:none}
+.isl{position:absolute;background:#0b0b0b;z-index:2;overflow:hidden;transition:all .55s cubic-bezier(.34,1.56,.64,1)}
+.isl i,.isl b{position:absolute;opacity:0;transition:opacity .25s .12s}
+.isl i{width:6px;height:6px;border-radius:50%;background:#B8FF3B;left:10%;top:50%;transform:translateY(-50%)}
+.isl b{height:3px;border-radius:2px;background:#eee;left:24%;width:38%;top:50%;transform:translateY(-50%)}
+.isl-top,.isl-bottom{left:50%;transform:translateX(-50%);width:26%;height:3.2%}
+.isl-top{top:var(--off);border-radius:0 0 5px 5px;box-shadow:inset 0 -1.5px 0 #B8FF3B}
+.isl-bottom{bottom:var(--off);border-radius:5px 5px 0 0;box-shadow:inset 0 1.5px 0 #B8FF3B}
+.isl-left,.isl-right{top:50%;transform:translateY(-50%);width:2.2%;height:26%}
+.isl-left{left:var(--off);border-radius:0 5px 5px 0;box-shadow:inset -1.5px 0 0 #B8FF3B}
+.isl-right{right:var(--off);border-radius:5px 0 0 5px;box-shadow:inset 1.5px 0 0 #B8FF3B}
+.opt:not(.off):hover .isl,.isl.pill{box-shadow:0 3px 10px rgba(0,0,0,.45)}
+.opt:not(.off):hover .isl-top,.opt:not(.off):hover .isl-bottom,.isl-top.pill,.isl-bottom.pill{width:46%;height:11%}
+.opt:not(.off):hover .isl-left,.opt:not(.off):hover .isl-right,.isl-left.pill,.isl-right.pill{width:40%;height:11%}
+.opt:not(.off):hover .isl-top,.isl-top.pill{border-radius:0 0 10px 10px}
+.opt:not(.off):hover .isl-bottom,.isl-bottom.pill{border-radius:10px 10px 0 0}
+.opt:not(.off):hover .isl-left,.isl-left.pill{border-radius:0 10px 10px 0}
+.opt:not(.off):hover .isl-right,.isl-right.pill{border-radius:10px 0 0 10px}
+.opt:not(.off):hover .isl i,.opt:not(.off):hover .isl b,.isl.pill i,.isl.pill b{opacity:1}
+
 .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(120px);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;font-weight:800;transition:transform .25s;z-index:30}
 .toast.show{transform:translateX(-50%) translateY(0)}
 footer{margin-top:40px;font-family:var(--mono);font-size:12.5px;color:var(--muted);text-align:center}
@@ -136,6 +176,7 @@ footer b{color:var(--ink)}
     </div>
     <button class="btn pink" id="openWrapped">✨ wrapped</button>
     <button class="btn lime" id="openBill">💸 send the bill</button>
+    <button class="btn" id="openSettings" title="island settings (S)">⚙️</button>
     <button class="btn ghost" id="theme" title="toggle theme">◐</button>
   </header>
 
@@ -177,6 +218,7 @@ footer b{color:var(--ink)}
 
 <div class="modal" id="wrappedModal"><div class="card wrapped" id="wrappedCard"></div></div>
 <div class="modal" id="billModal"><div class="card" id="billCard"></div></div>
+<div class="modal" id="setModal"><div class="card" id="setCard"></div></div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -215,6 +257,7 @@ async function boot(){
   $('#foot').innerHTML = `<b>0 bytes</b> of your screen time left this laptop. labels by <b>${st.model}</b> via ollama on 127.0.0.1${st.demo ? ' · <b>demo week</b>' : ''}<br>open source — read every line of what watches you.`;
   S.day = S.days.at(-1) || iso(new Date());
   await load();
+  if (location.hash === '#settings') settings();
 }
 
 async function load(){
@@ -360,11 +403,48 @@ function bill(){
   $('#bClient').onchange = draw; $('#bPending').onchange = draw; draw();
   $('#billModal').classList.add('open');
 }
+/* ---------- settings ---------- */
+const prev = ({edge, tb, over, rest}) => {
+  const thick = tb==='top'||tb==='bottom' ? 9 : 6.5;
+  const off = tb===edge && !over ? thick : 0;   // "below" pushes the island inward by the taskbar's size
+  return `<div class="scr"><div class="tb tb-${tb}"></div><div class="isl isl-${edge} ${rest==='pill'?'pill':''}" style="--off:${off}%"><i></i><b></b></div></div>`;
+};
+async function settings(){
+  const r = await (await fetch('/api/settings')).json(), st = r.settings;
+  const tb = ['top','bottom','left','right'].includes(r.taskbar) ? r.taskbar : 'bottom';
+  const mac = r.platform === 'darwin';
+  const opt = (key, val, title, sub, look, disabled) => `<button class="opt ${st[key]===val?'on':''} ${disabled?'off':''}" data-k="${key}" data-v="${val}" ${disabled?'disabled':''}>${prev(look)}<h4>${title}</h4><p>${sub}</p></button>`;
+  const edges = {top:['top','like a MacBook notch ⬆️'], bottom:['bottom','sits on the dock side ⬇️'], left:['left','peeks from the side ⬅️'], right:['right','peeks from the side ➡️']};
+  const tbText = r.taskbar && r.taskbar!=='none' ? `your taskbar is on the <b>${r.taskbar}</b>` : 'your taskbar is hidden or unknown';
+  $('#setCard').innerHTML = `<button class="btn x" onclick="closeM()">✕</button>
+    <h2 style="margin:0 0 4px;font-size:30px;letter-spacing:-1px">island settings ⚙️</h2>
+    <p class="hint">hover a card to preview it. changes apply instantly${r.island?'':' (the island only runs in tracking mode, not the demo)'}.</p>
+    <h3 class="sec">where does the island live?</h3>
+    <p class="hint">${tbText}. the previews show it.</p>
+    <div class="opts">${Object.entries(edges).map(([e,[t,sub]])=>opt('edge',e,t,sub,{edge:e,tb,over:st.taskbar==='over',rest:st.rest})).join('')}</div>
+    <h3 class="sec">when it shares an edge with the taskbar</h3>
+    <p class="hint">only matters if the island and your taskbar are on the same side${mac?'. on macOS the menu bar always stays on top':''}.</p>
+    <div class="opts">
+      ${opt('taskbar','below','hang below it','never covers the taskbar, always fully visible',{edge:st.edge,tb:st.edge,over:false,rest:'lip'})}
+      ${opt('taskbar','over','sit on the screen edge','true notch look, floats over the taskbar',{edge:st.edge,tb:st.edge,over:true,rest:'lip'},mac)}
+    </div>
+    <h3 class="sec">when you're not looking</h3>
+    <div class="opts">
+      ${opt('rest','lip','tucked away','just a glowing lip, hover to open',{edge:st.edge,tb,over:st.taskbar==='over',rest:'lip'})}
+      ${opt('rest','pill','always show the pill','client, timer and ₹ always visible',{edge:st.edge,tb,over:st.taskbar==='over',rest:'pill'})}
+    </div>`;
+  $('#setCard').querySelectorAll('.opt:not(.off)').forEach(b => b.onclick = async () => {
+    await fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({[b.dataset.k]: b.dataset.v})});
+    toast({edge:'island moved ✨', taskbar:'taskbar mode saved 👌', rest:'resting style saved 💤'}[b.dataset.k]);
+    settings();
+  });
+  $('#setModal').classList.add('open');
+}
 function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.classList.remove('open')); }
 
 /* ---------- wiring ---------- */
 $('#prev').onclick = () => shiftDay(-1); $('#next').onclick = () => shiftDay(1);
-$('#openWrapped').onclick = wrapped; $('#openBill').onclick = bill;
+$('#openWrapped').onclick = wrapped; $('#openBill').onclick = bill; $('#openSettings').onclick = settings;
 document.querySelectorAll('.modal').forEach(m => m.onclick = e => { if (e.target===m) closeM(); });
 document.querySelectorAll('.chip').forEach(c => c.onclick = () => { S.filter = c.dataset.f; renderCards(); });
 $('#theme').onclick = () => { const r=document.documentElement; r.dataset.theme = r.dataset.theme==='dark'?'light':'dark'; try{localStorage.lowkeyTheme=r.dataset.theme}catch{} };
@@ -377,6 +457,7 @@ document.addEventListener('keydown', e => {
   if (e.key==='ArrowRight') return shiftDay(1);
   if (e.key==='w') return wrapped();
   if (e.key==='b') return bill();
+  if (e.key==='s') return settings();
   if (!n) return;
   if (e.key==='j'||e.key==='k'){ S.focus = (S.focus + (e.key==='j'?1:-1) + n) % n; document.querySelector(`.s[data-i="${S.focus}"]`)?.focus(); }
   if (e.key==='y') act(S.focus,'billed');

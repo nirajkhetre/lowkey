@@ -1,13 +1,13 @@
-"""The island: a notch that hides in the top edge of the screen and springs open on hover.
+"""The island: a notch that hides in a screen edge (top by default) and springs open on hover.
 
 PySide6 + QPainter: anti-aliased, per-pixel transparent, never takes keyboard focus.
 States: lip (tucked away) -> pill (hover) -> open (keep hovering or click), plus "toast" pop-outs.
 Double-click pins the pill open.
 """
-import math, time, webbrowser
+import ctypes, math, sys, time, webbrowser
 
 from PySide6.QtCore import Qt, QTimer, QRectF, QPointF
-from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QFontMetricsF, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen
+from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QFontMetricsF, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QTransform
 from PySide6.QtWidgets import QApplication, QWidget
 
 TXT, DIM, FAINT = QColor(245, 245, 245), QColor(150, 150, 150), QColor(255, 255, 255, 16)
@@ -72,6 +72,7 @@ class Island(QWidget):
         self.seen_client, self.milestone = None, None
         self.task, self.task_t0 = "", 0.0
         self.buttons, self.hot, self.pressed = {}, None, None
+        self.edge, self.over, self.rest, self.raised_at = "top", False, "lip", 0.0
         self.last = time.time()
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.tick)
@@ -112,7 +113,8 @@ class Island(QWidget):
     def pick_mode(self, now):
         if self.force:
             return self.force
-        base = "toast" if now < self.toast_until else ("pill" if self.pinned else "lip")
+        resting = "pill" if self.pinned or self.rest == "pill" else "lip"
+        base = "toast" if now < self.toast_until else resting
         if self.frameGeometry().contains(QCursor.pos()):
             self.left_at = None
             self.hover_since = self.hover_since or now
@@ -127,9 +129,15 @@ class Island(QWidget):
     def tick(self):
         now = time.time()
         dt, self.last = min(0.033, now - self.last), now
+        st = self.live.get("settings") or {}
+        self.edge = st.get("edge", "top") if st.get("edge") in ("top", "bottom", "left", "right") else "top"
+        self.over, self.rest = st.get("taskbar") == "over", st.get("rest", "lip")
         self.watch_events(now)
         self.mode = self.pick_mode(now)
-        self.W.target, self.H.target = SIZES[self.mode]
+        tw, th = SIZES[self.mode]
+        if self.mode == "lip" and self.edge in ("left", "right"):
+            tw, th = th, tw  # a side lip stands upright
+        self.W.target, self.H.target = tw, th
         for m, s in self.fade.items():
             s.target = 1.0 if m == self.mode else 0.0
         for s in (self.W, self.H, *self.fade.values()):
@@ -138,12 +146,30 @@ class Island(QWidget):
         self.update()
 
     def place(self):
-        # Hang from the top of the *work area*, not the raw screen: a top-docked Windows taskbar or the
-        # macOS menu bar would otherwise sit on top of the island. Re-read every frame, so moving or
-        # resizing the taskbar is picked up live.
-        area = QGuiApplication.primaryScreen().availableGeometry()
-        ww, wh = self.W.x + 2 * (EAR + PAD), max(1.0, self.H.x) + PAD
-        self.setGeometry(round(area.center().x() - ww / 2), area.top(), round(ww), round(wh))
+        """Attach to the chosen edge. By default the island hangs from the *work area*, so a taskbar on
+        the same edge (or the macOS menu bar) pushes it inward instead of covering it. With taskbar="over"
+        it sits on the physical screen edge and is re-raised above the taskbar on Windows."""
+        scr = QGuiApplication.primaryScreen()
+        full, work = scr.geometry(), scr.availableGeometry()
+        side = ("top" if work.top() > full.top() else "bottom" if work.bottom() < full.bottom()
+                else "left" if work.left() > full.left() else "right" if work.right() < full.right() else "none")
+        self.live["taskbar"] = side
+        edge, w, h = self.edge, self.W.x, max(1.0, self.H.x)
+        over = self.over and side == edge
+        a = full if over else work
+        if edge in ("top", "bottom"):
+            ww, wh = w + 2 * (EAR + PAD), h + PAD
+            x = a.center().x() - ww / 2
+            y = a.top() if edge == "top" else a.bottom() + 1 - wh
+        else:
+            ww, wh = w + PAD, h + 2 * (EAR + PAD)
+            y = a.center().y() - wh / 2
+            x = a.left() if edge == "left" else a.right() + 1 - ww
+        self.setGeometry(round(x), round(y), round(ww), round(wh))
+        if over and sys.platform == "win32" and time.time() - self.raised_at > 0.4:
+            # the taskbar is also "always on top"; whoever was raised last wins, so keep winning
+            ctypes.windll.user32.SetWindowPos(int(self.winId()), -1, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)
+            self.raised_at = time.time()
 
     def settle(self):
         """Jump straight to the target state (used for screenshots/tests)."""
@@ -154,23 +180,31 @@ class Island(QWidget):
 
     # ---------- painting ----------
     def body(self):
-        return QRectF(PAD + EAR, 0, self.W.x, max(1.0, self.H.x))
+        w, h = self.W.x, max(1.0, self.H.x)
+        x, y = {"top": (PAD + EAR, 0), "bottom": (PAD + EAR, PAD), "left": (0, PAD + EAR), "right": (PAD, PAD + EAR)}[self.edge]
+        return QRectF(x, y, w, h)
 
     def notch(self, b):
-        h = b.height()
-        e = min(EAR, h * 0.6)
-        r = max(0.5, min(22.0, h - e, b.width() / 2, h / 2 if h < 46 else 22.0))
+        """Build the notch as if it hung from the top edge, then mirror/rotate it onto the real edge."""
+        side = self.edge in ("top", "bottom")
+        a, d = (b.width(), b.height()) if side else (b.height(), b.width())  # along the edge, depth into the screen
+        e = min(EAR, d * 0.6)
+        r = max(0.5, min(22.0, d - e, a / 2, d / 2 if d < 46 else 22.0))
+        x0, x1 = PAD + EAR, PAD + EAR + a
         P = QPainterPath()
-        P.moveTo(b.left() - e, 0)
-        P.quadTo(b.left(), 0, b.left(), e)
-        P.lineTo(b.left(), b.bottom() - r)
-        P.arcTo(QRectF(b.left(), b.bottom() - 2 * r, 2 * r, 2 * r), 180, 90)
-        P.lineTo(b.right() - r, b.bottom())
-        P.arcTo(QRectF(b.right() - 2 * r, b.bottom() - 2 * r, 2 * r, 2 * r), 270, 90)
-        P.lineTo(b.right(), e)
-        P.quadTo(b.right(), 0, b.right() + e, 0)
+        P.moveTo(x0 - e, 0)
+        P.quadTo(x0, 0, x0, e)
+        P.lineTo(x0, d - r)
+        P.arcTo(QRectF(x0, d - 2 * r, 2 * r, 2 * r), 180, 90)
+        P.lineTo(x1 - r, d)
+        P.arcTo(QRectF(x1 - 2 * r, d - 2 * r, 2 * r, 2 * r), 270, 90)
+        P.lineTo(x1, e)
+        P.quadTo(x1, 0, x1 + e, 0)
         P.closeSubpath()
-        return P, r
+        W, H = self.width(), self.height()
+        T = {"top": QTransform(), "bottom": QTransform(1, 0, 0, -1, 0, H),
+             "left": QTransform(0, 1, 1, 0, 0, 0), "right": QTransform(0, 1, -1, 0, W, 0)}[self.edge]
+        return T.map(P), r
 
     def paintEvent(self, _):
         p = QPainter(self)
@@ -182,9 +216,9 @@ class Island(QWidget):
         p.setPen(Qt.NoPen)
         for i in range(7, 0, -1):
             p.setBrush(QColor(0, 0, 0, 9))
-            p.drawRoundedRect(b.adjusted(-i * 1.6, 0, i * 1.6, i * 2.4), r + i, r + i)
+            p.drawRoundedRect(b.adjusted(-i * 1.6, -i * 1.6, i * 1.6, i * 2.4), r + i, r + i)
 
-        g = QLinearGradient(0, 0, 0, b.bottom())
+        g = QLinearGradient(0, b.top(), 0, b.bottom())
         g.setColorAt(0, QColor(14, 14, 14))
         g.setColorAt(1, QColor(4, 4, 4))
         p.setBrush(g)
@@ -206,15 +240,20 @@ class Island(QWidget):
         p.end()
 
     def draw_lip(self, p, b, now, a):
+        """A breathing glow line on the side of the lip that faces into the screen."""
         c = QColor(self.color())
         breathe = 0.55 + 0.45 * (math.sin(now * 2.2) + 1) / 2
-        g = QLinearGradient(b.left(), 0, b.right(), 0)
+        k = 2.2
+        p1, p2 = {"top": (QPointF(b.left() + 18, b.bottom() - k), QPointF(b.right() - 18, b.bottom() - k)),
+                  "bottom": (QPointF(b.left() + 18, b.top() + k), QPointF(b.right() - 18, b.top() + k)),
+                  "left": (QPointF(b.right() - k, b.top() + 18), QPointF(b.right() - k, b.bottom() - 18)),
+                  "right": (QPointF(b.left() + k, b.top() + 18), QPointF(b.left() + k, b.bottom() - 18))}[self.edge]
+        g = QLinearGradient(p1, p2)
         for pos, alpha in ((0, 0), (0.5, int(255 * breathe * a)), (1, 0)):
             c.setAlpha(alpha)
             g.setColorAt(pos, QColor(c))
-        p.setPen(QPen(g, 2.2, Qt.SolidLine, Qt.RoundCap))
-        y = b.bottom() - 2.2
-        p.drawLine(QPointF(b.left() + 18, y), QPointF(b.right() - 18, y))
+        p.setPen(QPen(g, k, Qt.SolidLine, Qt.RoundCap))
+        p.drawLine(p1, p2)
 
     def avatar(self, p, c, rad, now):
         L, col = self.live, self.color()
@@ -257,13 +296,13 @@ class Island(QWidget):
 
     def draw_pill(self, p, b, now):
         L, col = self.live, self.color()
-        cy = 21
+        cy = b.top() + 21
         self.avatar(p, QPointF(b.left() + 25, cy), 13, now)
         title, _ = self.status()
         p.setPen(TXT)
         p.setFont(font(13.5, QFont.DemiBold))
         name = QFontMetricsF(p.font()).elidedText(title, Qt.ElideRight, 140)
-        p.drawText(QRectF(b.left() + 46, 0, 150, 42), Qt.AlignVCenter | Qt.AlignLeft, name)
+        p.drawText(QRectF(b.left() + 46, b.top(), 150, 42), Qt.AlignVCenter | Qt.AlignLeft, name)
         if L.get("client") and not L.get("paused") and L.get("idle", 0) < 300:  # tiny "now playing" bars
             ex = b.left() + 46 + QFontMetricsF(p.font()).horizontalAdvance(name) + 12
             p.setPen(Qt.NoPen)
@@ -274,20 +313,20 @@ class Island(QWidget):
         if L.get("client") and not L.get("paused"):
             p.setFont(font(13.5, QFont.Bold, NUM))
             p.setPen(col)
-            p.drawText(QRectF(b.right() - 96, 0, 82, 42), Qt.AlignVCenter | Qt.AlignRight, f"{self.cur}{L.get('money', 0):,.0f}")
+            p.drawText(QRectF(b.right() - 96, b.top(), 82, 42), Qt.AlignVCenter | Qt.AlignRight, f"{self.cur}{L.get('money', 0):,.0f}")
             p.setPen(DIM)
             p.setFont(font(12.5, QFont.Normal, NUM))
-            p.drawText(QRectF(b.right() - 176, 0, 76, 42), Qt.AlignVCenter | Qt.AlignRight, clock(self.session_s(now)))
+            p.drawText(QRectF(b.right() - 176, b.top(), 76, 42), Qt.AlignVCenter | Qt.AlignRight, clock(self.session_s(now)))
 
     def draw_toast(self, p, b, now):
         c = self.toast_color
         p.setPen(Qt.NoPen)
         p.setBrush(c)
         pulse = 1 + 0.12 * math.sin(now * 8)
-        p.drawEllipse(QPointF(b.left() + 24, 23), 6 * pulse, 6 * pulse)
+        p.drawEllipse(QPointF(b.left() + 24, b.top() + 23), 6 * pulse, 6 * pulse)
         p.setPen(TXT)
         p.setFont(font(14, QFont.DemiBold))
-        p.drawText(QRectF(b.left() + 42, 0, b.width() - 56, 46), Qt.AlignVCenter | Qt.AlignLeft, self.toast_msg)
+        p.drawText(QRectF(b.left() + 42, b.top(), b.width() - 56, 46), Qt.AlignVCenter | Qt.AlignLeft, self.toast_msg)
         age = now - (self.toast_until - self.toast_len)
         if age < 0.9:  # one shimmer sweep when it pops out
             sx = b.left() - 80 + (b.width() + 160) * age / 0.9

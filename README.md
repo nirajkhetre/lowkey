@@ -4,12 +4,13 @@
 
 A Dynamic Island for Windows and macOS that watches what you work on, lets a local Gemma 4 model turn it into invoice-ready timesheet lines, and never sends a byte of your screen activity off your laptop.
 
-- 🏝️ **The island**: a notch tucked into the top edge of your screen, glowing in your current client's colour. It hangs from the top of the usable screen area, so a top-docked Windows taskbar or the macOS menu bar never covers it.
+- 🏝️ **The island**: a notch tucked into a screen edge, glowing in your current client's colour.
   - **Hover** and it springs down into a pill: client avatar with a daily-goal ring, a live "now playing" equaliser, the session timer and ₹ earned.
   - **Keep hovering (or click)** and it opens: what the AI thinks you're doing (typed in live), a 30-minute activity equaliser, today's stats, and **go dark** / **not work** / **open lowkey** buttons.
   - **Pop-outs** when you switch clients or cross a ₹1,000 milestone.
   - **Double-click** to pin it open. It never takes keyboard focus.
 - 🧾 **The dashboard** (`http://127.0.0.1:7777`): your day as colour blocks, one card per work session with an AI-written invoice line, **bill it ✅ / nah 🙅** (or `Y` / `N`, `J`/`K` to move), a "why?" button that shows the exact windows behind every line.
+- ⚙️ **Island settings** (`S` in the dashboard): pick the edge (top / bottom / left / right), what happens when it shares an edge with your taskbar (**sit on the screen edge** over it, or **hang below** it), and whether it rests as a tucked-away lip or an always-visible pill. Every option is a card with a mini screen preview of *your* taskbar layout; hover a card and its island springs open. Changes apply live.
 - 💸 **Send the bill**: a receipt-style invoice per client → save as PDF or copy CSV.
 - ✨ **Wrapped**: your week as a shareable card (main character client, longest flow state, side quests).
 

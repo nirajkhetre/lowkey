@@ -25,7 +25,11 @@ OLLAMA = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
 SAMPLE_S, AFK_S, SLOT_S = 5, 300, 15 * 60
 PERSONAL = "Personal"
 lock = threading.Lock()
-LIVE = {"paused": False, "idle": 0}  # shared with the island
+SETTINGS = ROOT / "settings.json"
+# on Windows the island floats over a same-edge taskbar by default (true notch look); macOS can't cover its menu bar
+DEFAULTS = {"edge": "top", "taskbar": "over" if sys.platform == "win32" else "below", "rest": "lip"}
+LIVE = {"paused": False, "idle": 0,  # shared with the island
+        "settings": {**DEFAULTS, **(json.loads(SETTINGS.read_text(encoding="utf-8")) if SETTINGS.exists() else {})}}
 
 
 # ---------- tracker (stdlib only): returns (app, window title, idle seconds, pid) ----------
@@ -339,6 +343,9 @@ class Handler(SimpleHTTPRequestHandler):
         if url.path == "/api/state":
             days = sorted(p.stem[9:] for p in DATA.glob("activity-*.jsonl"))
             return self.send_json({"config": CONFIG, "model": MODEL, "model_ok": model_ok(), "demo": DEMO, "days": days})
+        if url.path == "/api/settings":
+            return self.send_json({"settings": LIVE["settings"], "taskbar": LIVE.get("taskbar"),
+                                   "platform": sys.platform, "island": not DEMO})
         if url.path == "/api/range":
             d, end = datetime.fromisoformat(q["from"]), datetime.fromisoformat(q["to"])
             out = {}
@@ -358,6 +365,12 @@ class Handler(SimpleHTTPRequestHandler):
                 edits.setdefault(e["id"], {}).update(allowed)
                 save("edits.json", edits)
             return self.send_json({"ok": True})
+        if self.path == "/api/settings":
+            e = json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+            ok = {"edge": ("top", "bottom", "left", "right"), "taskbar": ("below", "over"), "rest": ("lip", "pill")}
+            LIVE["settings"].update({k: v for k, v in e.items() if v in ok.get(k, ())})
+            SETTINGS.write_text(json.dumps(LIVE["settings"], indent=1), encoding="utf-8")
+            return self.send_json({"ok": True, "settings": LIVE["settings"]})
         self.send_json({"error": "not found"}, 404)
 
 

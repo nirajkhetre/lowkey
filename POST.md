@@ -95,7 +95,11 @@ The whole thing is about 1,100 lines: Python (standard library plus PySide6 for 
 
 ### What went wrong (and what I changed)
 
-- **My taskbar is at the top of the screen.** The first island pinned itself to pixel row 0, and the Windows taskbar sat on top of its header. Now it hangs from the top of the *work area* (`availableGeometry()`), re-read every frame, so a top taskbar, a resized taskbar or the macOS menu bar all just push it down.
+- **My taskbar is at the top of the screen.** The first island pinned itself to pixel row 0, and the Windows taskbar, which is *also* "always on top", sometimes drew over its header. Whichever topmost window was raised last wins. So there are now two modes, chosen in settings:
+  - **sit on the screen edge:** lowkey re-raises the island above the taskbar (`SetWindowPos(HWND_TOPMOST)`) every 0.4 s.
+  - **hang below it:** the island attaches to the *work area* (`availableGeometry()`), so the taskbar pushes it down instead of covering it.
+  The same work-area logic keeps it under the macOS menu bar, and bottom-taskbar users never notice any of this.
+- **Not everyone wants a notch on top.** The island can live on any edge. The notch shape is built once as if it hung from the top, then mirrored or rotated onto the real edge with a `QTransform`, so the concave "ears" always hug the screen edge. The settings page shows every option as a card with a mini screen of *your* taskbar layout, and hovering a card plays the island's spring animation in miniature.
 - **Gemma 4 thinks out loud by default.** My first labelling call took **9.5 s** because the model produced a whole "Thinking Process" before answering. With thinking off and a JSON schema, the same call takes **~0.3 s**. For 15-minute slots, 30× faster is the difference between "live" and "eventually".
 - **"100% sure" on every card.** See the honesty number above. A judge model grading itself is not a metric.
 - **Repetitive invoice lines.** Merging slots first gave me lines like *"Modified product card code for theme; Modified product card for chaico theme; …"*. The second Gemma pass fixed it: *"Modified product card code/theme, previewed Masala Chai 250g, reviewed liquid file, accessed Shopify orders."*
