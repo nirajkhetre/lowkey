@@ -235,6 +235,7 @@ lowkey/
 ├── server.py        local dashboard + JSON API
 ├── island.py        the notch (PySide6, hand-painted)
 ├── mascot.py        the island's creature: shapes, eyes, moods, one-liners
+├── jelly.py         jelly icons: moon, sun, gamepad, live clock, flipping coin, self-drawing tick
 └── web/index.html   the dashboard (no build step, no CDN)
 demo/                a synthetic week for --demo
 docs/                guides and images
@@ -245,7 +246,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Credits
 
-- Icons: [Phosphor Icons](https://github.com/phosphor-icons/core), duotone set, MIT licensed (licence in [`lowkey/assets/icons/LICENSE`](lowkey/assets/icons/LICENSE)).
+- Fonts, bundled so the app makes no web-font requests, all under the SIL Open Font License (licences in [`lowkey/web/fonts/`](lowkey/web/fonts)):
+  - [Bricolage Grotesque](https://github.com/ateliertriay/bricolage) for the UI
+  - [Instrument Serif](https://github.com/Instrument/instrument-serif) for the italic accents
+  - [Geist Mono](https://github.com/vercel/geist-font) for numbers
+- Icons: lowkey's own "jelly" icons ([`lowkey/jelly.py`](lowkey/jelly.py)), drawn with the same light as the creatures.
 - Creature style inspired by the procedural avatars of [Bible Strong Avatar Lab](https://github.com/smontlouis/bible-strong-avatar-lab). lowkey's creatures are drawn by its own QPainter renderer; no code or art is taken from that project.
 - Local inference: [Ollama](https://ollama.com) running Google's open-weight [Gemma 4](https://ai.google.dev/gemma).
 

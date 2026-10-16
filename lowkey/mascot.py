@@ -278,7 +278,7 @@ class Mascot:
         for i in range(3):
             phase = (now * 0.45 + i / 3) % 1
             f = QFont()
-            f.setFamilies(["Bahnschrift", "SF Pro Rounded", "Helvetica Neue", "sans-serif"])
+            f.setFamilies(["Bricolage Grotesque", "Bahnschrift", "SF Pro Rounded", "sans-serif"])
             f.setPixelSize(max(7, round(rad * (0.35 + 0.35 * phase))))
             f.setWeight(QFont.Black)
             p.setFont(f)

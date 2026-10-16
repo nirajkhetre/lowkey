@@ -6,21 +6,28 @@
 <title>lowkey — bills your hours</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
 <style>
+/* bundled fonts (OFL): no web-font requests */
+@font-face{font-family:"Bricolage Grotesque";src:url(fonts/BricolageGrotesque.ttf) format("truetype");font-weight:200 800;font-stretch:75% 100%}
+@font-face{font-family:"Instrument Serif";src:url(fonts/InstrumentSerif-Italic.ttf) format("truetype");font-style:italic}
+@font-face{font-family:"Geist Mono";src:url(fonts/GeistMono.ttf) format("truetype");font-weight:100 900}
 :root{
   --bg:#F3EEE3; --paper:#FFFDF7; --ink:#111; --muted:#5d5a53; --line:2.5px solid var(--ink);
   --shadow:5px 5px 0 var(--ink); --shadow-sm:3px 3px 0 var(--ink);
   --lime:#B8FF3B; --pink:#FF7AD9; --blue:#7AA2FF; --yellow:#FFD23F; --orange:#FF8A3D; --grey:#d9d4c7;
-  --display:"Bahnschrift","SF Pro Rounded","Segoe UI Variable Display","Segoe UI",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
-  --mono:"Cascadia Code","Consolas","SF Mono","SFMono-Regular",Menlo,ui-monospace,monospace;
+  --display:"Bricolage Grotesque","Segoe UI Variable Display","Segoe UI",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --serif:"Instrument Serif",Georgia,serif;
+  --mono:"Geist Mono","Cascadia Code","Consolas","SF Mono",Menlo,ui-monospace,monospace;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#121212;--paper:#1c1c1c;--ink:#f2efe8;--muted:#a9a49a;--grey:#3a3833}}
 :root[data-theme="dark"]{--bg:#121212;--paper:#1c1c1c;--ink:#f2efe8;--muted:#a9a49a;--grey:#3a3833}
 *{box-sizing:border-box}
+h1 em,h2 em,h3 em,.label em{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-.3px}
 html,body{margin:0}
 body{background:var(--bg);background-image:radial-gradient(var(--grey) 1px,transparent 1.2px);background-size:22px 22px;color:var(--ink);font-family:var(--display);font-size:16px;line-height:1.35;min-height:100vh}
 button,select,input{font:inherit;color:inherit}
 .wrap{max-width:1180px;margin:0 auto;padding:22px 16px 80px}
-.btn{background:var(--paper);border:var(--line);border-radius:12px;box-shadow:var(--shadow-sm);padding:9px 14px;font-weight:700;cursor:pointer;transition:transform .08s,box-shadow .08s;white-space:nowrap}
+.btn{background:var(--paper);border:var(--line);border-radius:12px;box-shadow:var(--shadow-sm);padding:9px 13px;font-weight:700;font-stretch:88%;cursor:pointer;transition:transform .08s,box-shadow .08s;white-space:nowrap}
+.actions .btn{padding:8px 10px}
 .btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
 .btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
 .btn.lime{background:var(--lime);color:#111}.btn.pink{background:var(--pink);color:#111}.btn.yellow{background:var(--yellow);color:#111}
@@ -35,6 +42,8 @@ header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22p
 @keyframes blink{50%{opacity:.15}}
 .sticker{display:inline-block;background:var(--yellow);color:#111;border:var(--line);border-radius:999px;padding:4px 10px;font-size:13px;font-weight:800;transform:rotate(-4deg);box-shadow:var(--shadow-sm)}
 .datenav{display:flex;align-items:center;gap:6px;margin-left:auto}
+header{gap:10px}
+.pill,.chip{font-stretch:90%}
 .datenav .day{font-weight:800;font-size:18px;min-width:110px;text-align:center}
 .pill{display:inline-flex;align-items:center;gap:7px;border:var(--line);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;background:var(--paper)}
 .pill i{width:10px;height:10px;border-radius:50%;background:var(--lime);border:1.5px solid var(--ink);display:inline-block}
@@ -83,7 +92,7 @@ header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22p
 .why.open{display:block}
 .why div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .actions{display:flex;gap:8px;margin-top:auto}
-.actions select{border:var(--line);border-radius:12px;padding:8px;background:var(--paper);font-weight:700;flex:1;min-width:0}
+.actions select{border:var(--line);border-radius:12px;padding:8px 6px;background:var(--paper);font-weight:700;font-stretch:80%;flex:1;min-width:0}
 .stamp{position:absolute;right:12px;top:8px;font-weight:900;font-size:22px;letter-spacing:2px;padding:2px 10px;border:3px solid;border-radius:8px;transform:rotate(-12deg);opacity:.9}
 .stamp.billed{color:#0a8a2a;border-color:#0a8a2a}
 .stamp.nah{color:#c2185b;border-color:#c2185b}
@@ -206,7 +215,7 @@ footer b{color:var(--ink)}
   </section>
 
   <div class="bar">
-    <h2>today's receipts</h2>
+    <h2>today's <em>receipts</em></h2>
     <span class="chip on" data-f="all">all</span>
     <span class="chip" data-f="pending">to review</span>
     <span class="chip" data-f="billed">billed</span>
@@ -366,7 +375,7 @@ function wrapped(){
   const [from,to] = weekOf(S.day);
   $('#wrappedCard').innerHTML = `<button class="btn x" onclick="closeM()">✕</button>
     <div class="label" style="color:#111">your week, wrapped · ${from} → ${to}</div>
-    <h1>you secured<br>${money(earned)} 💅</h1>
+    <h1>you <em>secured</em><br>${money(earned)} 💅</h1>
     <div class="wgrid">
       <div class="card"><div class="label">billable</div><div class="big">${fmtH(bill.reduce((a,s)=>a+s.active_s,0))}</div><div class="sub">across ${days.length} days</div></div>
       <div class="card"><div class="label">main character client</div><div class="big">${top?top[0]:'—'}</div><div class="sub">${top?fmtH(top[1]):''} of your life</div></div>
@@ -384,7 +393,7 @@ function bill(){
   const opts = S.config.clients.map(c=>`<option>${c.name}</option>`).join('');
   const [from,to] = weekOf(S.day);
   $('#billCard').innerHTML = `<button class="btn x" onclick="closeM()">✕</button>
-    <h2 style="margin:0 0 12px;font-size:30px;letter-spacing:-1px">send the bill 💸</h2>
+    <h2 style="margin:0 0 12px;font-size:30px;letter-spacing:-1px">send the <em>bill</em> 💸</h2>
     <div class="row"><select id="bClient">${opts}</select><span class="sub">${from} → ${to}</span>
       <label class="sub"><input type="checkbox" id="bPending"> include unreviewed</label></div>
     <div id="receipt" class="receipt"></div>
@@ -418,18 +427,18 @@ async function settings(){
   const edges = {top:['top','like a MacBook notch ⬆️'], bottom:['bottom','sits on the dock side ⬇️'], left:['left','peeks from the side ⬅️'], right:['right','peeks from the side ➡️']};
   const tbText = r.taskbar && r.taskbar!=='none' ? `your taskbar is on the <b>${r.taskbar}</b>` : 'your taskbar is hidden or unknown';
   $('#setCard').innerHTML = `<button class="btn x" onclick="closeM()">✕</button>
-    <h2 style="margin:0 0 4px;font-size:30px;letter-spacing:-1px">island settings ⚙️</h2>
+    <h2 style="margin:0 0 4px;font-size:30px;letter-spacing:-1px">island <em>settings</em> ⚙️</h2>
     <p class="hint">hover a card to preview it. changes apply instantly${r.island?'':' (the island only runs in tracking mode, not the demo)'}.</p>
-    <h3 class="sec">where does the island live?</h3>
+    <h3 class="sec">where does the island <em>live</em>?</h3>
     <p class="hint">${tbText}. the previews show it.</p>
     <div class="opts">${Object.entries(edges).map(([e,[t,sub]])=>opt('edge',e,t,sub,{edge:e,tb,over:st.taskbar==='over',rest:st.rest})).join('')}</div>
-    <h3 class="sec">when it shares an edge with the taskbar</h3>
+    <h3 class="sec">when it shares an edge with the <em>taskbar</em></h3>
     <p class="hint">only matters if the island and your taskbar are on the same side${mac?'. on macOS the menu bar always stays on top':''}.</p>
     <div class="opts">
       ${opt('taskbar','below','hang below it','never covers the taskbar, always fully visible',{edge:st.edge,tb:st.edge,over:false,rest:'lip'})}
       ${opt('taskbar','over','sit on the screen edge','true notch look, floats over the taskbar',{edge:st.edge,tb:st.edge,over:true,rest:'lip'},mac)}
     </div>
-    <h3 class="sec">when you're not looking</h3>
+    <h3 class="sec">when you're <em>not looking</em></h3>
     <div class="opts">
       ${opt('rest','lip','tucked away','just a glowing lip, hover to open',{edge:st.edge,tb,over:st.taskbar==='over',rest:'lip'})}
       ${opt('rest','pill','always show the pill','client, timer and ₹ always visible',{edge:st.edge,tb,over:st.taskbar==='over',rest:'pill'})}

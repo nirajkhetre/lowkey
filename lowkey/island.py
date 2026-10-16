@@ -8,18 +8,18 @@ import ctypes, math, sys, time, webbrowser
 
 from pathlib import Path
 
-from PySide6.QtCore import Qt, QByteArray, QTimer, QRectF, QPointF
-from PySide6.QtGui import QBrush, QColor, QConicalGradient, QCursor, QFont, QFontMetricsF, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient, QTransform
-from PySide6.QtSvg import QSvgRenderer
+from PySide6.QtCore import Qt, QTimer, QRectF, QPointF
+from PySide6.QtGui import QBrush, QColor, QConicalGradient, QCursor, QFont, QFontMetricsF, QFontDatabase, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient, QTransform
 from PySide6.QtWidgets import QApplication, QWidget
 
+from . import jelly
 from .mascot import Mascot
 
 TXT, DIM, FAINT = QColor(245, 245, 245), QColor(150, 150, 150), QColor(255, 255, 255, 16)
 GREY = QColor("#7a7a7a")
 NIGHT, DUSK, AURORA, SUN = QColor("#9B8CFF"), QColor("#FF7AD9"), QColor("#4FD1C5"), QColor("#FFD23F")  # "off the record"
 SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 252)}
-ICONS = Path(__file__).parent / "assets" / "icons"  # Phosphor Icons, duotone (MIT)
+FONTS = Path(__file__).parent / "web" / "fonts"  # Bricolage Grotesque, Instrument Serif, Geist Mono (all OFL)
 EAR, PAD = 10, 24  # concave ears where the notch meets the screen edge; room for the soft shadow
 
 
@@ -33,12 +33,14 @@ def clock(s):
     return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}"
 
 
-UI = ["Segoe UI Variable Display", "SF Pro Display", "Helvetica Neue", "Inter", "Ubuntu", "sans-serif"]
-NUM = ["Bahnschrift", "SF Pro Rounded", "SF Pro Display", "Helvetica Neue", "DejaVu Sans", "sans-serif"]
+UI = ["Bricolage Grotesque", "Segoe UI Variable Display", "SF Pro Display", "Helvetica Neue", "sans-serif"]
+NUM = ["Geist Mono", "Cascadia Code", "SF Mono", "Menlo", "monospace"]
+SERIF = ["Instrument Serif", "Georgia", "serif"]
 
 
-def font(px, weight=QFont.Normal, families=UI):
+def font(px, weight=QFont.Normal, families=UI, italic=False):
     f = QFont()
+    f.setItalic(italic)
     f.setFamilies(families)  # first installed family wins: Windows, then macOS, then Linux
     f.setPixelSize(round(px))
     f.setWeight(weight)
@@ -64,6 +66,8 @@ class Island(QWidget):
     def __init__(self, live, actions, currency="₹", goal_h=6):
         self.app = QApplication.instance() or QApplication([])
         super().__init__()
+        for name in ("BricolageGrotesque.ttf", "InstrumentSerif-Italic.ttf", "GeistMono.ttf"):
+            QFontDatabase.addApplicationFont(str(FONTS / name))
         self.live, self.actions, self.cur, self.goal = live, actions, currency, goal_h * 3600
         self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
                             | Qt.WindowDoesNotAcceptFocus | Qt.NoDropShadowWindowHint)
@@ -82,7 +86,8 @@ class Island(QWidget):
         self.mascot, self.quip = Mascot(live, self.goal, currency), None
         self.buttons, self.hot, self.pressed = {}, None, None
         self.edge, self.over, self.rest, self.raised_at = "top", False, "lip", 0.0
-        self.hov, self.spin, self.ripples, self._svgs = {}, {}, [], {}
+        self.hov, self.spin, self.ripples = {}, {}, []
+        self.coin_t0, self.last_money = 0.0, None
         self.money_view = Spring(0, 60, 15)  # the ₹ chip counts up
         self.last = time.time()
         self.timer = QTimer(self)
@@ -156,6 +161,9 @@ class Island(QWidget):
             s.target = 1.0 if m == self.mode else 0.0
         self.dark.target = 1.0 if self.live.get("paused") else 0.0
         self.money_view.target = float(self.live.get("money", 0))
+        if self.last_money is not None and self.live.get("money", 0) > self.last_money + 0.5:
+            self.coin_t0 = now  # the coin flips when you earn
+        self.last_money = self.live.get("money", 0)
         self.money_view.step(dt)
         for k, sp in self.hov.items():
             sp.target = 1.0 if self.hot == k else 0.0
@@ -331,7 +339,7 @@ class Island(QWidget):
         self.avatar(p, QPointF(b.left() + 25, cy), 15, now)
         title, _ = self.status()
         p.setPen(TXT)
-        p.setFont(font(13.5, QFont.DemiBold))
+        p.setFont(font(14, QFont.Bold))
         name = QFontMetricsF(p.font()).elidedText(title, Qt.ElideRight, 140)
         p.drawText(QRectF(b.left() + 48, b.top(), 150, 42), Qt.AlignVCenter | Qt.AlignLeft, name)
         if L.get("client") and not L.get("paused") and L.get("idle", 0) < 300:  # tiny "now playing" bars
@@ -356,7 +364,7 @@ class Island(QWidget):
         pulse = 1 + 0.12 * math.sin(now * 8)
         p.drawEllipse(QPointF(b.left() + 24, b.top() + 23), 6 * pulse, 6 * pulse)
         p.setPen(TXT)
-        p.setFont(font(14, QFont.DemiBold))
+        p.setFont(font(14.5, QFont.Bold))
         p.drawText(QRectF(b.left() + 42, b.top(), b.width() - 56, 46), Qt.AlignVCenter | Qt.AlignLeft, self.toast_msg)
         age = now - (self.toast_until - self.toast_len)
         if age < 0.9:  # one shimmer sweep when it pops out
@@ -386,8 +394,8 @@ class Island(QWidget):
         self.avatar(p, QPointF(x + 21, y + 34), 21, now)
         title, sub = self.status()
         p.setPen(TXT)
-        p.setFont(font(16, QFont.Bold))
-        p.drawText(QRectF(x + 54, y + 14, 250, 22), Qt.AlignLeft | Qt.AlignVCenter,
+        p.setFont(font(23, QFont.Normal, SERIF, italic=True) if L.get("paused") else font(17, QFont.ExtraBold))
+        p.drawText(QRectF(x + 54, y + 12, 250, 26), Qt.AlignLeft | Qt.AlignVCenter,
                    QFontMetricsF(p.font()).elidedText(title, Qt.ElideRight, 250))
         p.setPen(DIM)
         p.setFont(font(12, QFont.Normal, NUM))
@@ -397,7 +405,9 @@ class Island(QWidget):
         # status badge
         paused = L.get("paused")
         label = "OFF RECORD" if paused else "BREAK" if L.get("idle", 0) > 300 else "LIVE"
-        p.setFont(font(11, QFont.Bold))
+        bf = font(10.5, QFont.Bold, NUM)
+        bf.setLetterSpacing(QFont.AbsoluteSpacing, 0.6)
+        p.setFont(bf)
         bw = QFontMetricsF(p.font()).horizontalAdvance(label) + 34
         badge = QRectF(b.right() - 20 - bw, y + 20, bw, 24)
         p.setPen(Qt.NoPen)
@@ -407,7 +417,7 @@ class Island(QWidget):
             fill.setColorAt(1, QColor(255, 122, 217, 70))
             p.setBrush(fill)
             p.drawRoundedRect(badge, 12, 12)
-            self.svg(p, "moon-stars", QRectF(badge.left() + 6, badge.center().y() - 7, 14, 14), TXT)
+            jelly.moon(p, QPointF(badge.left() + 12, badge.center().y()), 7.5, now)
             p.setPen(TXT)
         else:
             p.setBrush(QColor(col.red(), col.green(), col.blue(), 40))
@@ -430,8 +440,8 @@ class Island(QWidget):
             shown = sub[: int((now - self.task_t0) * 80)] if sub == self.task else sub
             color = QColor(220, 220, 220)
         p.setPen(color)
-        p.setFont(font(13))
-        p.drawText(QRectF(x, y + 64, b.width() - 40, 38), Qt.TextWordWrap | Qt.AlignLeft | Qt.AlignTop, shown)
+        p.setFont(font(16, QFont.Normal, SERIF, italic=True) if cap else font(13.5))  # captions read like a note
+        p.drawText(QRectF(x, y + 62, b.width() - 40, 40), Qt.TextWordWrap | Qt.AlignLeft | Qt.AlignTop, shown)
 
         # activity equaliser: last 30 minutes, one bar per minute
         y = y0 + self.row(p, 2)
@@ -443,11 +453,12 @@ class Island(QWidget):
         prog = min(1.0, L.get("today_s", 0) / self.goal) if self.goal else 0
         pending = L.get("pending", 0)
         for key, icon, text in (("today", "clock", fmt(L.get("today_s", 0))),
-                                ("money", "currency-inr", f"{max(0.0, self.money_view.x):,.0f}"),
-                                ("review", "list-checks", f"{pending} to review")):
+                                ("money", "coin", f"{max(0.0, self.money_view.x):,.0f}"),
+                                ("review", "check", f"{pending} to review")):
             h = self.hv(key)
-            p.setFont(font(12.5, QFont.DemiBold, NUM))
-            w = QFontMetricsF(p.font()).horizontalAdvance(text) + 44
+            chip_font = font(13, QFont.Bold)
+            p.setFont(chip_font)
+            w = QFontMetricsF(chip_font).horizontalAdvance(text) + 46
             self.buttons[key] = QRectF(cx, y + 148, w, 28)
             r = QRectF(cx, y + 148 - 2.5 * h, w, 28)
             pill = QPainterPath()
@@ -475,9 +486,16 @@ class Island(QWidget):
                 p.setPen(QPen(QBrush(edge), 1.3))
                 p.setBrush(Qt.NoBrush)
                 p.drawRoundedRect(r.adjusted(0.7, 0.7, -0.7, -0.7), 13.3, 13.3)
-            self.svg(p, icon, QRectF(r.left() + 9, r.center().y() - 8, 16, 16), col if key != "review" or pending else DIM)
+            ic = QPointF(r.left() + 17, r.center().y())
+            if icon == "clock":
+                jelly.clock(p, ic, 9.5, now, col if col.lightness() > 60 else QColor("#7AA2FF"))
+            elif icon == "coin":
+                jelly.coin(p, ic, 9.5, now, self.coin_t0, self.cur)
+            else:
+                jelly.check(p, ic, 9.5, now, QColor("#FF8FDF") if pending else QColor("#6b6b78"), bool(pending))
+            p.setFont(chip_font)  # the coin draws its own ₹, so set ours again
             p.setPen(QColor(238, 238, 238))
-            p.drawText(r.adjusted(30, 0, -10, 0), Qt.AlignVCenter | Qt.AlignLeft, text)
+            p.drawText(r.adjusted(32, 0, -10, 0), Qt.AlignVCenter | Qt.AlignLeft, text)
             cx += w + 8
 
         # buttons: an icon orb in a glass pill; the conic ring spins on hover; ripple on click
@@ -485,13 +503,13 @@ class Island(QWidget):
         bx = x
         client = QColor(L.get("color") or "#B8FF3B")
         for key, label, icon, c1, c2 in (
-                ("dark", "resume" if paused else "go dark", "sun" if paused else "moon-stars",
+                ("dark", "resume" if paused else "go dark", "sun" if paused else "moon",
                  SUN if paused else NIGHT, client if paused else DUSK),
-                ("personal", "not work", "game-controller", QColor("#8E8EA0"), QColor("#E6E6F0")),
-                ("open", "open lowkey", "arrow-square-out", col, col.lighter(150))):
+                ("personal", "not work", "gamepad", QColor("#FF8FDF"), QColor("#7AA2FF")),
+                ("open", "open lowkey", "open", col, col.lighter(150))):
             h = self.hv(key)
-            p.setFont(font(12.5, QFont.DemiBold))
-            w = QFontMetricsF(p.font()).horizontalAdvance(label) + 56 + 6 * h
+            p.setFont(font(13.5, QFont.Bold))
+            w = QFontMetricsF(p.font()).horizontalAdvance(label) + 58 + 6 * h
             rect = QRectF(bx, y + 186, w, 38)
             self.buttons[key] = rect
             k = 0.94 if self.pressed == key else 1.0
@@ -522,30 +540,26 @@ class Island(QWidget):
                     p.setBrush(QColor(c1.red(), c1.green(), c1.blue(), int(110 * (1 - age / 0.7))))
                     p.drawEllipse(pos, 6 + age * w * 1.7, 6 + age * w * 1.7)
                     p.restore()
-            oc = QPointF(r2.left() + 19.5, r2.center().y())
-            orad = 13.5 * (1 + 0.1 * h)
-            orb = QRadialGradient(QPointF(oc.x() - 4, oc.y() - 5), orad * 1.5)
-            orb.setColorAt(0, c2.lighter(110))
-            orb.setColorAt(1, c1)
-            p.setPen(Qt.NoPen)
-            p.setBrush(orb)
-            p.drawEllipse(oc, orad, orad)
+            ic = QPointF(r2.left() + 21, r2.center().y())
             p.save()
-            p.translate(oc)
-            if icon == "sun":
-                p.rotate(self.spin.get(key, 0.0) * 1.5)
-            elif icon == "moon-stars":
-                p.rotate(-14 * h + 7 * h * math.sin(now * 4))
-            elif icon == "game-controller":
-                p.rotate(11 * h * math.sin(now * 10))
+            p.translate(ic)
+            p.scale(1 + 0.12 * h, 1 + 0.12 * h)  # the icon pops a little on hover
+            if icon == "moon":
+                p.rotate(-12 * h + 6 * h * math.sin(now * 4))
+            elif icon == "gamepad":
+                p.rotate(10 * h * math.sin(now * 10))
+            p.translate(-ic.x(), -ic.y())
+            if icon == "moon":
+                jelly.moon(p, ic, 12.5, now)
+            elif icon == "sun":
+                jelly.sun(p, ic, 12.5, now * (1 + 2 * h))
+            elif icon == "gamepad":
+                jelly.gamepad(p, ic, 12.5, now)
             else:
-                nudge = 2.0 * h * (1 + math.sin(now * 6)) / 2
-                p.translate(nudge, -nudge)
-            ink = QColor(20, 20, 24) if c1.lightness() > 150 else QColor(250, 250, 252)
-            self.svg(p, icon, QRectF(-9, -9, 18, 18), ink)
+                jelly.open_tile(p, ic, 12.5, now, col, h * (1 + math.sin(now * 6)) / 2)
             p.restore()
             p.setPen(TXT)
-            p.drawText(QRectF(r2.left() + 39, r2.top(), r2.width() - 46, r2.height()), Qt.AlignVCenter | Qt.AlignLeft, label)
+            p.drawText(QRectF(r2.left() + 41, r2.top(), r2.width() - 48, r2.height()), Qt.AlignVCenter | Qt.AlignLeft, label)
             bx += w + 10
 
     def bars(self, p, rect, col, now):
@@ -570,14 +584,6 @@ class Island(QWidget):
             g.setColorAt(1, bottom)
             p.setBrush(g if v > 0 else QBrush(FAINT))
             p.drawRoundedRect(QRectF(rect.left() + i * bw + 1.5, rect.bottom() - hh, bw - 3, hh), 2, 2)
-
-    def svg(self, p, name, rect, color):
-        """Draw a Phosphor duotone icon in any colour (the SVGs paint with currentColor)."""
-        key = (name, color.name())
-        if key not in self._svgs:
-            data = (ICONS / f"{name}.svg").read_text(encoding="utf-8").replace("currentColor", color.name())
-            self._svgs[key] = QSvgRenderer(QByteArray(data.encode()))
-        self._svgs[key].render(p, rect)
 
     def hv(self, key):
         """0..1 hover amount for a control, eased by a spring."""
