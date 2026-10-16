@@ -102,7 +102,7 @@ class Island(QWidget):
         if client and client != self.seen_client:
             if self.seen_client is not None:
                 self.toast(f"switched to {client}", QColor(L.get("color", "#7a7a7a")))
-                self.mascot.react("salute")
+                self.mascot.react("surprised", 2.5)
             self.seen_client = client
         step = int(L.get("money", 0) // 1000)
         if self.milestone is None:
@@ -180,6 +180,7 @@ class Island(QWidget):
     def settle(self):
         """Jump straight to the target state (used for screenshots/tests)."""
         self.tick()
+        self.mascot.snap()
         for s in (self.W, self.H, *self.fade.values()):
             s.snap()
         self.place()
@@ -264,8 +265,8 @@ class Island(QWidget):
     def avatar(self, p, c, rad, now):
         """The mascot, inside the daily-goal ring. Click it and it tells you something about your day."""
         self.buttons["mascot"] = QRectF(c.x() - rad, c.y() - rad, 2 * rad, 2 * rad)
-        cursor = self.mapFromGlobal(QCursor.pos()).x() if self.mode != "lip" else None
-        self.mascot.draw(p, c, rad, now, cursor, self.color())
+        cursor = QPointF(self.mapFromGlobal(QCursor.pos())) if self.mode != "lip" else None
+        self.mascot.draw(p, c, rad, now, cursor)
 
     def status(self):
         L = self.live

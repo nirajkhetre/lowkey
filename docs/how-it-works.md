@@ -66,5 +66,17 @@ PySide6 with hand-painted `QPainter`. tkinter was tried first, but it can't anti
 - **Motion:** a small spring simulation (`Spring`, stiffness 260, damping 24) drives width, height and per-state opacity. The slight overshoot is what makes it feel like the real Dynamic Island. Rows in the open card fade and slide in with a stagger.
 - **Shape:** the notch, including its concave "ears" where it meets the screen edge, is built as if it hung from the top edge, then mirrored or rotated onto the chosen edge with a `QTransform`.
 - **Placement:** re-read every frame. By default it hangs from the *work area* (`availableGeometry()`), so a taskbar or the macOS menu bar on the same edge pushes it inward. With `taskbar: over` it uses the full screen instead, and on Windows calls `SetWindowPos(HWND_TOPMOST)` every 0.4 s: the taskbar is also topmost, and whichever window was raised last wins.
-- **Mascot (`mascot.py`):** a Fluent Emoji 3D face (Microsoft, MIT) picked by priority: gone dark → 🙈, idle → 😴, a recent event (🫡 client switch, 🤑 ₹1,000 milestone, 🥳 daily goal) → no client yet 🧐 → personal 😎 → 90+ minutes on one session 😤 → otherwise 🤓. It breathes, tilts up to 12° towards the cursor, squash-wobbles on every mood change, and clicking it cycles through one-liners built from your live stats.
+- **Creature (`mascot.py`):** drawn every frame.
+  - **Body:** a superellipse body (exponent, aspect and "egg" taper picked from a hash of the client's name) with a radial-gradient light, a specular highlight and a contact shadow.
+  - **Morphing:** shape and colour ease towards the current client, so switching clients morphs the creature.
+  - **Eyes:** two pill eyes shift towards the cursor and crowd together on the side it turns to, which fakes a head turn. They blink at random intervals, with an occasional double blink.
+  - **Mood, by priority:**
+    1. gone dark → squeezed `> <`
+    2. away → closed with z's
+    3. a recent event → wide eyes on a client switch, star eyes on a ₹1,000 milestone, happy `^ ^` with sparkles on the daily goal
+    4. no client yet → one big eye, one small
+    5. personal → `^ ^`
+    6. 90+ minutes on one session → narrowed, slanted
+    7. otherwise → plain pill eyes
+  - **Click it** to cycle through one-liners built from your live stats.
 - **States:** `lip → pill` after 0.12 s of hover, `→ open` after 0.6 s or a click, back to rest 0.35 s after the cursor leaves. Toasts fire on client switches and every ₹1,000 milestone.
