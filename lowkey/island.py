@@ -9,7 +9,7 @@ import ctypes, math, sys, time, webbrowser
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QRectF, QPointF
-from PySide6.QtGui import QBrush, QColor, QConicalGradient, QCursor, QFont, QFontMetricsF, QFontDatabase, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient, QTransform
+from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QFontMetricsF, QFontDatabase, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient, QTransform
 from PySide6.QtWidgets import QApplication, QWidget
 
 from . import jelly
@@ -18,6 +18,11 @@ from .mascot import Mascot
 TXT, DIM, FAINT = QColor(245, 245, 245), QColor(150, 150, 150), QColor(255, 255, 255, 16)
 GREY = QColor("#7a7a7a")
 NIGHT, DUSK, AURORA, SUN = QColor("#9B8CFF"), QColor("#FF7AD9"), QColor("#4FD1C5"), QColor("#FFD23F")  # "off the record"
+TEAL, AMBER = QColor("#2FD6C0"), QColor("#FFB648")
+
+
+def mix(a, b, t):
+    return QColor(*(round(x + (y - x) * t) for x, y in zip(a.getRgb()[:3], b.getRgb()[:3])))
 SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 252)}
 FONTS = Path(__file__).parent / "web" / "fonts"  # Bricolage Grotesque, Instrument Serif, Geist Mono (all OFL)
 EAR, PAD = 10, 24  # concave ears where the notch meets the screen edge; room for the soft shadow
@@ -86,7 +91,8 @@ class Island(QWidget):
         self.mascot, self.quip = Mascot(live, self.goal, currency), None
         self.buttons, self.hot, self.pressed = {}, None, None
         self.edge, self.over, self.rest, self.raised_at = "top", False, "lip", 0.0
-        self.hov, self.spin, self.ripples = {}, {}, []
+        self.hov, self.prs = {}, {}  # hover and press springs per control
+        self.line_src, self.line_t0 = None, 0.0
         self.coin_t0, self.last_money = 0.0, None
         self.money_view = Spring(0, 60, 15)  # the ₹ chip counts up
         self.last = time.time()
@@ -168,8 +174,9 @@ class Island(QWidget):
         for k, sp in self.hov.items():
             sp.target = 1.0 if self.hot == k else 0.0
             sp.step(dt)
-            self.spin[k] = (self.spin.get(k, 35.0) + dt * 170 * max(0.0, sp.x)) % 360
-        self.ripples = [r for r in self.ripples if now - r[2] < 0.7]
+        for k, sp in self.prs.items():
+            sp.target = 0.95 if self.pressed == k else 1.0  # squish while held, springs back on release
+            sp.step(dt)
         for s in (self.W, self.H, self.dark, *self.fade.values()):
             s.step(dt)
         self.place()
@@ -430,18 +437,34 @@ class Island(QWidget):
 
         # what the model thinks you're doing, typed in
         y = y0 + self.row(p, 1)
-        cap = self.caption()
-        if cap:  # hovering a control: say what it does
-            shown, color = cap, col.lighter(125) if col.lightness() < 200 else QColor(250, 250, 250)
-        elif self.quip:  # the mascot is talking
-            said = now - (self.mascot.quip_until - 4.5)
-            shown, color = "💬 " + self.quip[: int(said * 60)], QColor(255, 236, 160)
+        talking = bool(self.quip)
+        cap = None if (talking and self.hot == "mascot") else self.caption()  # its reply wins over the hint
+        if cap:
+            src, text, ink, icon = "cap:" + self.hot, cap, QColor(236, 238, 245), "info"
+        elif talking:
+            src, text, ink, icon = "quip:" + self.quip, self.quip, QColor(255, 236, 170), "bubble"
         else:
-            shown = sub[: int((now - self.task_t0) * 80)] if sub == self.task else sub
-            color = QColor(220, 220, 220)
-        p.setPen(color)
-        p.setFont(font(16, QFont.Normal, SERIF, italic=True) if cap else font(13.5))  # captions read like a note
-        p.drawText(QRectF(x, y + 62, b.width() - 40, 40), Qt.TextWordWrap | Qt.AlignLeft | Qt.AlignTop, shown)
+            src, text, ink, icon = "task", sub, QColor(214, 214, 220), None
+        if src != self.line_src:
+            self.line_src, self.line_t0 = src, now
+        age = now - self.line_t0
+        ease = 1 - (1 - min(1.0, age / 0.22)) ** 3          # fade + slide in over 220 ms
+        if icon:
+            text = text[: int(age * 90)]                    # captions and replies type themselves out
+        elif sub == self.task:
+            text = sub[: int((now - self.task_t0) * 80)]
+        base = p.opacity()
+        p.setOpacity(base * ease)
+        tx = x + (1 - ease) * 10
+        if icon == "info":
+            jelly.info(p, QPointF(tx + 8, y + 71), 8, col if col.lightness() > 60 else QColor("#7AA2FF"))
+        elif icon == "bubble":
+            jelly.bubble(p, QPointF(tx + 9, y + 70), 8.5, QColor(255, 226, 140))
+        p.setPen(ink)
+        p.setFont(font(13.5, QFont.Medium))
+        p.drawText(QRectF(tx + (24 if icon else 0), y + 62, b.width() - 40 - (24 if icon else 0), 40),
+                   Qt.TextWordWrap | Qt.AlignLeft | Qt.AlignTop, text)
+        p.setOpacity(base)
 
         # activity equaliser: last 30 minutes, one bar per minute
         y = y0 + self.row(p, 2)
@@ -477,7 +500,7 @@ class Island(QWidget):
                 p.restore()
             edge = None
             if key == "review" and pending:
-                edge = QColor(col.red(), col.green(), col.blue(), int(70 + 120 * (math.sin(now * 3) + 1) / 2))
+                edge = QColor(AMBER.red(), AMBER.green(), AMBER.blue(), int(60 + 110 * (math.sin(now * 2.4) + 1) / 2))
             if h > 0.01:
                 edge = QLinearGradient(r.topLeft(), r.bottomRight())
                 edge.setColorAt(0, QColor(col.red(), col.green(), col.blue(), int(230 * h)))
@@ -492,74 +515,87 @@ class Island(QWidget):
             elif icon == "coin":
                 jelly.coin(p, ic, 9.5, now, self.coin_t0, self.cur)
             else:
-                jelly.check(p, ic, 9.5, now, QColor("#FF8FDF") if pending else QColor("#6b6b78"), bool(pending))
+                jelly.check(p, ic, 9.5, now, AMBER if pending else QColor("#6b6b78"), bool(pending))
             p.setFont(chip_font)  # the coin draws its own ₹, so set ours again
             p.setPen(QColor(238, 238, 238))
             p.drawText(r.adjusted(32, 0, -10, 0), Qt.AlignVCenter | Qt.AlignLeft, text)
             cx += w + 8
 
-        # buttons: an icon orb in a glass pill; the conic ring spins on hover; ripple on click
+        # buttons: lift on hover, the icon reacts once and holds, press squishes, state changes morph
         y = y0 + self.row(p, 4)
         bx = x
-        client = QColor(L.get("color") or "#B8FF3B")
-        for key, label, icon, c1, c2 in (
-                ("dark", "resume" if paused else "go dark", "sun" if paused else "moon",
-                 SUN if paused else NIGHT, client if paused else DUSK),
-                ("personal", "not work", "gamepad", QColor("#FF8FDF"), QColor("#7AA2FF")),
-                ("open", "open lowkey", "open", col, col.lighter(150))):
-            h = self.hv(key)
-            p.setFont(font(13.5, QFont.Bold))
-            w = QFontMetricsF(p.font()).horizontalAdvance(label) + 58 + 6 * h
+        d = max(0.0, min(1.0, self.dark.x))  # 0 = "go dark", 1 = "resume": the dark button morphs between them
+        base = p.opacity()
+        for key in ("dark", "personal", "open"):
+            h, pr = self.hv(key), self.pv(key)
+            f = font(13.5, QFont.Bold)
+            p.setFont(f)
+            fm = QFontMetricsF(f)
+            if key == "dark":
+                w = fm.horizontalAdvance("go dark") * (1 - d) + fm.horizontalAdvance("resume") * d + 58
+                accent = mix(NIGHT, SUN, d)
+            elif key == "personal":
+                w, accent = fm.horizontalAdvance("not work") + 58, TEAL
+            else:
+                w, accent = fm.horizontalAdvance("open lowkey") + 58, col
             rect = QRectF(bx, y + 186, w, 38)
             self.buttons[key] = rect
-            k = 0.94 if self.pressed == key else 1.0
-            r2 = QRectF(rect.center().x() - w * k / 2, rect.center().y() - 19 * k, w * k, 38 * k)
-            pill = QPainterPath()
-            pill.addRoundedRect(r2, r2.height() / 2, r2.height() / 2)
-            if h > 0.01:  # bloom in the ring's colour
-                for g in range(5, 0, -1):
-                    p.setPen(Qt.NoPen)
-                    p.setBrush(QColor(c1.red(), c1.green(), c1.blue(), int(13 * h)))
-                    p.drawRoundedRect(r2.adjusted(-g * 2.2, -g * 2.2, g * 2.2, g * 2.2), 19 + g * 2.2, 19 + g * 2.2)
+            lift = 1.6 * h
+            r2 = QRectF(rect.center().x() - w * pr / 2, rect.center().y() - 19 * pr - lift, w * pr, 38 * pr)
+            rad = r2.height() / 2
+            p.setPen(Qt.NoPen)
+            for g in range(3, 0, -1):  # a soft shadow that deepens as the button rises
+                p.setBrush(QColor(0, 0, 0, int((14 + 22 * h) / g)))
+                p.drawRoundedRect(r2.adjusted(-g, g * 1.1 + lift * 0.7, g, g * 1.5 + lift), rad + g, rad + g)
             glass = QLinearGradient(0, r2.top(), 0, r2.bottom())
-            glass.setColorAt(0, QColor(255, 255, 255, int(26 + 18 * h)))
-            glass.setColorAt(1, QColor(255, 255, 255, int(5 + 9 * h)))
-            ring = QConicalGradient(r2.center(), self.spin.get(key, 35.0))
-            ring.setColorAt(0, c1)
-            ring.setColorAt(0.5, c2)
-            ring.setColorAt(1, c1)
-            p.setPen(QPen(QBrush(ring), 1.4 + 1.1 * h))
+            glass.setColorAt(0, QColor(255, 255, 255, int(24 + 12 * h)))
+            glass.setColorAt(1, QColor(255, 255, 255, int(6 + 6 * h)))
+            edge = QLinearGradient(0, r2.top(), 0, r2.bottom())
+            edge.setColorAt(0, QColor(accent.red(), accent.green(), accent.blue(), int(110 + 130 * h)))
+            edge.setColorAt(1, QColor(accent.red(), accent.green(), accent.blue(), int(30 + 70 * h)))
+            p.setPen(QPen(QBrush(edge), 1.25))
             p.setBrush(glass)
-            p.drawRoundedRect(r2.adjusted(0.8, 0.8, -0.8, -0.8), r2.height() / 2 - 0.8, r2.height() / 2 - 0.8)
-            for rk, pos, t0 in self.ripples:
-                if rk == key:
-                    age = now - t0
-                    p.save()
-                    p.setClipPath(pill, Qt.IntersectClip)
-                    p.setPen(Qt.NoPen)
-                    p.setBrush(QColor(c1.red(), c1.green(), c1.blue(), int(110 * (1 - age / 0.7))))
-                    p.drawEllipse(pos, 6 + age * w * 1.7, 6 + age * w * 1.7)
-                    p.restore()
+            p.drawRoundedRect(r2.adjusted(0.6, 0.6, -0.6, -0.6), rad - 0.6, rad - 0.6)
+            p.setPen(QPen(QColor(255, 255, 255, int(28 + 30 * h)), 1))  # top sheen, like light on glass
+            p.drawLine(QPointF(r2.left() + rad, r2.top() + 1.6), QPointF(r2.right() - rad, r2.top() + 1.6))
+
             ic = QPointF(r2.left() + 21, r2.center().y())
-            p.save()
-            p.translate(ic)
-            p.scale(1 + 0.12 * h, 1 + 0.12 * h)  # the icon pops a little on hover
-            if icon == "moon":
-                p.rotate(-12 * h + 6 * h * math.sin(now * 4))
-            elif icon == "gamepad":
-                p.rotate(10 * h * math.sin(now * 10))
-            p.translate(-ic.x(), -ic.y())
-            if icon == "moon":
+            if key == "dark":  # moon turns into sun: crossfade with a quarter turn
+                p.save()
+                p.setOpacity(base * (1 - d))
+                p.translate(ic)
+                p.rotate(-16 * h - 90 * d)
+                p.translate(-ic.x(), -ic.y())
                 jelly.moon(p, ic, 12.5, now)
-            elif icon == "sun":
-                jelly.sun(p, ic, 12.5, now * (1 + 2 * h))
-            elif icon == "gamepad":
-                jelly.gamepad(p, ic, 12.5, now)
-            else:
-                jelly.open_tile(p, ic, 12.5, now, col, h * (1 + math.sin(now * 6)) / 2)
-            p.restore()
+                p.restore()
+                p.save()
+                p.setOpacity(base * d)
+                p.translate(ic)
+                p.rotate(90 * (1 - d))
+                p.translate(-ic.x(), -ic.y())
+                jelly.sun(p, ic, 12.5 * (1 + 0.1 * h), now * 0.4)
+                p.restore()
+            elif key == "personal":  # tilts like it's being picked up
+                p.save()
+                p.translate(ic)
+                p.rotate(-12 * h)
+                p.translate(-ic.x(), -ic.y())
+                jelly.gamepad(p, ic, 12.5, now, TEAL)
+                p.restore()
+            else:  # the arrow slides towards where it will take you
+                jelly.open_tile(p, ic, 12.5, now, col, h)
+
+            p.setFont(f)
             p.setPen(TXT)
-            p.drawText(QRectF(r2.left() + 41, r2.top(), r2.width() - 48, r2.height()), Qt.AlignVCenter | Qt.AlignLeft, label)
+            lab = QRectF(r2.left() + 41, r2.top(), r2.width() - 48, r2.height())
+            if key == "dark":  # labels swap with a short vertical slide
+                p.setOpacity(base * (1 - d))
+                p.drawText(lab.translated(0, -7 * d), Qt.AlignVCenter | Qt.AlignLeft, "go dark")
+                p.setOpacity(base * d)
+                p.drawText(lab.translated(0, 7 * (1 - d)), Qt.AlignVCenter | Qt.AlignLeft, "resume")
+                p.setOpacity(base)
+            else:
+                p.drawText(lab, Qt.AlignVCenter | Qt.AlignLeft, "not work" if key == "personal" else "open lowkey")
             bx += w + 10
 
     def bars(self, p, rect, col, now):
@@ -586,8 +622,12 @@ class Island(QWidget):
             p.drawRoundedRect(QRectF(rect.left() + i * bw + 1.5, rect.bottom() - hh, bw - 3, hh), 2, 2)
 
     def hv(self, key):
-        """0..1 hover amount for a control, eased by a spring."""
+        """0..1 hover amount for a control, eased by a spring (a touch of overshoot, then it holds)."""
         return max(0.0, self.hov.setdefault(key, Spring(0, 300, 26)).x)
+
+    def pv(self, key):
+        """Press scale for a control: 0.95 while held, springs back past 1.0 on release."""
+        return self.prs.setdefault(key, Spring(1, 520, 26)).x
 
     def caption(self):
         """What the hovered control does, shown in place of the task line."""
@@ -616,8 +656,6 @@ class Island(QWidget):
     def mousePressEvent(self, e):
         if e.button() == Qt.LeftButton:
             self.pressed = self.hit(e.position())
-            if self.pressed and self.pressed != "mascot":
-                self.ripples.append((self.pressed, e.position(), time.time()))
             if not self.pressed:
                 self.click_open = True
 

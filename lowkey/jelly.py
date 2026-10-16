@@ -86,7 +86,7 @@ def sun(p, c, s, now, color=QColor("#FFD23F")):
         p.drawEllipse(QPointF(c.x() + side * s * 0.36, c.y() + s * 0.2), s * 0.09, s * 0.06)
 
 
-def gamepad(p, c, s, now, color=QColor("#FF8FDF")):
+def gamepad(p, c, s, now, color=QColor("#2FD6C0")):
     pad = QPainterPath()
     pad.addRoundedRect(QRectF(c.x() - s * 0.88, c.y() - s * 0.48, s * 1.76, s * 0.88), s * 0.42, s * 0.42)
     for side in (-1, 1):
@@ -169,3 +169,28 @@ def check(p, c, s, now, color, active=True):
     if t > 0.4:
         k2 = (t - 0.4) / 0.6
         p.drawLine(b, QPointF(b.x() + (d.x() - b.x()) * k2, b.y() + (d.y() - b.y()) * k2))
+
+
+def info(p, c, s, color):
+    dot = QPainterPath()
+    dot.addEllipse(c, s, s)
+    jelly(p, dot, color, shadow=False)
+    ink = INK if color.lightness() > 150 else QColor(255, 255, 255)
+    p.setPen(Qt.NoPen)
+    p.setBrush(ink)
+    p.drawEllipse(QPointF(c.x(), c.y() - s * 0.42), s * 0.15, s * 0.15)
+    p.drawRoundedRect(QRectF(c.x() - s * 0.13, c.y() - s * 0.16, s * 0.26, s * 0.62), s * 0.13, s * 0.13)
+
+
+def bubble(p, c, s, color):
+    b = QPainterPath()
+    b.addRoundedRect(QRectF(c.x() - s, c.y() - s * 0.8, s * 2, s * 1.45), s * 0.6, s * 0.6)
+    tail = QPainterPath(QPointF(c.x() - s * 0.55, c.y() + s * 0.5))
+    tail.lineTo(c.x() - s * 0.75, c.y() + s * 1.05)
+    tail.lineTo(c.x() - s * 0.1, c.y() + s * 0.6)
+    tail.closeSubpath()
+    jelly(p, b.united(tail), color, shadow=False)
+    p.setPen(Qt.NoPen)
+    p.setBrush(INK)
+    for dx in (-0.42, 0, 0.42):
+        p.drawEllipse(QPointF(c.x() + dx * s, c.y() - s * 0.08), s * 0.12, s * 0.12)
