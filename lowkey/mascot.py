@@ -145,8 +145,10 @@ class Mascot:
         tn, ta, te = shape_for(L.get("client"))
         n, aspect, egg = self.n.to(tn, dt), self.aspect.to(ta, dt), self.egg.to(te, dt)
         target = QColor("#3a3a3e") if L.get("client") == "Personal" else QColor(L.get("color") or "#8a8a8a")
-        if mood == "hiding":
-            target = target.darker(170)
+        if mood == "hiding":  # moonlit: the client's colour washed in violet
+            v = QColor("#9B8CFF")
+            target = QColor(int(target.red() * 0.15 + v.red() * 0.85), int(target.green() * 0.15 + v.green() * 0.85),
+                            int(target.blue() * 0.15 + v.blue() * 0.85)).darker(108)
         r, g, b = (ch.to(v, dt) for ch, v in zip(self.rgb, (target.red(), target.green(), target.blue())))
         base = QColor(int(r), int(g), int(b))
         dark_body = base.lightness() < 90

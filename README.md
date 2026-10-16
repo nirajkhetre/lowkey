@@ -84,7 +84,7 @@ A notch tucked into the edge of your screen, glowing in your current client's co
   - what the model thinks you're doing, typed in live
   - a 30-minute activity equaliser
   - today's totals
-  - **go dark** (pause tracking) · **not work** (mark this session personal) · **open lowkey**
+  - **go dark** (pause tracking: the island turns into a night sky, off the record) · **not work** (mark this session personal) · **open lowkey**
 - **Double-click** to pin it open. It never takes keyboard focus, so it can't interrupt your typing.
 
 <p align="center"><img src="docs/images/island-moments.png" alt="Pop-out when switching clients, and the gone-dark state" width="80%"></p>

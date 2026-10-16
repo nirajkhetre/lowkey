@@ -7,13 +7,14 @@ Double-click pins the pill open.
 import ctypes, math, sys, time, webbrowser
 
 from PySide6.QtCore import Qt, QTimer, QRectF, QPointF
-from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QFontMetricsF, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QTransform
+from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QFontMetricsF, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient, QTransform
 from PySide6.QtWidgets import QApplication, QWidget
 
 from .mascot import Mascot
 
 TXT, DIM, FAINT = QColor(245, 245, 245), QColor(150, 150, 150), QColor(255, 255, 255, 16)
-RED, GREY = QColor("#FF5A5A"), QColor("#7a7a7a")
+GREY = QColor("#7a7a7a")
+NIGHT, DUSK, AURORA, SUN = QColor("#9B8CFF"), QColor("#FF7AD9"), QColor("#4FD1C5"), QColor("#FFD23F")  # "off the record"
 SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 252)}
 EAR, PAD = 10, 24  # concave ears where the notch meets the screen edge; room for the soft shadow
 
@@ -68,6 +69,7 @@ class Island(QWidget):
         self.setMouseTracking(True)
         self.W, self.H = Spring(SIZES["lip"][0]), Spring(SIZES["lip"][1])
         self.fade = {m: Spring(0, 320, 34) for m in ("pill", "toast", "open")}
+        self.dark = Spring(0, 90, 19)  # 0 = on the record, 1 = midnight
         self.mode, self.force, self.pinned, self.click_open = "lip", None, False, False
         self.hover_since = self.left_at = None
         self.toast_msg, self.toast_until, self.toast_color, self.toast_len = "", 0.0, GREY, 2.8
@@ -87,7 +89,7 @@ class Island(QWidget):
     def color(self):
         L = self.live
         if L.get("paused"):
-            return RED
+            return NIGHT
         if L.get("idle", 0) > 300 or not L.get("client"):
             return GREY
         return QColor(L.get("color", "#7a7a7a"))
@@ -146,7 +148,8 @@ class Island(QWidget):
         self.W.target, self.H.target = tw, th
         for m, s in self.fade.items():
             s.target = 1.0 if m == self.mode else 0.0
-        for s in (self.W, self.H, *self.fade.values()):
+        self.dark.target = 1.0 if self.live.get("paused") else 0.0
+        for s in (self.W, self.H, self.dark, *self.fade.values()):
             s.step(dt)
         self.place()
         self.update()
@@ -181,7 +184,7 @@ class Island(QWidget):
         """Jump straight to the target state (used for screenshots/tests)."""
         self.tick()
         self.mascot.snap()
-        for s in (self.W, self.H, *self.fade.values()):
+        for s in (self.W, self.H, self.dark, *self.fade.values()):
             s.snap()
         self.place()
 
@@ -235,6 +238,8 @@ class Island(QWidget):
         p.drawPath(path)
 
         p.setClipPath(path)
+        if self.dark.x > 0.02:
+            self.draw_night(p, b, now, min(1.0, self.dark.x))
         lip = 1 - max(s.x for s in self.fade.values())
         if lip > 0.02:
             self.draw_lip(p, b, now, min(1, lip))
@@ -245,6 +250,31 @@ class Island(QWidget):
                 p.setOpacity(a)
                 draw(p, b, now)
         p.end()
+
+    def draw_night(self, p, b, now, a):
+        """Off the record: a midnight wash, a slow aurora and twinkling stars inside the island."""
+        p.save()
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(22, 14, 52, int(185 * a)))
+        p.drawRect(b)
+        for i, (col, speed, phase) in enumerate(((NIGHT, 0.23, 0.0), (DUSK, 0.17, 2.1), (AURORA, 0.13, 4.2))):
+            cx = b.left() + b.width() * (0.5 + 0.42 * math.sin(now * speed + phase))
+            cy = b.top() + b.height() * (0.4 + 0.35 * math.cos(now * speed * 1.3 + phase))
+            g = QRadialGradient(QPointF(cx, cy), max(b.width(), b.height()) * (0.42 + 0.08 * math.sin(now * 0.5 + i)))
+            c0, c1 = QColor(col), QColor(col)
+            c0.setAlpha(int(85 * a))
+            c1.setAlpha(0)
+            g.setColorAt(0, c0)
+            g.setColorAt(1, c1)
+            p.setBrush(g)
+            p.drawRect(b)
+        for i in range(18):  # fixed spots spread by the golden ratio, each twinkling at its own pace
+            tw = (math.sin(now * (1.4 + (i % 5) * 0.37) + i * 1.7) + 1) / 2
+            p.setBrush(QColor(255, 255, 255, int(a * (25 + 130 * tw))))
+            r = (0.55 + 1.0 * tw) * (1.6 if i % 6 == 0 else 1)
+            p.drawEllipse(QPointF(b.left() + (i * 0.618034 % 1) * b.width(),
+                                  b.top() + ((i * 0.381966 + 0.13) % 1) * b.height()), r, r)
+        p.restore()
 
     def draw_lip(self, p, b, now, a):
         """A breathing glow line on the side of the lip that faces into the screen."""
@@ -271,7 +301,7 @@ class Island(QWidget):
     def status(self):
         L = self.live
         if L.get("paused"):
-            return "gone dark", "not tracking anything"
+            return "off the record", "nothing is being saved. hover again to come back"
         if L.get("idle", 0) > 300:
             return "on a break", "tracking resumes when you're back"
         if not L.get("client"):
@@ -352,15 +382,27 @@ class Island(QWidget):
                    f"this session  {clock(self.session_s(now))}" if L.get("client") and not L.get("paused") else "")
 
         # status badge
-        label = "DARK" if L.get("paused") else "BREAK" if L.get("idle", 0) > 300 else "LIVE"
-        badge = QRectF(b.right() - 82, y + 20, 62, 24)
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(col.red(), col.green(), col.blue(), 40))
-        p.drawRoundedRect(badge, 12, 12)
-        p.setBrush(col)
-        p.drawEllipse(QPointF(badge.left() + 13, badge.center().y()), 3.5 + 1.2 * (math.sin(now * 5) + 1) / 2, 3.5 + 1.2 * (math.sin(now * 5) + 1) / 2)
-        p.setPen(col)
+        paused = L.get("paused")
+        label = "OFF RECORD" if paused else "BREAK" if L.get("idle", 0) > 300 else "LIVE"
         p.setFont(font(11, QFont.Bold))
+        bw = QFontMetricsF(p.font()).horizontalAdvance(label) + 34
+        badge = QRectF(b.right() - 20 - bw, y + 20, bw, 24)
+        p.setPen(Qt.NoPen)
+        if paused:
+            fill = QLinearGradient(badge.topLeft(), badge.topRight())
+            fill.setColorAt(0, QColor(155, 140, 255, 70))
+            fill.setColorAt(1, QColor(255, 122, 217, 70))
+            p.setBrush(fill)
+            p.drawRoundedRect(badge, 12, 12)
+            self.icon(p, "moon", QPointF(badge.left() + 13, badge.center().y()), TXT, 0.75)
+            p.setPen(TXT)
+        else:
+            p.setBrush(QColor(col.red(), col.green(), col.blue(), 40))
+            p.drawRoundedRect(badge, 12, 12)
+            p.setBrush(col)
+            pulse = 3.5 + 1.2 * (math.sin(now * 5) + 1) / 2
+            p.drawEllipse(QPointF(badge.left() + 13, badge.center().y()), pulse, pulse)
+            p.setPen(col)
         p.drawText(badge.adjusted(22, 0, -6, 0), Qt.AlignVCenter | Qt.AlignLeft, label)
 
         # what the model thinks you're doing, typed in
@@ -392,23 +434,40 @@ class Island(QWidget):
             p.drawText(QRectF(cx, y + 152, w, 24), Qt.AlignCenter, text)
             cx += w + 8
 
-        # buttons
+        # buttons: glass fill, gradient ring, drawn icons
         y = y0 + self.row(p, 4)
         bx = x
-        for key, label, icon in (("dark", "resume" if L.get("paused") else "go dark", "play" if L.get("paused") else "pause"),
-                                 ("personal", "not work", "slash"), ("open", "open lowkey", "arrow")):
+        client = QColor(L.get("color") or "#B8FF3B")
+        for key, label, icon, c1, c2 in (
+                ("dark", "resume" if paused else "go dark", "sun" if paused else "moon",
+                 SUN if paused else NIGHT, client if paused else DUSK),
+                ("personal", "not work", "slash", QColor(255, 255, 255, 120), QColor(255, 255, 255, 35)),
+                ("open", "open lowkey", "arrow", col, col.lighter(150))):
             p.setFont(font(12.5, QFont.DemiBold))
             w = QFontMetricsF(p.font()).horizontalAdvance(label) + 50
             rect = QRectF(bx, y + 190, w, 36)
             self.buttons[key] = rect
-            scale = 0.95 if self.pressed == key else 1.04 if self.hot == key else 1.0
+            hot = self.hot == key
+            scale = 0.95 if self.pressed == key else 1.04 if hot else 1.0
             r2 = QRectF(rect.center().x() - rect.width() * scale / 2, rect.center().y() - rect.height() * scale / 2,
                         rect.width() * scale, rect.height() * scale)
-            accent = RED if key == "dark" else col if key == "open" else GREY
-            p.setPen(Qt.NoPen)
-            p.setBrush(QColor(accent.red(), accent.green(), accent.blue(), 70 if self.hot == key else 34))
-            p.drawRoundedRect(r2, 18, 18)
-            self.icon(p, icon, QPointF(r2.left() + 20, r2.center().y()), accent)
+            if hot:  # soft glow in the ring's colour
+                for k in range(4, 0, -1):
+                    glow = QColor(c1)
+                    glow.setAlpha(14)
+                    p.setPen(Qt.NoPen)
+                    p.setBrush(glow)
+                    p.drawRoundedRect(r2.adjusted(-k * 2, -k * 2, k * 2, k * 2), 18 + k * 2, 18 + k * 2)
+            glass = QLinearGradient(0, r2.top(), 0, r2.bottom())
+            glass.setColorAt(0, QColor(255, 255, 255, 34 if hot else 20))
+            glass.setColorAt(1, QColor(255, 255, 255, 8 if hot else 4))
+            ring = QLinearGradient(r2.topLeft(), r2.bottomRight())
+            ring.setColorAt(0, c1)
+            ring.setColorAt(1, c2)
+            p.setPen(QPen(QBrush(ring), 2.2 if hot else 1.5))
+            p.setBrush(glass)
+            p.drawRoundedRect(r2.adjusted(0.8, 0.8, -0.8, -0.8), 17, 17)
+            self.icon(p, icon, QPointF(r2.left() + 20, r2.center().y()), c1 if key != "personal" else TXT)
             p.setPen(TXT)
             p.drawText(r2.adjusted(34, 0, -12, 0), Qt.AlignVCenter | Qt.AlignLeft, label)
             bx += w + 10
@@ -417,11 +476,16 @@ class Island(QWidget):
         mins, m0 = self.live.get("minutes", {}), int(now // 60)
         vals = [min(1.0, mins.get(m0 - 29 + i, 0) / 60) for i in range(30)]
         bw = rect.width() / 30
-        active = not self.live.get("paused") and self.live.get("idle", 0) < 300
+        paused = self.live.get("paused")
+        active = not paused and self.live.get("idle", 0) < 300
         p.setPen(Qt.NoPen)
         for i, v in enumerate(vals):
-            wiggle = 1 + (0.18 * math.sin(now * 6 + i * 0.9) if active and v > 0 else 0)
-            hh = max(3.0, rect.height() * v * 0.92 * wiggle)
+            if paused:  # moonlit: low, still, breathing together
+                hh = max(3.0, rect.height() * v * 0.42 * (0.82 + 0.18 * math.sin(now * 1.1 + i * 0.22)))
+                col = DUSK if i % 7 == 3 else NIGHT
+            else:
+                wiggle = 1 + (0.18 * math.sin(now * 6 + i * 0.9) if active and v > 0 else 0)
+                hh = max(3.0, rect.height() * v * 0.92 * wiggle)
             g = QLinearGradient(0, rect.bottom() - hh, 0, rect.bottom())
             top = QColor(col)
             bottom = QColor(col)
@@ -431,8 +495,11 @@ class Island(QWidget):
             p.setBrush(g if v > 0 else QBrush(FAINT))
             p.drawRoundedRect(QRectF(rect.left() + i * bw + 1.5, rect.bottom() - hh, bw - 3, hh), 2, 2)
 
-    def icon(self, p, kind, c, col):
+    def icon(self, p, kind, c, col, k=1.0):
         p.save()
+        p.translate(c)
+        p.scale(k, k)
+        c = QPointF(0, 0)
         p.setPen(QPen(col, 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
         p.setBrush(Qt.NoBrush)
         if kind == "pause":
@@ -448,6 +515,21 @@ class Island(QWidget):
         elif kind == "slash":
             p.drawEllipse(c, 6, 6)
             p.drawLine(QPointF(c.x() - 4.2, c.y() + 4.2), QPointF(c.x() + 4.2, c.y() - 4.2))
+        elif kind == "moon":
+            moon = QPainterPath()
+            moon.addEllipse(c, 6.5, 6.5)
+            bite = QPainterPath()
+            bite.addEllipse(QPointF(c.x() + 3.6, c.y() - 2.8), 5.6, 5.6)
+            p.setPen(Qt.NoPen)
+            p.setBrush(col)
+            p.drawPath(moon.subtracted(bite))
+        elif kind == "sun":
+            p.setBrush(col)
+            p.drawEllipse(c, 3.4, 3.4)
+            for a in range(8):
+                t = a * math.pi / 4
+                p.drawLine(QPointF(c.x() + 5.6 * math.cos(t), c.y() + 5.6 * math.sin(t)),
+                           QPointF(c.x() + 7.6 * math.cos(t), c.y() + 7.6 * math.sin(t)))
         elif kind == "arrow":
             p.drawLine(QPointF(c.x() - 4, c.y() + 4), QPointF(c.x() + 4, c.y() - 4))
             p.drawLine(QPointF(c.x() - 1, c.y() - 4), QPointF(c.x() + 4, c.y() - 4))
@@ -473,7 +555,8 @@ class Island(QWidget):
         if key and key == self.hit(e.position()):
             if key == "dark":
                 self.live["paused"] = not self.live.get("paused")
-                self.toast("gone dark. nothing is recorded" if self.live["paused"] else "back on the clock", self.color())
+                self.toast("off the record. nothing is saved" if self.live["paused"] else "back on the clock",
+                           NIGHT if self.live["paused"] else QColor(self.live.get("color") or "#B8FF3B"))
             elif key == "personal":
                 self.actions["personal"]()
                 self.toast("marked as a side quest", GREY)
