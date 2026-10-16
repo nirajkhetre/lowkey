@@ -1,9 +1,19 @@
-"""The island: a Dynamic-Island-style pill pinned to the top of the screen (tkinter, stdlib only)."""
-import ctypes, math, time, tkinter as tk, webbrowser
+"""The island: a notch that hides in the top edge of the screen and springs open on hover.
 
-KEY = "#010101"  # transparent key: near-black so anti-aliased text edges blend into the pill
-PILL, DIM, TXT = "#0b0b0b", "#8a8a8a", "#f5f5f5"
-RED, GREY = "#FF5A5A", "#6b6b6b"
+PySide6 + QPainter: anti-aliased, per-pixel transparent, never takes keyboard focus.
+States: lip (tucked away) -> pill (hover) -> open (keep hovering or click), plus "toast" pop-outs.
+Double-click pins the pill open.
+"""
+import math, time, webbrowser
+
+from PySide6.QtCore import Qt, QTimer, QRectF, QPointF
+from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QFontMetricsF, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen
+from PySide6.QtWidgets import QApplication, QWidget
+
+TXT, DIM, FAINT = QColor(245, 245, 245), QColor(150, 150, 150), QColor(255, 255, 255, 16)
+RED, GREY = QColor("#FF5A5A"), QColor("#7a7a7a")
+SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 252)}
+EAR, PAD = 10, 24  # concave ears where the notch meets the screen edge; room for the soft shadow
 
 
 def fmt(s):
@@ -11,121 +21,429 @@ def fmt(s):
     return f"{m}m" if m < 60 else f"{m // 60}h {m % 60:02d}m"
 
 
-class Island:
-    def __init__(self, live, actions, currency="₹"):
-        try:
-            ctypes.windll.shcore.SetProcessDpiAwareness(1)  # crisp text on scaled displays
-        except Exception:
-            pass
-        self.live, self.actions, self.cur = live, actions, currency
-        r = self.r = tk.Tk()
-        r.overrideredirect(True)
-        r.attributes("-topmost", True)
-        r.attributes("-transparentcolor", KEY)
-        r.config(bg=KEY)
-        self.k = r.winfo_fpixels("1i") / 96
-        self.c = tk.Canvas(r, bg=KEY, highlightthickness=0)
-        self.c.pack(fill="both", expand=True)
-        self.w, self.h = self.size("pill")
-        self.hover, self.toast, self.toast_until, self.seen_client = False, "", 0, None
-        r.bind("<Enter>", lambda e: setattr(self, "hover", True))
-        r.bind("<Leave>", lambda e: setattr(self, "hover", False))
-        self.c.bind("<Button-1>", self.click)
-        self.font = lambda size, bold=False: ("Bahnschrift SemiBold" if bold else "Bahnschrift", round(size))
-        self.frame()
+def clock(s):
+    s = max(0, int(s))
+    return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}"
 
-    def size(self, mode):
-        w, h = {"pill": (300, 38), "toast": (340, 44), "open": (460, getattr(self, "open_h", 156))}[mode]
-        return w * self.k, h * self.k
 
-    def mode(self):
-        if self.hover:
-            return "open"
-        return "toast" if time.time() < self.toast_until else "pill"
+def font(px, weight=QFont.Normal, family="Segoe UI Variable Display"):
+    f = QFont(family)
+    f.setPixelSize(round(px))
+    f.setWeight(weight)
+    return f
 
-    def state(self):
+
+class Spring:
+    """Critically-ish damped spring: slight overshoot reads as 'bouncy', like the real Dynamic Island."""
+
+    def __init__(self, x, k=260.0, d=24.0):
+        self.x = self.target = float(x)
+        self.v, self.k, self.d = 0.0, k, d
+
+    def step(self, dt):
+        self.v += (self.k * (self.target - self.x) - self.d * self.v) * dt
+        self.x += self.v * dt
+
+    def snap(self):
+        self.x, self.v = self.target, 0.0
+
+
+class Island(QWidget):
+    def __init__(self, live, actions, currency="₹", goal_h=6):
+        self.app = QApplication.instance() or QApplication([])
+        super().__init__()
+        self.live, self.actions, self.cur, self.goal = live, actions, currency, goal_h * 3600
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool
+                            | Qt.WindowDoesNotAcceptFocus | Qt.NoDropShadowWindowHint)
+        self.setAttribute(Qt.WA_TranslucentBackground)
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setMouseTracking(True)
+        self.W, self.H = Spring(SIZES["lip"][0]), Spring(SIZES["lip"][1])
+        self.fade = {m: Spring(0, 320, 34) for m in ("pill", "toast", "open")}
+        self.mode, self.force, self.pinned, self.click_open = "lip", None, False, False
+        self.hover_since = self.left_at = None
+        self.toast_msg, self.toast_until, self.toast_color, self.toast_len = "", 0.0, GREY, 2.8
+        self.seen_client, self.milestone = None, None
+        self.task, self.task_t0 = "", 0.0
+        self.buttons, self.hot, self.pressed = {}, None, None
+        self.last = time.time()
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.tick)
+        self.timer.start(16)
+        self.place()
+        self.show()
+
+    # ---------- state ----------
+    def color(self):
         L = self.live
         if L.get("paused"):
-            return RED, "gone dark", "not tracking"
-        if L.get("idle", 0) > 300:
-            return GREY, "on a break", "paused while you're away"
-        if not L.get("client"):
-            return GREY, "lowkey is listening", "first labels in ~1 min"
-        return L.get("color", GREY), L["client"], L.get("task", "")
+            return RED
+        if L.get("idle", 0) > 300 or not L.get("client"):
+            return GREY
+        return QColor(L.get("color", "#7a7a7a"))
 
-    def frame(self):
+    def toast(self, msg, color=None, secs=2.8):
+        self.toast_msg, self.toast_color, self.toast_len = msg, color or self.color(), secs
+        self.toast_until = time.time() + secs
+
+    def watch_events(self, now):
         L = self.live
-        if L.get("client") and L.get("client") != self.seen_client:
+        client = L.get("client")
+        if client and client != self.seen_client:
             if self.seen_client is not None:
-                self.toast, self.toast_until = f"switched to {L['client']}", time.time() + 2.6
-            self.seen_client = L["client"]
-        tw, th = self.size(self.mode())
-        self.w += (tw - self.w) * 0.28  # spring-ish easing
-        self.h += (th - self.h) * 0.28
-        x = (self.r.winfo_screenwidth() - self.w) / 2
-        self.r.geometry(f"{round(self.w)}x{round(self.h)}+{round(x)}+{round(8 * self.k)}")
-        self.draw()
-        moving = abs(tw - self.w) > 0.5 or abs(th - self.h) > 0.5
-        self.r.after(16 if moving else 120, self.frame)
+                self.toast(f"switched to {client}", QColor(L.get("color", "#7a7a7a")))
+            self.seen_client = client
+        step = int(L.get("money", 0) // 1000)
+        if self.milestone is None:
+            self.milestone = step
+        elif step > self.milestone:
+            self.milestone = step
+            self.toast(f"{self.cur}{step * 1000:,} secured today", QColor("#B8FF3B"), 3.5)
+        task = L.get("task", "")
+        if task != self.task:
+            self.task, self.task_t0 = task, now
 
-    def pill(self, x0, y0, x1, y1, r, fill, tags=()):
-        """Rounded rect from true circles (tk's smoothed polygons under-round the corners)."""
-        c, d = self.c, 2 * r
-        for ox, oy in ((x0, y0), (x1 - d, y0), (x0, y1 - d), (x1 - d, y1 - d)):
-            c.create_oval(ox, oy, ox + d, oy + d, fill=fill, outline="", tags=tags)
-        c.create_rectangle(x0 + r, y0, x1 - r, y1, fill=fill, outline="", tags=tags)
-        c.create_rectangle(x0, y0 + r, x1, y1 - r, fill=fill, outline="", tags=tags)
+    def pick_mode(self, now):
+        if self.force:
+            return self.force
+        base = "toast" if now < self.toast_until else ("pill" if self.pinned else "lip")
+        if self.frameGeometry().contains(QCursor.pos()):
+            self.left_at = None
+            self.hover_since = self.hover_since or now
+            dwell = now - self.hover_since
+            if self.click_open or dwell > 0.6:
+                return "open"
+            return "pill" if dwell > 0.12 else self.mode
+        self.hover_since, self.click_open = None, False
+        self.left_at = self.left_at or now
+        return base if now - self.left_at > 0.35 else self.mode  # small grace so it doesn't flicker
 
-    def draw(self):
-        c, k, w, h, L = self.c, self.k, self.w, self.h, self.live
-        c.delete("all")
-        self.pill(0, 0, w, h, min(h / 2, 24 * k), PILL)
-        color, title, sub = self.state()
-        pulse = (math.sin(time.time() * 3) + 1) / 2
-        rd = (4 + 1.5 * pulse) * k
-        cy = min(h / 2, 22 * k)
-        c.create_oval(20 * k - rd, cy - rd, 20 * k + rd, cy + rd, fill=color, outline="")
-        mode = self.mode()
+    def tick(self):
+        now = time.time()
+        dt, self.last = min(0.033, now - self.last), now
+        self.watch_events(now)
+        self.mode = self.pick_mode(now)
+        self.W.target, self.H.target = SIZES[self.mode]
+        for m, s in self.fade.items():
+            s.target = 1.0 if m == self.mode else 0.0
+        for s in (self.W, self.H, *self.fade.values()):
+            s.step(dt)
+        self.place()
+        self.update()
 
-        if mode == "toast" and h < 70 * k:
-            c.create_text(36 * k, h / 2, text=self.toast, fill=TXT, anchor="w", font=self.font(12 * k, True))
-            return
-        if h < 70 * k:  # collapsed pill
-            c.create_text(34 * k, h / 2, text=title, fill=TXT, anchor="w", font=self.font(11.5 * k, True))
-            if L.get("client") and not L.get("paused"):
-                c.create_text(w - 16 * k, h / 2, text=f"{self.cur}{L.get('money', 0):,.0f}", fill=color,
-                              anchor="e", font=self.font(11.5 * k, True))
-                c.create_text(w - 76 * k, h / 2, text=fmt(L.get("today_s", 0)), fill=DIM, anchor="e", font=self.font(10.5 * k))
-            return
+    def place(self):
+        screen = QGuiApplication.primaryScreen().geometry()
+        ww, wh = self.W.x + 2 * (EAR + PAD), max(1.0, self.H.x) + PAD
+        self.setGeometry(round(screen.center().x() - ww / 2), screen.top(), round(ww), round(wh))
 
-        # expanded: lay out from the real text height so long task lines never overlap
-        c.create_text(34 * k, cy, text=title, fill=TXT, anchor="w", font=self.font(13.5 * k, True))
-        badge = "DARK" if L.get("paused") else "LIVE"
-        c.create_text(w - 18 * k, cy, text=badge, fill=RED if badge == "DARK" else color, anchor="e", font=self.font(10 * k, True))
-        task = c.create_text(20 * k, 46 * k, text=sub[:110], fill="#cfcfcf", anchor="nw", width=self.size("open")[0] - 40 * k, font=self.font(11 * k))
-        y = c.bbox(task)[3] + 8 * k
-        stats = f"today  {fmt(L.get('today_s', 0))}  ·  {self.cur}{L.get('money', 0):,.0f}  ·  {L.get('pending', 0)} to review"
-        c.create_text(20 * k, y, text=stats, fill=DIM, anchor="nw", font=self.font(10.5 * k))
-        y += 30 * k
-        x = 18 * k
-        for tag, label, edge in (("dark", "resume" if L.get("paused") else "go dark", RED),
-                                 ("personal", "not work", GREY), ("open", "open lowkey", color)):
-            bw = (len(label) * 7.4 + 28) * k
-            self.pill(x - 1.5 * k, y - 1.5 * k, x + bw + 1.5 * k, y + 29.5 * k, 15.5 * k, edge, tag)  # coloured rim
-            self.pill(x, y, x + bw, y + 28 * k, 14 * k, "#1d1d1d", tag)
-            c.create_text(x + bw / 2, y + 14 * k, text=label, fill=TXT, font=self.font(10.5 * k, True), tags=tag)
-            x += bw + 10 * k
-        self.open_h = (y + 42 * k) / k  # next frame grows/shrinks to fit
+    def settle(self):
+        """Jump straight to the target state (used for screenshots/tests)."""
+        self.tick()
+        for s in (self.W, self.H, *self.fade.values()):
+            s.snap()
+        self.place()
 
-    def click(self, e):
-        tags = self.c.gettags("current")
-        if "dark" in tags:
-            self.live["paused"] = not self.live.get("paused")
-        elif "personal" in tags:
-            self.actions["personal"]()
-            self.toast, self.toast_until = "marked as a side quest", time.time() + 2
-        elif "open" in tags:
-            webbrowser.open("http://127.0.0.1:7777")
+    # ---------- painting ----------
+    def body(self):
+        return QRectF(PAD + EAR, 0, self.W.x, max(1.0, self.H.x))
+
+    def notch(self, b):
+        h = b.height()
+        e = min(EAR, h * 0.6)
+        r = max(0.5, min(22.0, h - e, b.width() / 2, h / 2 if h < 46 else 22.0))
+        P = QPainterPath()
+        P.moveTo(b.left() - e, 0)
+        P.quadTo(b.left(), 0, b.left(), e)
+        P.lineTo(b.left(), b.bottom() - r)
+        P.arcTo(QRectF(b.left(), b.bottom() - 2 * r, 2 * r, 2 * r), 180, 90)
+        P.lineTo(b.right() - r, b.bottom())
+        P.arcTo(QRectF(b.right() - 2 * r, b.bottom() - 2 * r, 2 * r, 2 * r), 270, 90)
+        P.lineTo(b.right(), e)
+        P.quadTo(b.right(), 0, b.right() + e, 0)
+        P.closeSubpath()
+        return P, r
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHints(QPainter.Antialiasing | QPainter.TextAntialiasing | QPainter.SmoothPixmapTransform)
+        now, b = time.time(), self.body()
+        path, r = self.notch(b)
+
+        # soft shadow
+        p.setPen(Qt.NoPen)
+        for i in range(7, 0, -1):
+            p.setBrush(QColor(0, 0, 0, 9))
+            p.drawRoundedRect(b.adjusted(-i * 1.6, 0, i * 1.6, i * 2.4), r + i, r + i)
+
+        g = QLinearGradient(0, 0, 0, b.bottom())
+        g.setColorAt(0, QColor(14, 14, 14))
+        g.setColorAt(1, QColor(4, 4, 4))
+        p.setBrush(g)
+        p.drawPath(path)
+        p.setPen(QPen(QColor(255, 255, 255, 22), 1))
+        p.setBrush(Qt.NoBrush)
+        p.drawPath(path)
+
+        p.setClipPath(path)
+        lip = 1 - max(s.x for s in self.fade.values())
+        if lip > 0.02:
+            self.draw_lip(p, b, now, min(1, lip))
+        self.buttons = {}
+        for mode, draw in (("pill", self.draw_pill), ("toast", self.draw_toast), ("open", self.draw_open)):
+            a = max(0.0, min(1.0, self.fade[mode].x))
+            if a > 0.02:
+                p.setOpacity(a)
+                draw(p, b, now)
+        p.end()
+
+    def draw_lip(self, p, b, now, a):
+        c = QColor(self.color())
+        breathe = 0.55 + 0.45 * (math.sin(now * 2.2) + 1) / 2
+        g = QLinearGradient(b.left(), 0, b.right(), 0)
+        for pos, alpha in ((0, 0), (0.5, int(255 * breathe * a)), (1, 0)):
+            c.setAlpha(alpha)
+            g.setColorAt(pos, QColor(c))
+        p.setPen(QPen(g, 2.2, Qt.SolidLine, Qt.RoundCap))
+        y = b.bottom() - 2.2
+        p.drawLine(QPointF(b.left() + 18, y), QPointF(b.right() - 18, y))
+
+    def avatar(self, p, c, rad, now):
+        L, col = self.live, self.color()
+        p.setPen(Qt.NoPen)
+        p.setBrush(col)
+        p.drawEllipse(c, rad - 3.5, rad - 3.5)
+        if L.get("paused"):
+            p.setBrush(QColor(17, 17, 17))
+            for dx in (-0.22, 0.12):
+                p.drawRoundedRect(QRectF(c.x() + dx * rad, c.y() - rad * 0.32, rad * 0.16, rad * 0.64), 1.5, 1.5)
+        else:
+            name = L.get("client") or "lowkey"
+            initials = "".join(w[0] for w in name.replace("&", " ").split()[:2]).upper()
+            p.setPen(QColor(17, 17, 17))
+            p.setFont(font(rad * 0.72, QFont.Black))
+            p.drawText(QRectF(c.x() - rad, c.y() - rad, 2 * rad, 2 * rad), Qt.AlignCenter, initials)
+        # daily goal ring
+        ring = QRectF(c.x() - rad, c.y() - rad, 2 * rad, 2 * rad)
+        p.setPen(QPen(QColor(255, 255, 255, 34), 2.2))
+        p.setBrush(Qt.NoBrush)
+        p.drawEllipse(ring)
+        prog = min(1.0, L.get("today_s", 0) / self.goal)
+        if prog > 0:
+            p.setPen(QPen(col, 2.4, Qt.SolidLine, Qt.RoundCap))
+            p.drawArc(ring, 90 * 16, -int(360 * 16 * prog))
+
+    def status(self):
+        L = self.live
+        if L.get("paused"):
+            return "gone dark", "not tracking anything"
+        if L.get("idle", 0) > 300:
+            return "on a break", "tracking resumes when you're back"
+        if not L.get("client"):
+            return "lowkey is listening", "first labels in about a minute"
+        return L["client"], L.get("task", "")
+
+    def session_s(self, now):
+        start = self.live.get("session_start")
+        return now - start if start and not self.live.get("paused") else 0
+
+    def draw_pill(self, p, b, now):
+        L, col = self.live, self.color()
+        cy = 21
+        self.avatar(p, QPointF(b.left() + 25, cy), 13, now)
+        title, _ = self.status()
+        p.setPen(TXT)
+        p.setFont(font(13.5, QFont.DemiBold))
+        name = QFontMetricsF(p.font()).elidedText(title, Qt.ElideRight, 140)
+        p.drawText(QRectF(b.left() + 46, 0, 150, 42), Qt.AlignVCenter | Qt.AlignLeft, name)
+        if L.get("client") and not L.get("paused") and L.get("idle", 0) < 300:  # tiny "now playing" bars
+            ex = b.left() + 46 + QFontMetricsF(p.font()).horizontalAdvance(name) + 12
+            p.setPen(Qt.NoPen)
+            p.setBrush(col)
+            for i in range(4):
+                hh = 4 + 9 * (math.sin(now * (5 + i * 1.7) + i) + 1) / 2
+                p.drawRoundedRect(QRectF(ex + i * 5, cy - hh / 2, 3, hh), 1.5, 1.5)
+        if L.get("client") and not L.get("paused"):
+            p.setFont(font(13.5, QFont.Bold, "Bahnschrift"))
+            p.setPen(col)
+            p.drawText(QRectF(b.right() - 96, 0, 82, 42), Qt.AlignVCenter | Qt.AlignRight, f"{self.cur}{L.get('money', 0):,.0f}")
+            p.setPen(DIM)
+            p.setFont(font(12.5, QFont.Normal, "Bahnschrift"))
+            p.drawText(QRectF(b.right() - 176, 0, 76, 42), Qt.AlignVCenter | Qt.AlignRight, clock(self.session_s(now)))
+
+    def draw_toast(self, p, b, now):
+        c = self.toast_color
+        p.setPen(Qt.NoPen)
+        p.setBrush(c)
+        pulse = 1 + 0.12 * math.sin(now * 8)
+        p.drawEllipse(QPointF(b.left() + 24, 23), 6 * pulse, 6 * pulse)
+        p.setPen(TXT)
+        p.setFont(font(14, QFont.DemiBold))
+        p.drawText(QRectF(b.left() + 42, 0, b.width() - 56, 46), Qt.AlignVCenter | Qt.AlignLeft, self.toast_msg)
+        age = now - (self.toast_until - self.toast_len)
+        if age < 0.9:  # one shimmer sweep when it pops out
+            sx = b.left() - 80 + (b.width() + 160) * age / 0.9
+            sh = QLinearGradient(sx - 60, 0, sx + 60, 0)
+            sh.setColorAt(0, QColor(255, 255, 255, 0))
+            sh.setColorAt(0.5, QColor(255, 255, 255, 38))
+            sh.setColorAt(1, QColor(255, 255, 255, 0))
+            p.setPen(Qt.NoPen)
+            p.setBrush(sh)
+            p.drawRect(b)
+        left = max(0.0, (self.toast_until - now) / self.toast_len)  # countdown bar, like a live activity
+        p.setBrush(QColor(c.red(), c.green(), c.blue(), 200))
+        p.drawRoundedRect(QRectF(b.left() + 24, b.bottom() - 6, (b.width() - 48) * left, 2.5), 1.25, 1.25)
+
+    def row(self, p, k):
+        """Stagger: row k fades/slides in a little after row k-1."""
+        a = max(0.0, min(1.0, self.fade["open"].x))
+        t = max(0.0, min(1.0, (a - k * 0.09) / (1 - k * 0.09)))
+        p.setOpacity(t)
+        return (1 - t) * 12
+
+    def draw_open(self, p, b, now):
+        L, col = self.live, self.color()
+        x, y0 = b.left() + 20, b.top()
+        y = y0 + self.row(p, 0)
+        self.avatar(p, QPointF(x + 21, y + 34), 21, now)
+        title, sub = self.status()
+        p.setPen(TXT)
+        p.setFont(font(16, QFont.Bold))
+        p.drawText(QRectF(x + 54, y + 14, 250, 22), Qt.AlignLeft | Qt.AlignVCenter,
+                   QFontMetricsF(p.font()).elidedText(title, Qt.ElideRight, 250))
+        p.setPen(DIM)
+        p.setFont(font(12, QFont.Normal, "Bahnschrift"))
+        p.drawText(QRectF(x + 54, y + 36, 250, 18), Qt.AlignLeft | Qt.AlignVCenter,
+                   f"this session  {clock(self.session_s(now))}" if L.get("client") and not L.get("paused") else "")
+
+        # status badge
+        label = "DARK" if L.get("paused") else "BREAK" if L.get("idle", 0) > 300 else "LIVE"
+        badge = QRectF(b.right() - 82, y + 20, 62, 24)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(col.red(), col.green(), col.blue(), 40))
+        p.drawRoundedRect(badge, 12, 12)
+        p.setBrush(col)
+        p.drawEllipse(QPointF(badge.left() + 13, badge.center().y()), 3.5 + 1.2 * (math.sin(now * 5) + 1) / 2, 3.5 + 1.2 * (math.sin(now * 5) + 1) / 2)
+        p.setPen(col)
+        p.setFont(font(11, QFont.Bold))
+        p.drawText(badge.adjusted(22, 0, -6, 0), Qt.AlignVCenter | Qt.AlignLeft, label)
+
+        # what the model thinks you're doing, typed in
+        y = y0 + self.row(p, 1)
+        shown = sub[: int((now - self.task_t0) * 80)] if sub == self.task else sub
+        p.setPen(QColor(220, 220, 220))
+        p.setFont(font(13))
+        p.drawText(QRectF(x, y + 64, b.width() - 40, 38), Qt.TextWordWrap | Qt.AlignLeft | Qt.AlignTop, shown)
+
+        # activity equaliser: last 30 minutes, one bar per minute
+        y = y0 + self.row(p, 2)
+        self.bars(p, QRectF(x, y + 108, b.width() - 40, 34), col, now)
+
+        # stat chips
+        y = y0 + self.row(p, 3)
+        cx = x
+        for text in (f"today {fmt(L.get('today_s', 0))}", f"{self.cur}{L.get('money', 0):,.0f}", f"{L.get('pending', 0)} to review"):
+            p.setFont(font(12, QFont.DemiBold, "Bahnschrift"))
+            w = QFontMetricsF(p.font()).horizontalAdvance(text) + 20
+            p.setPen(Qt.NoPen)
+            p.setBrush(FAINT)
+            p.drawRoundedRect(QRectF(cx, y + 152, w, 24), 12, 12)
+            p.setPen(QColor(210, 210, 210))
+            p.drawText(QRectF(cx, y + 152, w, 24), Qt.AlignCenter, text)
+            cx += w + 8
+
+        # buttons
+        y = y0 + self.row(p, 4)
+        bx = x
+        for key, label, icon in (("dark", "resume" if L.get("paused") else "go dark", "play" if L.get("paused") else "pause"),
+                                 ("personal", "not work", "slash"), ("open", "open lowkey", "arrow")):
+            p.setFont(font(12.5, QFont.DemiBold))
+            w = QFontMetricsF(p.font()).horizontalAdvance(label) + 50
+            rect = QRectF(bx, y + 190, w, 36)
+            self.buttons[key] = rect
+            scale = 0.95 if self.pressed == key else 1.04 if self.hot == key else 1.0
+            r2 = QRectF(rect.center().x() - rect.width() * scale / 2, rect.center().y() - rect.height() * scale / 2,
+                        rect.width() * scale, rect.height() * scale)
+            accent = RED if key == "dark" else col if key == "open" else GREY
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(accent.red(), accent.green(), accent.blue(), 70 if self.hot == key else 34))
+            p.drawRoundedRect(r2, 18, 18)
+            self.icon(p, icon, QPointF(r2.left() + 20, r2.center().y()), accent)
+            p.setPen(TXT)
+            p.drawText(r2.adjusted(34, 0, -12, 0), Qt.AlignVCenter | Qt.AlignLeft, label)
+            bx += w + 10
+
+    def bars(self, p, rect, col, now):
+        mins, m0 = self.live.get("minutes", {}), int(now // 60)
+        vals = [min(1.0, mins.get(m0 - 29 + i, 0) / 60) for i in range(30)]
+        bw = rect.width() / 30
+        active = not self.live.get("paused") and self.live.get("idle", 0) < 300
+        p.setPen(Qt.NoPen)
+        for i, v in enumerate(vals):
+            wiggle = 1 + (0.18 * math.sin(now * 6 + i * 0.9) if active and v > 0 else 0)
+            hh = max(3.0, rect.height() * v * 0.92 * wiggle)
+            g = QLinearGradient(0, rect.bottom() - hh, 0, rect.bottom())
+            top = QColor(col)
+            bottom = QColor(col)
+            bottom.setAlpha(70)
+            g.setColorAt(0, top)
+            g.setColorAt(1, bottom)
+            p.setBrush(g if v > 0 else QBrush(FAINT))
+            p.drawRoundedRect(QRectF(rect.left() + i * bw + 1.5, rect.bottom() - hh, bw - 3, hh), 2, 2)
+
+    def icon(self, p, kind, c, col):
+        p.save()
+        p.setPen(QPen(col, 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+        p.setBrush(Qt.NoBrush)
+        if kind == "pause":
+            p.drawLine(QPointF(c.x() - 3, c.y() - 5), QPointF(c.x() - 3, c.y() + 5))
+            p.drawLine(QPointF(c.x() + 3, c.y() - 5), QPointF(c.x() + 3, c.y() + 5))
+        elif kind == "play":
+            path = QPainterPath(QPointF(c.x() - 3, c.y() - 6))
+            path.lineTo(c.x() + 5, c.y())
+            path.lineTo(c.x() - 3, c.y() + 6)
+            path.closeSubpath()
+            p.setBrush(col)
+            p.drawPath(path)
+        elif kind == "slash":
+            p.drawEllipse(c, 6, 6)
+            p.drawLine(QPointF(c.x() - 4.2, c.y() + 4.2), QPointF(c.x() + 4.2, c.y() - 4.2))
+        elif kind == "arrow":
+            p.drawLine(QPointF(c.x() - 4, c.y() + 4), QPointF(c.x() + 4, c.y() - 4))
+            p.drawLine(QPointF(c.x() - 1, c.y() - 4), QPointF(c.x() + 4, c.y() - 4))
+            p.drawLine(QPointF(c.x() + 4, c.y() - 4), QPointF(c.x() + 4, c.y() + 1))
+        p.restore()
+
+    # ---------- interaction ----------
+    def hit(self, pos):
+        return next((k for k, r in self.buttons.items() if r.contains(pos)), None)
+
+    def mouseMoveEvent(self, e):
+        self.hot = self.hit(e.position())
+        self.setCursor(Qt.PointingHandCursor if self.hot else Qt.ArrowCursor)
+
+    def mousePressEvent(self, e):
+        if e.button() == Qt.LeftButton:
+            self.pressed = self.hit(e.position())
+            if not self.pressed:
+                self.click_open = True
+
+    def mouseReleaseEvent(self, e):
+        key, self.pressed = self.pressed, None
+        if key and key == self.hit(e.position()):
+            if key == "dark":
+                self.live["paused"] = not self.live.get("paused")
+                self.toast("gone dark. nothing is recorded" if self.live["paused"] else "back on the clock", self.color())
+            elif key == "personal":
+                self.actions["personal"]()
+                self.toast("marked as a side quest", GREY)
+            elif key == "open":
+                webbrowser.open("http://127.0.0.1:7777")
+
+    def mouseDoubleClickEvent(self, e):
+        if not self.hit(e.position()):
+            self.pinned = not self.pinned
+            self.toast("pinned. double-click to tuck away" if self.pinned else "tucked into the top edge", GREY, 2)
 
     def run(self):
-        self.r.mainloop()
+        self.app.exec()
+

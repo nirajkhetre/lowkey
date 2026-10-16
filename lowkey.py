@@ -61,6 +61,11 @@ def track():
             text = f"{app} {title}".lower()
             if title and pid != os.getpid() and idle < AFK_S and not LIVE["paused"] and not any(n in text for n in never):
                 ev = {"ts": round(time.time()), "dur": SAMPLE_S, "app": app, "title": title[:200]}
+                minutes = LIVE.setdefault("minutes", {})  # feeds the island's activity bars
+                m = int(time.time() // 60)
+                minutes[m] = minutes.get(m, 0) + SAMPLE_S
+                for old in [k for k in minutes if k < m - 60]:
+                    del minutes[old]
                 day = datetime.now().strftime("%Y-%m-%d")
                 with open(DATA / f"activity-{day}.jsonl", "a", encoding="utf-8") as f:
                     f.write(json.dumps(ev, ensure_ascii=False) + "\n")
@@ -264,7 +269,8 @@ def refresh():
                         pending=sum(s["status"] == "pending" for s in sess))
             if sess:
                 last = sess[-1]
-                LIVE.update(client=last["client"], task=last["task"], session=last["id"], color=color(last["client"]))
+                LIVE.update(client=last["client"], task=last["task"], session=last["id"], color=color(last["client"]),
+                            session_start=last["start"])
         except Exception as e:
             print("refresh:", e)
         time.sleep(60)
@@ -332,4 +338,4 @@ if __name__ == "__main__":
         from island import Island
         for job in (track, refresh, server.serve_forever):
             threading.Thread(target=job, daemon=True).start()
-        Island(LIVE, {"personal": mark_personal}, CONFIG["me"]["currency"]).run()
+        Island(LIVE, {"personal": mark_personal}, CONFIG["me"]["currency"], CONFIG["me"].get("daily_goal_h", 6)).run()

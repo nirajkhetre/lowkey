@@ -4,7 +4,11 @@
 
 A Dynamic Island for Windows that watches what you work on, lets a local Gemma 4 model turn it into invoice-ready timesheet lines, and never sends a byte of your screen activity off your laptop.
 
-- 🏝️ **The island**: a pill at the top of your screen showing the client you're on, today's billable hours and ₹ earned. Hover to see what the AI thinks you're doing; **go dark** pauses tracking; **not work** marks the current session personal.
+- 🏝️ **The island**: a notch tucked into the top edge of your screen, glowing in your current client's colour.
+  - **Hover** and it springs down into a pill: client avatar with a daily-goal ring, a live "now playing" equaliser, the session timer and ₹ earned.
+  - **Keep hovering (or click)** and it opens: what the AI thinks you're doing (typed in live), a 30-minute activity equaliser, today's stats, and **go dark** / **not work** / **open lowkey** buttons.
+  - **Pop-outs** when you switch clients or cross a ₹1,000 milestone.
+  - **Double-click** to pin it open. It never takes keyboard focus.
 - 🧾 **The dashboard** (`http://127.0.0.1:7777`): your day as colour blocks, one card per work session with an AI-written invoice line, **bill it ✅ / nah 🙅** (or `Y` / `N`, `J`/`K` to move), a "why?" button that shows the exact windows behind every line.
 - 💸 **Send the bill**: a receipt-style invoice per client → save as PDF or copy CSV.
 - ✨ **Wrapped**: your week as a shareable card (main character client, longest flow state, side quests).
@@ -27,7 +31,7 @@ If Ollama isn't running, lowkey falls back to keyword rules (and tells you in th
 
 ## Run it
 
-Requirements: Windows 10/11, Python 3.10+, [Ollama](https://ollama.com).
+Requirements: Windows 10/11, Python 3.10+, `pip install PySide6-Essentials` (for the island), [Ollama](https://ollama.com).
 
 ```bash
 ollama pull gemma4:e2b

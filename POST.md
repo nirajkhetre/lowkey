@@ -22,10 +22,11 @@ So I built **lowkey**: it bills your hours, lowkey. It's a Dynamic Island for Wi
 
 **lowkey** has three parts:
 
-**🏝️ The island.** A black pill at the top of the screen, like the iPhone's Dynamic Island:
+**🏝️ The island.** Like a MacBook notch, it hides in the top edge of the screen as a thin lip glowing in my current client's colour:
 
-- It shows the client I'm on, today's billable hours and ₹ earned.
-- Hover, and it expands to show what the AI thinks I'm doing right now.
+- Hover, and it springs down into a pill: client avatar with a daily-goal ring, a little "now playing" equaliser, the session timer and ₹ earned.
+- Keep hovering, and it opens into a card showing what the AI thinks I'm doing (typed in live) and a 30-minute activity equaliser.
+- Double-click pins it open.
 - **go dark** pauses tracking (for when you're doing something nobody needs a log of).
 - **not work** marks the current session personal.
 - When I switch to another client's work, it pops out: *"switched to Nimbus Labs"*.
@@ -66,7 +67,7 @@ Try the bundled demo week without tracking anything: `python lowkey.py --demo`.
 
 ## How I Built It
 
-The whole thing is about 850 lines, mostly Python standard library plus one HTML file. No Electron, no framework, no cloud account.
+The whole thing is about 1,100 lines: Python (standard library plus PySide6 for the island) and one HTML file. No Electron, no framework, no cloud account.
 
 **1. The tracker (stdlib `ctypes`, no dependencies).**
 - Every 5 seconds it reads the foreground window title and process name, and how long since the last keypress.
@@ -90,7 +91,7 @@ The whole thing is about 850 lines, mostly Python standard library plus one HTML
 **5. The UI.**
 - Neo-brutalist, deliberately loud: thick outlines, hard shadows, client colours.
 - It uses Windows' own Bahnschrift font, so the page makes **zero** external requests. No Google Fonts, no CDN.
-- The island is tkinter with a transparent key colour, drawn with real circles, so it's a proper pill and not a rounded rectangle.
+- The island started in tkinter and looked pixelated: tkinter can't anti-alias or do per-pixel transparency on Windows. I rewrote it in **PySide6 with hand-painted QPainter**: anti-aliased notch shape with concave "ears" where it meets the screen edge, a spring simulation for the bouncy open/close, staggered row entrances, and a window that never takes keyboard focus.
 
 ### What went wrong (and what I changed)
 
