@@ -10,6 +10,8 @@ from PySide6.QtCore import Qt, QTimer, QRectF, QPointF
 from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QFontMetricsF, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QTransform
 from PySide6.QtWidgets import QApplication, QWidget
 
+from .mascot import Mascot
+
 TXT, DIM, FAINT = QColor(245, 245, 245), QColor(150, 150, 150), QColor(255, 255, 255, 16)
 RED, GREY = QColor("#FF5A5A"), QColor("#7a7a7a")
 SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 252)}
@@ -71,6 +73,7 @@ class Island(QWidget):
         self.toast_msg, self.toast_until, self.toast_color, self.toast_len = "", 0.0, GREY, 2.8
         self.seen_client, self.milestone = None, None
         self.task, self.task_t0 = "", 0.0
+        self.mascot, self.quip = Mascot(live, self.goal, currency), None
         self.buttons, self.hot, self.pressed = {}, None, None
         self.edge, self.over, self.rest, self.raised_at = "top", False, "lip", 0.0
         self.last = time.time()
@@ -99,6 +102,7 @@ class Island(QWidget):
         if client and client != self.seen_client:
             if self.seen_client is not None:
                 self.toast(f"switched to {client}", QColor(L.get("color", "#7a7a7a")))
+                self.mascot.react("salute")
             self.seen_client = client
         step = int(L.get("money", 0) // 1000)
         if self.milestone is None:
@@ -106,6 +110,7 @@ class Island(QWidget):
         elif step > self.milestone:
             self.milestone = step
             self.toast(f"{self.cur}{step * 1000:,} secured today", QColor("#B8FF3B"), 3.5)
+            self.mascot.react("money", 4)
         task = L.get("task", "")
         if task != self.task:
             self.task, self.task_t0 = task, now
@@ -133,6 +138,7 @@ class Island(QWidget):
         self.edge = st.get("edge", "top") if st.get("edge") in ("top", "bottom", "left", "right") else "top"
         self.over, self.rest = st.get("taskbar") == "over", st.get("rest", "lip")
         self.watch_events(now)
+        self.quip = self.mascot.update(now)
         self.mode = self.pick_mode(now)
         tw, th = SIZES[self.mode]
         if self.mode == "lip" and self.edge in ("left", "right"):
@@ -256,29 +262,10 @@ class Island(QWidget):
         p.drawLine(p1, p2)
 
     def avatar(self, p, c, rad, now):
-        L, col = self.live, self.color()
-        p.setPen(Qt.NoPen)
-        p.setBrush(col)
-        p.drawEllipse(c, rad - 3.5, rad - 3.5)
-        if L.get("paused"):
-            p.setBrush(QColor(17, 17, 17))
-            for dx in (-0.22, 0.12):
-                p.drawRoundedRect(QRectF(c.x() + dx * rad, c.y() - rad * 0.32, rad * 0.16, rad * 0.64), 1.5, 1.5)
-        else:
-            name = L.get("client") or "lowkey"
-            initials = "".join(w[0] for w in name.replace("&", " ").split()[:2]).upper()
-            p.setPen(QColor(17, 17, 17))
-            p.setFont(font(rad * 0.72, QFont.Black))
-            p.drawText(QRectF(c.x() - rad, c.y() - rad, 2 * rad, 2 * rad), Qt.AlignCenter, initials)
-        # daily goal ring
-        ring = QRectF(c.x() - rad, c.y() - rad, 2 * rad, 2 * rad)
-        p.setPen(QPen(QColor(255, 255, 255, 34), 2.2))
-        p.setBrush(Qt.NoBrush)
-        p.drawEllipse(ring)
-        prog = min(1.0, L.get("today_s", 0) / self.goal)
-        if prog > 0:
-            p.setPen(QPen(col, 2.4, Qt.SolidLine, Qt.RoundCap))
-            p.drawArc(ring, 90 * 16, -int(360 * 16 * prog))
+        """The mascot, inside the daily-goal ring. Click it and it tells you something about your day."""
+        self.buttons["mascot"] = QRectF(c.x() - rad, c.y() - rad, 2 * rad, 2 * rad)
+        cursor = self.mapFromGlobal(QCursor.pos()).x() if self.mode != "lip" else None
+        self.mascot.draw(p, c, rad, now, cursor, self.color())
 
     def status(self):
         L = self.live
@@ -297,14 +284,14 @@ class Island(QWidget):
     def draw_pill(self, p, b, now):
         L, col = self.live, self.color()
         cy = b.top() + 21
-        self.avatar(p, QPointF(b.left() + 25, cy), 13, now)
+        self.avatar(p, QPointF(b.left() + 25, cy), 15, now)
         title, _ = self.status()
         p.setPen(TXT)
         p.setFont(font(13.5, QFont.DemiBold))
         name = QFontMetricsF(p.font()).elidedText(title, Qt.ElideRight, 140)
-        p.drawText(QRectF(b.left() + 46, b.top(), 150, 42), Qt.AlignVCenter | Qt.AlignLeft, name)
+        p.drawText(QRectF(b.left() + 48, b.top(), 150, 42), Qt.AlignVCenter | Qt.AlignLeft, name)
         if L.get("client") and not L.get("paused") and L.get("idle", 0) < 300:  # tiny "now playing" bars
-            ex = b.left() + 46 + QFontMetricsF(p.font()).horizontalAdvance(name) + 12
+            ex = b.left() + 48 + QFontMetricsF(p.font()).horizontalAdvance(name) + 12
             p.setPen(Qt.NoPen)
             p.setBrush(col)
             for i in range(4):
@@ -377,8 +364,13 @@ class Island(QWidget):
 
         # what the model thinks you're doing, typed in
         y = y0 + self.row(p, 1)
-        shown = sub[: int((now - self.task_t0) * 80)] if sub == self.task else sub
-        p.setPen(QColor(220, 220, 220))
+        if self.quip:  # the mascot is talking
+            said = now - (self.mascot.quip_until - 4.5)
+            shown, color = "💬 " + self.quip[: int(said * 60)], QColor(255, 236, 160)
+        else:
+            shown = sub[: int((now - self.task_t0) * 80)] if sub == self.task else sub
+            color = QColor(220, 220, 220)
+        p.setPen(color)
         p.setFont(font(13))
         p.drawText(QRectF(x, y + 64, b.width() - 40, 38), Qt.TextWordWrap | Qt.AlignLeft | Qt.AlignTop, shown)
 
@@ -484,6 +476,9 @@ class Island(QWidget):
             elif key == "personal":
                 self.actions["personal"]()
                 self.toast("marked as a side quest", GREY)
+            elif key == "mascot":
+                self.mascot.say()
+                self.click_open = True
             elif key == "open":
                 webbrowser.open("http://127.0.0.1:7777")
 

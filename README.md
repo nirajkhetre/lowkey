@@ -79,7 +79,7 @@ A notch tucked into the edge of your screen, glowing in your current client's co
 
 <p align="center"><img src="docs/images/island-states.png" alt="The island tucked away, as a pill on hover, and fully open" width="100%"></p>
 
-- **Hover** and it springs out into a pill: client avatar with a daily-goal ring, a live "now playing" equaliser, the session timer and money earned today.
+- **Hover** and it springs out into a pill: the mascot inside a daily-goal ring, a live "now playing" equaliser, the session timer and money earned today.
 - **Keep hovering, or click,** and it opens:
   - what the model thinks you're doing, typed in live
   - a 30-minute activity equaliser
@@ -88,6 +88,15 @@ A notch tucked into the edge of your screen, glowing in your current client's co
 - **Double-click** to pin it open. It never takes keyboard focus, so it can't interrupt your typing.
 
 <p align="center"><img src="docs/images/island-moments.png" alt="Pop-out when switching clients, and the gone-dark state" width="80%"></p>
+
+#### Meet the mascot
+
+It reads the room. Its mood follows what you're actually doing:
+- it breathes, and tilts its head towards your cursor
+- it wobbles when its mood changes, and falls asleep (with floating z's) when you walk away
+- **click it** and it tells you something useful about your day: time on the current client, money secured, progress to your daily goal, how many sessions are waiting for review
+
+<p align="center"><img src="docs/images/mascot-moods.png" alt="The mascot's nine moods" width="100%"></p>
 
 ### 🧾 The dashboard
 
@@ -198,6 +207,7 @@ lowkey/
 ├── labeler.py       slots → Gemma → sessions → invoice lines
 ├── server.py        local dashboard + JSON API
 ├── island.py        the notch (PySide6, hand-painted)
+├── mascot.py        the island's mascot: moods, motion, one-liners
 └── web/index.html   the dashboard (no build step, no CDN)
 demo/                a synthetic week for --demo
 docs/                guides and images
@@ -205,6 +215,11 @@ tests/               core logic checks
 ```
 
 See [CONTRIBUTING.md](CONTRIBUTING.md).
+
+## Credits
+
+- Mascot art: [Microsoft Fluent Emoji](https://github.com/microsoft/fluentui-emoji) 3D set, MIT licensed. The licence is in [`lowkey/assets/mascot/LICENSE`](lowkey/assets/mascot/LICENSE). The moods, motion and behaviour are lowkey's.
+- Local inference: [Ollama](https://ollama.com) running Google's open-weight [Gemma 4](https://ai.google.dev/gemma).
 
 ## License
 
