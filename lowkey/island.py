@@ -6,8 +6,11 @@ Double-click pins the pill open.
 """
 import ctypes, math, sys, time, webbrowser
 
-from PySide6.QtCore import Qt, QTimer, QRectF, QPointF
-from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QFontMetricsF, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient, QTransform
+from pathlib import Path
+
+from PySide6.QtCore import Qt, QByteArray, QTimer, QRectF, QPointF
+from PySide6.QtGui import QBrush, QColor, QConicalGradient, QCursor, QFont, QFontMetricsF, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient, QTransform
+from PySide6.QtSvg import QSvgRenderer
 from PySide6.QtWidgets import QApplication, QWidget
 
 from .mascot import Mascot
@@ -16,6 +19,7 @@ TXT, DIM, FAINT = QColor(245, 245, 245), QColor(150, 150, 150), QColor(255, 255,
 GREY = QColor("#7a7a7a")
 NIGHT, DUSK, AURORA, SUN = QColor("#9B8CFF"), QColor("#FF7AD9"), QColor("#4FD1C5"), QColor("#FFD23F")  # "off the record"
 SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 252)}
+ICONS = Path(__file__).parent / "assets" / "icons"  # Phosphor Icons, duotone (MIT)
 EAR, PAD = 10, 24  # concave ears where the notch meets the screen edge; room for the soft shadow
 
 
@@ -78,6 +82,8 @@ class Island(QWidget):
         self.mascot, self.quip = Mascot(live, self.goal, currency), None
         self.buttons, self.hot, self.pressed = {}, None, None
         self.edge, self.over, self.rest, self.raised_at = "top", False, "lip", 0.0
+        self.hov, self.spin, self.ripples, self._svgs = {}, {}, [], {}
+        self.money_view = Spring(0, 60, 15)  # the ₹ chip counts up
         self.last = time.time()
         self.timer = QTimer(self)
         self.timer.timeout.connect(self.tick)
@@ -149,6 +155,13 @@ class Island(QWidget):
         for m, s in self.fade.items():
             s.target = 1.0 if m == self.mode else 0.0
         self.dark.target = 1.0 if self.live.get("paused") else 0.0
+        self.money_view.target = float(self.live.get("money", 0))
+        self.money_view.step(dt)
+        for k, sp in self.hov.items():
+            sp.target = 1.0 if self.hot == k else 0.0
+            sp.step(dt)
+            self.spin[k] = (self.spin.get(k, 35.0) + dt * 170 * max(0.0, sp.x)) % 360
+        self.ripples = [r for r in self.ripples if now - r[2] < 0.7]
         for s in (self.W, self.H, self.dark, *self.fade.values()):
             s.step(dt)
         self.place()
@@ -394,7 +407,7 @@ class Island(QWidget):
             fill.setColorAt(1, QColor(255, 122, 217, 70))
             p.setBrush(fill)
             p.drawRoundedRect(badge, 12, 12)
-            self.icon(p, "moon", QPointF(badge.left() + 13, badge.center().y()), TXT, 0.75)
+            self.svg(p, "moon-stars", QRectF(badge.left() + 6, badge.center().y() - 7, 14, 14), TXT)
             p.setPen(TXT)
         else:
             p.setBrush(QColor(col.red(), col.green(), col.blue(), 40))
@@ -407,7 +420,10 @@ class Island(QWidget):
 
         # what the model thinks you're doing, typed in
         y = y0 + self.row(p, 1)
-        if self.quip:  # the mascot is talking
+        cap = self.caption()
+        if cap:  # hovering a control: say what it does
+            shown, color = cap, col.lighter(125) if col.lightness() < 200 else QColor(250, 250, 250)
+        elif self.quip:  # the mascot is talking
             said = now - (self.mascot.quip_until - 4.5)
             shown, color = "💬 " + self.quip[: int(said * 60)], QColor(255, 236, 160)
         else:
@@ -421,55 +437,115 @@ class Island(QWidget):
         y = y0 + self.row(p, 2)
         self.bars(p, QRectF(x, y + 108, b.width() - 40, 34), col, now)
 
-        # stat chips
+        # stat chips: icon + value; lift on hover, "today" fills towards your goal, "to review" pulses
         y = y0 + self.row(p, 3)
         cx = x
-        for text in (f"today {fmt(L.get('today_s', 0))}", f"{self.cur}{L.get('money', 0):,.0f}", f"{L.get('pending', 0)} to review"):
-            p.setFont(font(12, QFont.DemiBold, NUM))
-            w = QFontMetricsF(p.font()).horizontalAdvance(text) + 20
+        prog = min(1.0, L.get("today_s", 0) / self.goal) if self.goal else 0
+        pending = L.get("pending", 0)
+        for key, icon, text in (("today", "clock", fmt(L.get("today_s", 0))),
+                                ("money", "currency-inr", f"{max(0.0, self.money_view.x):,.0f}"),
+                                ("review", "list-checks", f"{pending} to review")):
+            h = self.hv(key)
+            p.setFont(font(12.5, QFont.DemiBold, NUM))
+            w = QFontMetricsF(p.font()).horizontalAdvance(text) + 44
+            self.buttons[key] = QRectF(cx, y + 148, w, 28)
+            r = QRectF(cx, y + 148 - 2.5 * h, w, 28)
+            pill = QPainterPath()
+            pill.addRoundedRect(r, 14, 14)
             p.setPen(Qt.NoPen)
-            p.setBrush(FAINT)
-            p.drawRoundedRect(QRectF(cx, y + 152, w, 24), 12, 12)
-            p.setPen(QColor(210, 210, 210))
-            p.drawText(QRectF(cx, y + 152, w, 24), Qt.AlignCenter, text)
+            p.setBrush(QColor(255, 255, 255, int(16 + 18 * h)))
+            p.drawPath(pill)
+            if key == "today" and prog > 0:
+                fill = QLinearGradient(r.topLeft(), r.topRight())
+                fill.setColorAt(0, QColor(col.red(), col.green(), col.blue(), 85))
+                fill.setColorAt(1, QColor(col.red(), col.green(), col.blue(), 25))
+                p.save()
+                p.setClipPath(pill, Qt.IntersectClip)
+                p.setBrush(fill)
+                p.drawRect(QRectF(r.left(), r.top(), r.width() * prog, r.height()))
+                p.restore()
+            edge = None
+            if key == "review" and pending:
+                edge = QColor(col.red(), col.green(), col.blue(), int(70 + 120 * (math.sin(now * 3) + 1) / 2))
+            if h > 0.01:
+                edge = QLinearGradient(r.topLeft(), r.bottomRight())
+                edge.setColorAt(0, QColor(col.red(), col.green(), col.blue(), int(230 * h)))
+                edge.setColorAt(1, QColor(255, 255, 255, int(70 * h)))
+            if edge is not None:
+                p.setPen(QPen(QBrush(edge), 1.3))
+                p.setBrush(Qt.NoBrush)
+                p.drawRoundedRect(r.adjusted(0.7, 0.7, -0.7, -0.7), 13.3, 13.3)
+            self.svg(p, icon, QRectF(r.left() + 9, r.center().y() - 8, 16, 16), col if key != "review" or pending else DIM)
+            p.setPen(QColor(238, 238, 238))
+            p.drawText(r.adjusted(30, 0, -10, 0), Qt.AlignVCenter | Qt.AlignLeft, text)
             cx += w + 8
 
-        # buttons: glass fill, gradient ring, drawn icons
+        # buttons: an icon orb in a glass pill; the conic ring spins on hover; ripple on click
         y = y0 + self.row(p, 4)
         bx = x
         client = QColor(L.get("color") or "#B8FF3B")
         for key, label, icon, c1, c2 in (
-                ("dark", "resume" if paused else "go dark", "sun" if paused else "moon",
+                ("dark", "resume" if paused else "go dark", "sun" if paused else "moon-stars",
                  SUN if paused else NIGHT, client if paused else DUSK),
-                ("personal", "not work", "slash", QColor(255, 255, 255, 120), QColor(255, 255, 255, 35)),
-                ("open", "open lowkey", "arrow", col, col.lighter(150))):
+                ("personal", "not work", "game-controller", QColor("#8E8EA0"), QColor("#E6E6F0")),
+                ("open", "open lowkey", "arrow-square-out", col, col.lighter(150))):
+            h = self.hv(key)
             p.setFont(font(12.5, QFont.DemiBold))
-            w = QFontMetricsF(p.font()).horizontalAdvance(label) + 50
-            rect = QRectF(bx, y + 190, w, 36)
+            w = QFontMetricsF(p.font()).horizontalAdvance(label) + 56 + 6 * h
+            rect = QRectF(bx, y + 186, w, 38)
             self.buttons[key] = rect
-            hot = self.hot == key
-            scale = 0.95 if self.pressed == key else 1.04 if hot else 1.0
-            r2 = QRectF(rect.center().x() - rect.width() * scale / 2, rect.center().y() - rect.height() * scale / 2,
-                        rect.width() * scale, rect.height() * scale)
-            if hot:  # soft glow in the ring's colour
-                for k in range(4, 0, -1):
-                    glow = QColor(c1)
-                    glow.setAlpha(14)
+            k = 0.94 if self.pressed == key else 1.0
+            r2 = QRectF(rect.center().x() - w * k / 2, rect.center().y() - 19 * k, w * k, 38 * k)
+            pill = QPainterPath()
+            pill.addRoundedRect(r2, r2.height() / 2, r2.height() / 2)
+            if h > 0.01:  # bloom in the ring's colour
+                for g in range(5, 0, -1):
                     p.setPen(Qt.NoPen)
-                    p.setBrush(glow)
-                    p.drawRoundedRect(r2.adjusted(-k * 2, -k * 2, k * 2, k * 2), 18 + k * 2, 18 + k * 2)
+                    p.setBrush(QColor(c1.red(), c1.green(), c1.blue(), int(13 * h)))
+                    p.drawRoundedRect(r2.adjusted(-g * 2.2, -g * 2.2, g * 2.2, g * 2.2), 19 + g * 2.2, 19 + g * 2.2)
             glass = QLinearGradient(0, r2.top(), 0, r2.bottom())
-            glass.setColorAt(0, QColor(255, 255, 255, 34 if hot else 20))
-            glass.setColorAt(1, QColor(255, 255, 255, 8 if hot else 4))
-            ring = QLinearGradient(r2.topLeft(), r2.bottomRight())
+            glass.setColorAt(0, QColor(255, 255, 255, int(26 + 18 * h)))
+            glass.setColorAt(1, QColor(255, 255, 255, int(5 + 9 * h)))
+            ring = QConicalGradient(r2.center(), self.spin.get(key, 35.0))
             ring.setColorAt(0, c1)
-            ring.setColorAt(1, c2)
-            p.setPen(QPen(QBrush(ring), 2.2 if hot else 1.5))
+            ring.setColorAt(0.5, c2)
+            ring.setColorAt(1, c1)
+            p.setPen(QPen(QBrush(ring), 1.4 + 1.1 * h))
             p.setBrush(glass)
-            p.drawRoundedRect(r2.adjusted(0.8, 0.8, -0.8, -0.8), 17, 17)
-            self.icon(p, icon, QPointF(r2.left() + 20, r2.center().y()), c1 if key != "personal" else TXT)
+            p.drawRoundedRect(r2.adjusted(0.8, 0.8, -0.8, -0.8), r2.height() / 2 - 0.8, r2.height() / 2 - 0.8)
+            for rk, pos, t0 in self.ripples:
+                if rk == key:
+                    age = now - t0
+                    p.save()
+                    p.setClipPath(pill, Qt.IntersectClip)
+                    p.setPen(Qt.NoPen)
+                    p.setBrush(QColor(c1.red(), c1.green(), c1.blue(), int(110 * (1 - age / 0.7))))
+                    p.drawEllipse(pos, 6 + age * w * 1.7, 6 + age * w * 1.7)
+                    p.restore()
+            oc = QPointF(r2.left() + 19.5, r2.center().y())
+            orad = 13.5 * (1 + 0.1 * h)
+            orb = QRadialGradient(QPointF(oc.x() - 4, oc.y() - 5), orad * 1.5)
+            orb.setColorAt(0, c2.lighter(110))
+            orb.setColorAt(1, c1)
+            p.setPen(Qt.NoPen)
+            p.setBrush(orb)
+            p.drawEllipse(oc, orad, orad)
+            p.save()
+            p.translate(oc)
+            if icon == "sun":
+                p.rotate(self.spin.get(key, 0.0) * 1.5)
+            elif icon == "moon-stars":
+                p.rotate(-14 * h + 7 * h * math.sin(now * 4))
+            elif icon == "game-controller":
+                p.rotate(11 * h * math.sin(now * 10))
+            else:
+                nudge = 2.0 * h * (1 + math.sin(now * 6)) / 2
+                p.translate(nudge, -nudge)
+            ink = QColor(20, 20, 24) if c1.lightness() > 150 else QColor(250, 250, 252)
+            self.svg(p, icon, QRectF(-9, -9, 18, 18), ink)
+            p.restore()
             p.setPen(TXT)
-            p.drawText(r2.adjusted(34, 0, -12, 0), Qt.AlignVCenter | Qt.AlignLeft, label)
+            p.drawText(QRectF(r2.left() + 39, r2.top(), r2.width() - 46, r2.height()), Qt.AlignVCenter | Qt.AlignLeft, label)
             bx += w + 10
 
     def bars(self, p, rect, col, now):
@@ -495,46 +571,33 @@ class Island(QWidget):
             p.setBrush(g if v > 0 else QBrush(FAINT))
             p.drawRoundedRect(QRectF(rect.left() + i * bw + 1.5, rect.bottom() - hh, bw - 3, hh), 2, 2)
 
-    def icon(self, p, kind, c, col, k=1.0):
-        p.save()
-        p.translate(c)
-        p.scale(k, k)
-        c = QPointF(0, 0)
-        p.setPen(QPen(col, 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
-        p.setBrush(Qt.NoBrush)
-        if kind == "pause":
-            p.drawLine(QPointF(c.x() - 3, c.y() - 5), QPointF(c.x() - 3, c.y() + 5))
-            p.drawLine(QPointF(c.x() + 3, c.y() - 5), QPointF(c.x() + 3, c.y() + 5))
-        elif kind == "play":
-            path = QPainterPath(QPointF(c.x() - 3, c.y() - 6))
-            path.lineTo(c.x() + 5, c.y())
-            path.lineTo(c.x() - 3, c.y() + 6)
-            path.closeSubpath()
-            p.setBrush(col)
-            p.drawPath(path)
-        elif kind == "slash":
-            p.drawEllipse(c, 6, 6)
-            p.drawLine(QPointF(c.x() - 4.2, c.y() + 4.2), QPointF(c.x() + 4.2, c.y() - 4.2))
-        elif kind == "moon":
-            moon = QPainterPath()
-            moon.addEllipse(c, 6.5, 6.5)
-            bite = QPainterPath()
-            bite.addEllipse(QPointF(c.x() + 3.6, c.y() - 2.8), 5.6, 5.6)
-            p.setPen(Qt.NoPen)
-            p.setBrush(col)
-            p.drawPath(moon.subtracted(bite))
-        elif kind == "sun":
-            p.setBrush(col)
-            p.drawEllipse(c, 3.4, 3.4)
-            for a in range(8):
-                t = a * math.pi / 4
-                p.drawLine(QPointF(c.x() + 5.6 * math.cos(t), c.y() + 5.6 * math.sin(t)),
-                           QPointF(c.x() + 7.6 * math.cos(t), c.y() + 7.6 * math.sin(t)))
-        elif kind == "arrow":
-            p.drawLine(QPointF(c.x() - 4, c.y() + 4), QPointF(c.x() + 4, c.y() - 4))
-            p.drawLine(QPointF(c.x() - 1, c.y() - 4), QPointF(c.x() + 4, c.y() - 4))
-            p.drawLine(QPointF(c.x() + 4, c.y() - 4), QPointF(c.x() + 4, c.y() + 1))
-        p.restore()
+    def svg(self, p, name, rect, color):
+        """Draw a Phosphor duotone icon in any colour (the SVGs paint with currentColor)."""
+        key = (name, color.name())
+        if key not in self._svgs:
+            data = (ICONS / f"{name}.svg").read_text(encoding="utf-8").replace("currentColor", color.name())
+            self._svgs[key] = QSvgRenderer(QByteArray(data.encode()))
+        self._svgs[key].render(p, rect)
+
+    def hv(self, key):
+        """0..1 hover amount for a control, eased by a spring."""
+        return max(0.0, self.hov.setdefault(key, Spring(0, 300, 26)).x)
+
+    def caption(self):
+        """What the hovered control does, shown in place of the task line."""
+        L, key = self.live, self.hot
+        if key == "dark":
+            return "resume tracking from right now" if L.get("paused") else "pause tracking. nothing is saved until you resume"
+        pct = round(100 * L.get("today_s", 0) / self.goal) if self.goal else 0
+        return {"personal": "not work? moves this session to side quests, off the invoice",
+                "open": "open the dashboard: review sessions, send the bill, see your week",
+                "today": f"billable time today, {pct}% of your {self.goal // 3600}h goal",
+                "money": "earned today at your client rates. click to make the invoice",
+                "review": "sessions waiting for bill it / nah. click to review them",
+                "mascot": "click me and i'll tell you something about your day"}.get(key)
+
+    def open_page(self, hash_=""):
+        (self.actions.get("open") or (lambda h="": webbrowser.open("http://127.0.0.1:7777/" + h)))(hash_)
 
     # ---------- interaction ----------
     def hit(self, pos):
@@ -547,6 +610,8 @@ class Island(QWidget):
     def mousePressEvent(self, e):
         if e.button() == Qt.LeftButton:
             self.pressed = self.hit(e.position())
+            if self.pressed and self.pressed != "mascot":
+                self.ripples.append((self.pressed, e.position(), time.time()))
             if not self.pressed:
                 self.click_open = True
 
@@ -563,8 +628,12 @@ class Island(QWidget):
             elif key == "mascot":
                 self.mascot.say()
                 self.click_open = True
-            elif key == "open":
-                webbrowser.open("http://127.0.0.1:7777")
+            elif key in ("open", "today"):
+                self.open_page()
+            elif key == "money":
+                self.open_page("#bill")
+            elif key == "review":
+                self.open_page("#review")
 
     def mouseDoubleClickEvent(self, e):
         if not self.hit(e.position()):

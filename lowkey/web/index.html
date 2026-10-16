@@ -258,7 +258,7 @@ async function boot(){
   $('#foot').innerHTML = `<b>0 bytes</b> of your screen time left this laptop. labels by <b>${st.model}</b> via ollama on 127.0.0.1${st.demo ? ' · <b>demo week</b>' : ''}<br>open source — read every line of what watches you.`;
   S.day = S.days.at(-1) || iso(new Date());
   await load();
-  ({'#settings': settings, '#wrapped': wrapped, '#bill': bill})[location.hash]?.();  // deep links (docs screenshots)
+  ({'#settings': settings, '#wrapped': wrapped, '#bill': bill, '#review': () => { S.filter = 'pending'; renderCards(); }})[location.hash]?.();  // deep links (docs screenshots)
 }
 
 async function load(){

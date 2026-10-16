@@ -6,6 +6,7 @@ python -m lowkey --no-island   track + dashboard, without the island
 """
 import sys
 import threading
+import webbrowser
 
 from .config import CONFIG, DEMO, LIVE, MODEL, PORT
 from .labeler import mark_personal, model_ok, refresh
@@ -24,7 +25,8 @@ def main():
     if not DEMO and "--no-island" not in sys.argv:
         try:
             from .island import Island
-            island = Island(LIVE, {"personal": mark_personal}, CONFIG["me"]["currency"],
+            open_page = lambda h="": webbrowser.open(f"http://127.0.0.1:{PORT}/{h}")
+            island = Island(LIVE, {"personal": mark_personal, "open": open_page}, CONFIG["me"]["currency"],
                             CONFIG["me"].get("daily_goal_h", 6))
         except ImportError:
             print("island off: pip install PySide6-Essentials to get it")

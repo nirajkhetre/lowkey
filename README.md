@@ -100,6 +100,31 @@ Every client gets its own little blob: a shape picked from the client's name, in
 
 <p align="center"><img src="docs/images/mascot-moods.png" alt="The creature's nine moods" width="80%"></p>
 
+### 🎛️ Every control, explained
+
+**Hover anything on the island and it tells you what it does,** in the line under the client name.
+
+| Control | Where | What it does |
+|---|---|---|
+| **the lip** | island, resting | Hover to open the pill; keep hovering (or click) to open the full card. Double-click pins it open; double-click again tucks it away. |
+| **the creature** | island | Your current client, as a blob in their colour. Click it for a one-liner about your day; click again for the next. |
+| 🌙 **go dark** | island | Pauses tracking. Nothing is saved until you resume, so the AI never sees those minutes and they can't reach an invoice. The island turns into a night sky. Not remembered after a restart. |
+| ☀️ **resume** | island, while dark | Back on the clock from this moment. |
+| 🎮 **not work** | island | Marks the current session as a side quest (personal), so it stays off the invoice. |
+| ↗ **open lowkey** | island | Opens the dashboard. |
+| 🕒 **today chip** | island | Billable time today. It fills up towards your daily goal (`daily_goal_h`). Click to open the dashboard. |
+| ₹ **money chip** | island | Earned today at your client rates. Click to make the invoice. |
+| ☑ **to review chip** | island | Sessions you haven't approved yet. It pulses while something waits; click to review them. |
+| **bill it ✅ / nah 🙅** | dashboard card | Approve a session for the invoice, or leave it off. |
+| **client dropdown / ✏️** | dashboard card | Move a session to another client, or edit its invoice line. |
+| 🧾 **why?** | dashboard card | Shows the exact windows behind the line: your receipts. |
+| 💸 **send the bill** | dashboard header | A receipt-style invoice per client from approved sessions → PDF or CSV. |
+| ✨ **wrapped** | dashboard header | Your week as a shareable card. |
+| ⚙️ **settings** | dashboard header | Island edge, taskbar behaviour, resting style, each with live previews. |
+| **← / →, ◐** | dashboard header | Change day, toggle light/dark theme. |
+
+**Keyboard in the dashboard:** `J`/`K` move · `Y` bill it · `N` nah · `E` edit · `←`/`→` day · `B` bill · `W` wrapped · `S` settings · `Esc` close.
+
 ### 🧾 The dashboard
 
 Your day as colour blocks, one card per work session, each with an invoice line written by the model.
@@ -220,6 +245,7 @@ See [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## Credits
 
+- Icons: [Phosphor Icons](https://github.com/phosphor-icons/core), duotone set, MIT licensed (licence in [`lowkey/assets/icons/LICENSE`](lowkey/assets/icons/LICENSE)).
 - Creature style inspired by the procedural avatars of [Bible Strong Avatar Lab](https://github.com/smontlouis/bible-strong-avatar-lab). lowkey's creatures are drawn by its own QPainter renderer; no code or art is taken from that project.
 - Local inference: [Ollama](https://ollama.com) running Google's open-weight [Gemma 4](https://ai.google.dev/gemma).
 
