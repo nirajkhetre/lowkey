@@ -17,8 +17,7 @@ from .mascot import Mascot
 
 TXT, DIM, FAINT = QColor(245, 245, 245), QColor(150, 150, 150), QColor(255, 255, 255, 16)
 GREY = QColor("#7a7a7a")
-NIGHT, DUSK, AURORA, SUN = QColor("#9B8CFF"), QColor("#FF7AD9"), QColor("#4FD1C5"), QColor("#FFD23F")  # "off the record"
-TEAL, AMBER = QColor("#2FD6C0"), QColor("#FFB648")
+NIGHT, DUSK, AURORA = QColor("#9B8CFF"), QColor("#FF7AD9"), QColor("#4FD1C5")  # "off the record"
 
 
 def mix(a, b, t):
@@ -442,7 +441,7 @@ class Island(QWidget):
         if cap:
             src, text, ink, icon = "cap:" + self.hot, cap, QColor(236, 238, 245), "info"
         elif talking:
-            src, text, ink, icon = "quip:" + self.quip, self.quip, QColor(255, 236, 170), "bubble"
+            src, text, ink, icon = "quip:" + self.quip, self.quip, QColor(244, 244, 248), "bubble"
         else:
             src, text, ink, icon = "task", sub, QColor(214, 214, 220), None
         if src != self.line_src:
@@ -459,7 +458,7 @@ class Island(QWidget):
         if icon == "info":
             jelly.info(p, QPointF(tx + 8, y + 71), 8, col if col.lightness() > 60 else QColor("#7AA2FF"))
         elif icon == "bubble":
-            jelly.bubble(p, QPointF(tx + 9, y + 70), 8.5, QColor(255, 226, 140))
+            jelly.bubble(p, QPointF(tx + 9, y + 70), 8.5, jelly.PORCELAIN)
         p.setPen(ink)
         p.setFont(font(13.5, QFont.Medium))
         p.drawText(QRectF(tx + (24 if icon else 0), y + 62, b.width() - 40 - (24 if icon else 0), 40),
@@ -500,7 +499,7 @@ class Island(QWidget):
                 p.restore()
             edge = None
             if key == "review" and pending:
-                edge = QColor(AMBER.red(), AMBER.green(), AMBER.blue(), int(60 + 110 * (math.sin(now * 2.4) + 1) / 2))
+                edge = QColor(col.red(), col.green(), col.blue(), int(50 + 100 * (math.sin(now * 2.4) + 1) / 2))
             if h > 0.01:
                 edge = QLinearGradient(r.topLeft(), r.bottomRight())
                 edge.setColorAt(0, QColor(col.red(), col.green(), col.blue(), int(230 * h)))
@@ -510,12 +509,13 @@ class Island(QWidget):
                 p.setBrush(Qt.NoBrush)
                 p.drawRoundedRect(r.adjusted(0.7, 0.7, -0.7, -0.7), 13.3, 13.3)
             ic = QPointF(r.left() + 17, r.center().y())
+            tint = mix(jelly.PORCELAIN, col, 0.85 * h)
             if icon == "clock":
-                jelly.clock(p, ic, 9.5, now, col if col.lightness() > 60 else QColor("#7AA2FF"))
+                jelly.clock(p, ic, 9.5, now, tint)
             elif icon == "coin":
-                jelly.coin(p, ic, 9.5, now, self.coin_t0, self.cur)
-            else:
-                jelly.check(p, ic, 9.5, now, AMBER if pending else QColor("#6b6b78"), bool(pending))
+                jelly.coin(p, ic, 9.5, now, self.coin_t0, self.cur, tint)
+            else:  # the one chip that asks for attention wears the theme colour
+                jelly.check(p, ic, 9.5, now, col if pending else QColor("#6b6b78"), bool(pending))
             p.setFont(chip_font)  # the coin draws its own ₹, so set ours again
             p.setPen(QColor(238, 238, 238))
             p.drawText(r.adjusted(32, 0, -10, 0), Qt.AlignVCenter | Qt.AlignLeft, text)
@@ -533,11 +533,10 @@ class Island(QWidget):
             fm = QFontMetricsF(f)
             if key == "dark":
                 w = fm.horizontalAdvance("go dark") * (1 - d) + fm.horizontalAdvance("resume") * d + 58
-                accent = mix(NIGHT, SUN, d)
-            elif key == "personal":
-                w, accent = fm.horizontalAdvance("not work") + 58, TEAL
             else:
-                w, accent = fm.horizontalAdvance("open lowkey") + 58, col
+                w = fm.horizontalAdvance("not work" if key == "personal" else "open lowkey") + 58
+            accent = mix(QColor(255, 255, 255), col, h)          # neutral at rest, the theme colour on hover
+            tint = mix(jelly.PORCELAIN, col, 0.85 * h)           # icons follow the same rule
             rect = QRectF(bx, y + 186, w, 38)
             self.buttons[key] = rect
             lift = 1.6 * h
@@ -551,8 +550,8 @@ class Island(QWidget):
             glass.setColorAt(0, QColor(255, 255, 255, int(24 + 12 * h)))
             glass.setColorAt(1, QColor(255, 255, 255, int(6 + 6 * h)))
             edge = QLinearGradient(0, r2.top(), 0, r2.bottom())
-            edge.setColorAt(0, QColor(accent.red(), accent.green(), accent.blue(), int(110 + 130 * h)))
-            edge.setColorAt(1, QColor(accent.red(), accent.green(), accent.blue(), int(30 + 70 * h)))
+            edge.setColorAt(0, QColor(accent.red(), accent.green(), accent.blue(), int(70 + 170 * h)))
+            edge.setColorAt(1, QColor(accent.red(), accent.green(), accent.blue(), int(18 + 80 * h)))
             p.setPen(QPen(QBrush(edge), 1.25))
             p.setBrush(glass)
             p.drawRoundedRect(r2.adjusted(0.6, 0.6, -0.6, -0.6), rad - 0.6, rad - 0.6)
@@ -566,24 +565,24 @@ class Island(QWidget):
                 p.translate(ic)
                 p.rotate(-16 * h - 90 * d)
                 p.translate(-ic.x(), -ic.y())
-                jelly.moon(p, ic, 12.5, now)
+                jelly.moon(p, ic, 12.5, now, tint)
                 p.restore()
                 p.save()
                 p.setOpacity(base * d)
                 p.translate(ic)
                 p.rotate(90 * (1 - d))
                 p.translate(-ic.x(), -ic.y())
-                jelly.sun(p, ic, 12.5 * (1 + 0.1 * h), now * 0.4)
+                jelly.sun(p, ic, 12.5 * (1 + 0.1 * h), now * 0.4, tint)
                 p.restore()
             elif key == "personal":  # tilts like it's being picked up
                 p.save()
                 p.translate(ic)
                 p.rotate(-12 * h)
                 p.translate(-ic.x(), -ic.y())
-                jelly.gamepad(p, ic, 12.5, now, TEAL)
+                jelly.gamepad(p, ic, 12.5, now, tint)
                 p.restore()
             else:  # the arrow slides towards where it will take you
-                jelly.open_tile(p, ic, 12.5, now, col, h)
+                jelly.open_tile(p, ic, 12.5, now, tint, h)
 
             p.setFont(f)
             p.setPen(TXT)

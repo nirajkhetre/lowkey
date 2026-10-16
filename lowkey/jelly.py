@@ -9,7 +9,8 @@ import time
 from PySide6.QtCore import QPointF, QRectF, Qt
 from PySide6.QtGui import QColor, QFont, QPainterPath, QPen, QRadialGradient
 
-INK = QColor(28, 22, 48)
+INK = QColor(28, 26, 36)
+PORCELAIN = QColor("#E9E9F0")  # the neutral jelly every icon uses at rest
 
 
 def jelly(p, path, base, shadow=True):
@@ -47,7 +48,7 @@ def stroke(p, color, w):
     p.setBrush(Qt.NoBrush)
 
 
-def moon(p, c, s, now, color=QColor("#B9A8FF")):
+def moon(p, c, s, now, color=PORCELAIN):
     body = QPainterPath()
     body.addEllipse(c, s * 0.82, s * 0.82)
     bite = QPainterPath()
@@ -62,12 +63,12 @@ def moon(p, c, s, now, color=QColor("#B9A8FF")):
         star(p, QPointF(c.x() + s * dx, c.y() + s * dy), s * r * tw, QColor(255, 255, 255, 235))
 
 
-def sun(p, c, s, now, color=QColor("#FFD23F")):
+def sun(p, c, s, now, color=PORCELAIN):
     p.save()
     p.translate(c)
     p.rotate(now * 28)
     p.setPen(Qt.NoPen)
-    p.setBrush(QColor("#FFB33C"))
+    p.setBrush(color.darker(118))
     for k in range(8):
         p.rotate(45)
         p.drawRoundedRect(QRectF(-s * 0.09, -s * 0.98, s * 0.18, s * 0.3), s * 0.09, s * 0.09)
@@ -75,18 +76,14 @@ def sun(p, c, s, now, color=QColor("#FFD23F")):
     body = QPainterPath()
     body.addEllipse(c, s * 0.58, s * 0.58)
     jelly(p, body, color)
-    stroke(p, QColor(110, 60, 10), s * 0.1)  # happy ^ ^
+    stroke(p, INK, s * 0.1)  # happy ^ ^
     for side in (-1, 1):
         a = QPainterPath(QPointF(c.x() + side * s * 0.22 - s * 0.1, c.y() + s * 0.02))
         a.quadTo(c.x() + side * s * 0.22, c.y() - s * 0.14, c.x() + side * s * 0.22 + s * 0.1, c.y() + s * 0.02)
         p.drawPath(a)
-    p.setPen(Qt.NoPen)
-    p.setBrush(QColor(255, 120, 150, 120))  # blush
-    for side in (-1, 1):
-        p.drawEllipse(QPointF(c.x() + side * s * 0.36, c.y() + s * 0.2), s * 0.09, s * 0.06)
 
 
-def gamepad(p, c, s, now, color=QColor("#2FD6C0")):
+def gamepad(p, c, s, now, color=PORCELAIN):
     pad = QPainterPath()
     pad.addRoundedRect(QRectF(c.x() - s * 0.88, c.y() - s * 0.48, s * 1.76, s * 0.88), s * 0.42, s * 0.42)
     for side in (-1, 1):
@@ -95,13 +92,11 @@ def gamepad(p, c, s, now, color=QColor("#2FD6C0")):
         pad = pad.united(grip)
     jelly(p, pad, color)
     p.setPen(Qt.NoPen)
-    p.setBrush(QColor(255, 255, 255, 235))
+    p.setBrush(INK if color.lightness() > 150 else QColor(255, 255, 255, 235))
     dx, dy, arm, th = c.x() - s * 0.45, c.y() - s * 0.04, s * 0.27, s * 0.11
     p.drawRoundedRect(QRectF(dx - arm, dy - th / 2, arm * 2, th), th / 2, th / 2)
     p.drawRoundedRect(QRectF(dx - th / 2, dy - arm, th, arm * 2), th / 2, th / 2)
-    p.setBrush(QColor("#FFF6A8"))
     p.drawEllipse(QPointF(c.x() + s * 0.36, c.y() - s * 0.13), s * 0.1, s * 0.1)
-    p.setBrush(QColor("#A8F0FF"))
     p.drawEllipse(QPointF(c.x() + s * 0.56, c.y() + s * 0.06), s * 0.1, s * 0.1)
 
 
@@ -134,14 +129,14 @@ def clock(p, c, s, now, color):
     p.drawEllipse(c, s * 0.08, s * 0.08)
 
 
-def coin(p, c, s, now, flip_t0=0.0, symbol="₹"):
+def coin(p, c, s, now, flip_t0=0.0, symbol="₹", color=PORCELAIN):
     age = now - flip_t0
     squash = abs(math.cos(min(age, 0.9) / 0.9 * 2 * math.pi)) if age < 0.9 else 1.0  # flips once when you earn
     w = s * 0.82 * max(0.12, squash)
     face = QPainterPath()
     face.addEllipse(c, w, s * 0.82)
-    jelly(p, face, QColor("#FFC93C"))
-    stroke(p, QColor("#C9861A"), s * 0.09)
+    jelly(p, face, color)
+    stroke(p, color.darker(135), s * 0.09)
     p.drawEllipse(c, w * 0.8, s * 0.66)
     if squash > 0.45:
         f = QFont()
@@ -149,7 +144,7 @@ def coin(p, c, s, now, flip_t0=0.0, symbol="₹"):
         f.setPixelSize(max(6, round(s * 0.95)))
         f.setWeight(QFont.Black)
         p.setFont(f)
-        p.setPen(QColor("#A8650C"))
+        p.setPen(INK if color.lightness() > 150 else color.darker(200))
         p.save()
         p.translate(c)
         p.scale(max(0.12, squash), 1)
