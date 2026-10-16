@@ -49,17 +49,17 @@ def foreground():
     lii = LII(ctypes.sizeof(LII), 0)
     u32.GetLastInputInfo(ctypes.byref(lii))
     idle = (k32.GetTickCount() - lii.dwTime) / 1000
-    return app, buf.value, idle
+    return app, buf.value, idle, pid.value
 
 
 def track():
     never = [s.lower() for s in CONFIG.get("never_track", [])]
     while True:
         try:
-            app, title, idle = foreground()
+            app, title, idle, pid = foreground()
             LIVE["idle"] = idle
             text = f"{app} {title}".lower()
-            if title and idle < AFK_S and not LIVE["paused"] and not any(n in text for n in never):
+            if title and pid != os.getpid() and idle < AFK_S and not LIVE["paused"] and not any(n in text for n in never):
                 ev = {"ts": round(time.time()), "dur": SAMPLE_S, "app": app, "title": title[:200]}
                 day = datetime.now().strftime("%Y-%m-%d")
                 with open(DATA / f"activity-{day}.jsonl", "a", encoding="utf-8") as f:
