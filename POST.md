@@ -66,7 +66,7 @@ Try the bundled demo week without tracking anything: `python lowkey.py --demo`.
 
 ## How I Built It
 
-The whole thing is about 700 lines, mostly Python standard library plus one HTML file. No Electron, no framework, no cloud account.
+The whole thing is about 850 lines, mostly Python standard library plus one HTML file. No Electron, no framework, no cloud account.
 
 **1. The tracker (stdlib `ctypes`, no dependencies).**
 - Every 5 seconds it reads the foreground window title and process name, and how long since the last keypress.
