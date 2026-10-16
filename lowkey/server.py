@@ -6,11 +6,10 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
-from .config import CONFIG, DATA, DEMO, LIVE, MODEL, PORT, SETTINGS, load, lock, save
+from .config import CONFIG, DATA, DEMO, LIVE, MODEL, PORT, load, lock, save, update_settings
 from .labeler import day_sessions, model_ok
 
 WEB = Path(__file__).parent / "web"
-CHOICES = {"edge": ("top", "bottom", "left", "right"), "taskbar": ("below", "over"), "rest": ("lip", "pill")}
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -60,10 +59,7 @@ class Handler(SimpleHTTPRequestHandler):
                 save("edits.json", edits)
             return self.send_json({"ok": True})
         if self.path == "/api/settings":
-            e = self.body()
-            LIVE["settings"].update({k: v for k, v in e.items() if v in CHOICES.get(k, ())})
-            SETTINGS.write_text(json.dumps(LIVE["settings"], indent=1), encoding="utf-8")
-            return self.send_json({"ok": True, "settings": LIVE["settings"]})
+            return self.send_json({"ok": True, "settings": update_settings(self.body())})
         self.send_json({"error": "not found"}, 404)
 
 

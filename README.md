@@ -86,6 +86,9 @@ A notch tucked into the edge of your screen, glowing in your current client's co
   - today's totals
   - **go dark** (pause tracking: the island turns into a night sky, off the record) · **not work** (mark this session personal, with 5 s to undo) · **open lowkey**
 - **The pin** (or a double-click) keeps it out. It never takes keyboard focus, so it can't interrupt your typing.
+- **The gear** opens island settings right inside the island. Hover an option and a little screen pops out beside it, acting out exactly where the island will go; click and it moves there for real, then waits open for you.
+
+<p align="center"><img src="docs/images/island-settings.png" alt="Island settings inside the island, with a hover preview acting out the move to the left edge" width="100%"></p>
 
 <p align="center"><img src="docs/images/island-details.png" alt="One primary action, undo instead of a confirm dialog, and disabled controls that say why" width="100%"></p>
 
@@ -113,6 +116,7 @@ Every client gets its own little blob: a shape picked from the client's name, in
 | 🌙 **go dark** | island | Pauses tracking. Nothing is saved until you resume, so the AI never sees those minutes and they can't reach an invoice. The island turns into a night sky. Not remembered after a restart. |
 | ☀️ **resume** | island, while dark | Back on the clock from this moment. |
 | 📌 **pin** | island, open card | Keeps the pill out instead of tucking it away. Click again to unpin. |
+| ⚙️ **island settings** | island, open card | Which edge it lives on, below or over the taskbar, tucked or a pill at rest. Hover an option for an animated preview of exactly where it goes; click to apply. The ‹ goes back. |
 | 🎮 **not work** | island | Marks the current session as a side quest (personal), so it stays off the invoice. Undo stays on offer for 5 s; the shrinking underline is the countdown. Dimmed when there's nothing to move (already personal, or gone dark); hover it to see why. |
 | ↗ **open lowkey** | island | Opens the dashboard. |
 | 🕒 **today chip** | island | Billable time today. It fills up towards your daily goal (`daily_goal_h`). Click to open the dashboard. |

@@ -7,7 +7,7 @@ import math
 import time
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainterPath, QPen, QRadialGradient
+from PySide6.QtGui import QColor, QFont, QPainterPath, QPen, QRadialGradient, QTransform
 
 INK = QColor(28, 26, 36)
 PORCELAIN = QColor("#E9E9F0")  # the neutral jelly every icon uses at rest
@@ -178,6 +178,19 @@ def pin(p, c, s, color, tilt=45.0):
     head.addRoundedRect(QRectF(-s * 0.56, -s * 0.16, s * 1.12, s * 0.3), s * 0.15, s * 0.15)
     jelly(p, head.simplified(), color, shadow=False)
     p.restore()
+
+
+def gear(p, c, s, color, turn=0.0):
+    """A cog with eight soft teeth; it turns a notch when you hover it."""
+    cog = QPainterPath()
+    cog.addEllipse(c, s * 0.64, s * 0.64)
+    tooth = QPainterPath()
+    tooth.addRoundedRect(QRectF(-s * 0.17, -s * 0.94, s * 0.34, s * 0.42), s * 0.1, s * 0.1)
+    for k in range(8):
+        cog = cog.united(QTransform().translate(c.x(), c.y()).rotate(turn + k * 45).map(tooth))
+    hub = QPainterPath()
+    hub.addEllipse(c, s * 0.26, s * 0.26)
+    jelly(p, cog.subtracted(hub), color, shadow=False)
 
 
 def info(p, c, s, color):

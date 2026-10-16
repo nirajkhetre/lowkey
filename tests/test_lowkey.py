@@ -62,6 +62,20 @@ def test_rules_and_support():
     assert labeler.rules(defaultdict(float, {("chrome.exe", "YouTube"): 60}))["client"] == "Personal"
 
 
+def test_settings_only_take_known_choices():
+    from lowkey import config
+    real, before = config.SETTINGS, dict(LIVE["settings"])
+    config.SETTINGS = Path(tempfile.mkdtemp()) / "settings.json"
+    try:
+        out = config.update_settings({"edge": "left", "rest": "sideways", "evil": "x"})
+        assert out["edge"] == "left" and out["rest"] == before["rest"] and "evil" not in out
+        assert json.loads(config.SETTINGS.read_text(encoding="utf-8"))["edge"] == "left"
+    finally:
+        config.SETTINGS = real
+        LIVE["settings"].clear()
+        LIVE["settings"].update(before)
+
+
 def test_merge_joins_consecutive_same_client_slots():
     lab = lambda c: {"client": c, "task": f"work for {c}", "billable": c != "Personal", "by": "test"}
     w = lambda: defaultdict(float, {("a", "b"): 300})

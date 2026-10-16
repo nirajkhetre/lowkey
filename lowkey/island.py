@@ -3,6 +3,7 @@
 PySide6 + QPainter: anti-aliased, per-pixel transparent, never takes keyboard focus.
 States: lip (tucked away) -> pill (hover) -> open (keep hovering or click), plus "toast" pop-outs.
 The pin button (or a double-click) keeps the pill out instead of tucking it away.
+The gear opens island settings inside the island; hovering an option pops out a tiny screen acting it out.
 """
 import ctypes, math, subprocess, sys, time, webbrowser
 
@@ -13,7 +14,7 @@ from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QFontMetricsF, QFontDa
 from PySide6.QtWidgets import QApplication, QWidget
 
 from . import jelly
-from .config import PERSONAL
+from .config import PERSONAL, update_settings
 from .mascot import Mascot
 
 TXT, DIM, FAINT = QColor(245, 245, 245), QColor(150, 150, 150), QColor(255, 255, 255, 16)
@@ -23,10 +24,39 @@ NIGHT, DUSK, AURORA = QColor("#9B8CFF"), QColor("#FF7AD9"), QColor("#4FD1C5")  #
 
 def mix(a, b, t):
     return QColor(*(round(x + (y - x) * t) for x, y in zip(a.getRgb()[:3], b.getRgb()[:3])))
-SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 252)}
+def ease(u):
+    u = max(0.0, min(1.0, u))
+    return u * u * (3 - 2 * u)
+
+
+def back(u):
+    """Ease out with a little overshoot, like the island's springs."""
+    u = max(0.0, min(1.0, u)) - 1
+    return 1 + 2.7 * u ** 3 + 1.7 * u ** 2
+
+
+def lerp_rect(a, b, u):
+    return QRectF(*(x + (y - x) * u for x, y in zip(a.getRect(), b.getRect())))
+
+
+SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 252), "settings": (440, 230)}
 FONTS = Path(__file__).parent / "web" / "fonts"  # Bricolage Grotesque, Instrument Serif, Geist Mono (all OFL)
 EAR, PAD = 10, 24  # concave ears where the notch meets the screen edge; room for the soft shadow
 UNDO_S = 5.0  # how long "not work" can be undone
+EDGES = ("top", "bottom", "left", "right")
+# settings rows: key, row label, then (value, segment label, preview title, what it does)
+SETTINGS_UI = (
+    ("edge", "lives on", (("top", "top", "top edge", "hangs from the top edge, like a MacBook notch"),
+                          ("bottom", "bottom", "bottom edge", "sits on the bottom edge, by your taskbar"),
+                          ("left", "left", "left edge", "peeks out from the left side of your screen"),
+                          ("right", "right", "right edge", "peeks out from the right side of your screen"))),
+    ("taskbar", "taskbar", (("below", "below it", "below the taskbar", "hangs below the taskbar, never covers it"),
+                            ("over", "over it", "over the taskbar", "sits over the taskbar: the true notch look"))),
+    ("rest", "at rest", (("lip", "tucked", "tucked away", "just a glowing lip until you hover"),
+                         ("pill", "pill", "always a pill", "client, timer and money always in view"))))
+OPTION = {(k, o[0]): o for k, _, opts in SETTINGS_UI for o in opts}
+PEEK_W, PEEK_H, PEEK_M, NUB = 212, 160, 18, 7  # preview card, margin for its shadow, the arrow pointing at the option
+MINI = {"lip": (0.2, 0.03), "pill": (0.42, 0.085), "open": (0.5, 0.3)}  # island sizes on the tiny screen
 
 
 def fmt(s):
@@ -83,6 +113,27 @@ class Spring:
         self.x, self.v = self.target, 0.0
 
 
+class Peek(QWidget):
+    """The hover preview beside a settings option. Its own window, so it can float outside the island,
+    and transparent to the mouse, so it never steals the hover from the option it explains."""
+
+    def __init__(self, island):
+        super().__init__()
+        self.island = island
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool | Qt.WindowDoesNotAcceptFocus
+                            | Qt.NoDropShadowWindowHint | Qt.WindowTransparentForInput)
+        for a in (Qt.WA_TranslucentBackground, Qt.WA_ShowWithoutActivating, Qt.WA_TransparentForMouseEvents,
+                  Qt.WA_MacAlwaysShowToolWindow):
+            self.setAttribute(a)
+        self.resize(PEEK_W + 2 * PEEK_M, PEEK_H + 2 * PEEK_M)
+
+    def paintEvent(self, _):
+        p = QPainter(self)
+        p.setRenderHints(QPainter.Antialiasing | QPainter.TextAntialiasing)
+        self.island.draw_peek(p, time.time())
+        p.end()
+
+
 class Island(QWidget):
     def __init__(self, live, actions, currency="₹", goal_h=6):
         self.app = QApplication.instance() or QApplication([])
@@ -97,7 +148,7 @@ class Island(QWidget):
         self.setAttribute(Qt.WA_MacAlwaysShowToolWindow)  # macOS hides tool windows when the app is inactive
         self.setMouseTracking(True)
         self.W, self.H = Spring(SIZES["lip"][0]), Spring(SIZES["lip"][1])
-        self.fade = {m: Spring(0, 320, 34) for m in ("pill", "toast", "open")}
+        self.fade = {m: Spring(0, 320, 34) for m in ("pill", "toast", "open", "settings")}
         self.dark = Spring(0, 90, 19)  # 0 = on the record, 1 = midnight
         self.mode, self.force, self.pinned, self.click_open = "lip", None, False, False
         self.hover_since = self.left_at = None
@@ -106,12 +157,18 @@ class Island(QWidget):
         self.task, self.task_t0 = "", 0.0
         self.mascot, self.quip = Mascot(live, self.goal, currency), None
         self.buttons, self.hot, self.pressed = {}, None, None
-        self.edge, self.over, self.rest, self.raised_at = "top", False, "lip", 0.0
+        self.edge, self.over, self.rest, self.raised_at = self.want_edge(), False, "lip", 0.0
         self.hov, self.prs = {}, {}  # hover and press springs per control
-        self.line_src, self.line_t0 = None, 0.0
+        self.lines = {}  # per view: [what the info line shows, when it started]
         self.cap_key, self.hot_t = None, 0.0  # the caption follows the cursor with a little hover intent
         self.undo, self.undo_until, self.disabled = None, 0.0, set()
         self.pin_s = Spring(0, 260, 20)
+        self.in_settings, self.hold_until = False, 0.0  # after a change moves it, it waits open for you
+        self.notice, self.notice_until = "", 0.0
+        self.thumbs = {}  # segmented-control thumbs, sliding between options
+        self.slide, self.slide_edge = Spring(0, 220, 26), None  # glides when the taskbar mode moves it
+        self.peek, self.peek_along, self.peek_key, self.peek_t0, self.nub = Spring(0, 340, 30), None, None, 0.0, 0.0
+        self.peek_win = Peek(self)
         self.calm = self.mascot.calm = reduced_motion()
         self.coin_t0, self.last_money = 0.0, None
         self.money_view = Spring(0, 60, 15)  # the ₹ chip counts up
@@ -160,31 +217,52 @@ class Island(QWidget):
         resting = "pill" if self.pinned or self.rest == "pill" else "lip"
         base = "toast" if now < self.toast_until else resting
         if self.frameGeometry().contains(QCursor.pos()):
-            self.left_at = None
+            self.left_at, self.hold_until = None, 0.0
             self.hover_since = self.hover_since or now
             dwell = now - self.hover_since
-            if self.click_open or dwell > 0.6:
-                return "open"
+            if self.click_open or dwell > 0.6 or self.mode in ("open", "settings"):
+                self.click_open = True  # once open, it stays open while you're on it
+                return "settings" if self.in_settings else "open"
             return "pill" if dwell > 0.12 else self.mode
-        self.hover_since, self.click_open = None, False
+        self.hover_since = None
         self.left_at = self.left_at or now
-        return base if now - self.left_at > 0.35 else self.mode  # small grace so it doesn't flicker
+        if now - self.left_at > 0.35 and now > self.hold_until:  # small grace so it doesn't flicker
+            self.click_open = self.in_settings = False
+            return base
+        return self.mode
+
+    def want_edge(self):
+        e = (self.live.get("settings") or {}).get("edge")
+        return e if e in EDGES else "top"
 
     def tick(self):
         now = time.time()
         dt, self.last = min(0.033, now - self.last), now
-        st = self.live.get("settings") or {}
-        self.edge = st.get("edge", "top") if st.get("edge") in ("top", "bottom", "left", "right") else "top"
+        st, L = self.live.get("settings") or {}, self.live
         self.over, self.rest = st.get("taskbar") == "over", st.get("rest", "lip")
         self.watch_events(now)
         self.quip = self.mascot.update(now)
+        self.disabled = {"personal"} if (L.get("paused") or L.get("client") in (None, "", PERSONAL)) else set()
+        if sys.platform == "darwin":
+            self.disabled.add("set:taskbar:over")  # macOS keeps its menu bar on top
         self.mode = self.pick_mode(now)
         tw, th = SIZES[self.mode]
         if self.mode == "lip" and self.edge in ("left", "right"):
             tw, th = th, tw  # a side lip stands upright
+        moving = self.want_edge() != self.edge
+        if moving:  # a new edge: tuck into the old one, then bloom out of the new one
+            side = self.edge in ("top", "bottom")
+            th, tw = (0, tw) if side else (th, 0)
+            if (self.H.x if side else self.W.x) < 1.5:
+                self.edge = self.want_edge()
+                self.W.x = self.H.x = self.W.v = self.H.v = 0.0
         self.W.target, self.H.target = tw, th
         for m, s in self.fade.items():
-            s.target = 1.0 if m == self.mode else 0.0
+            s.target = 1.0 if m == self.mode and not moving else 0.0
+        for thumb in self.thumbs.values():
+            thumb.step(dt)
+            if self.calm:
+                thumb.snap()
         self.dark.target = 1.0 if self.live.get("paused") else 0.0
         self.money_view.target = float(self.live.get("money", 0))
         if self.last_money is not None and self.live.get("money", 0) > self.last_money + 0.5:
@@ -203,31 +281,38 @@ class Island(QWidget):
         for k, sp in self.prs.items():
             sp.target = 0.95 if self.pressed == k else 1.0  # squish while held, springs back on release
             sp.step(dt)
-        for s in (self.W, self.H, self.dark, *self.fade.values()):
+        for s in (self.W, self.H, self.dark, self.slide, *self.fade.values()):
             s.step(dt)
         self.place()
         self.update()
+        self.place_peek(now, dt, moving)
 
-    def place(self):
+    def place(self, snap=False):
         """Attach to the chosen edge. By default the island hangs from the *work area*, so a taskbar on
         the same edge (or the macOS menu bar) pushes it inward instead of covering it. With taskbar="over"
-        it sits on the physical screen edge and is re-raised above the taskbar on Windows."""
+        it sits on the physical screen edge and is re-raised above the taskbar on Windows. Switching between
+        the two glides on a spring instead of jumping."""
         scr = QGuiApplication.primaryScreen()
         full, work = scr.geometry(), scr.availableGeometry()
         side = ("top" if work.top() > full.top() else "bottom" if work.bottom() < full.bottom()
                 else "left" if work.left() > full.left() else "right" if work.right() < full.right() else "none")
         self.live["taskbar"] = side
-        edge, w, h = self.edge, self.W.x, max(1.0, self.H.x)
+        edge, w, h = self.edge, max(0.0, self.W.x), max(1.0, self.H.x)
         over = self.over and side == edge
         a = full if over else work
+        self.slide.target = {"top": a.top(), "bottom": a.bottom() + 1, "left": a.left(), "right": a.right() + 1}[edge]
+        if snap or self.slide_edge != edge:
+            self.slide_edge = edge
+            self.slide.snap()
+        line = self.slide.x
         if edge in ("top", "bottom"):
             ww, wh = w + 2 * (EAR + PAD), h + PAD
             x = a.center().x() - ww / 2
-            y = a.top() if edge == "top" else a.bottom() + 1 - wh
+            y = line if edge == "top" else line - wh
         else:
             ww, wh = w + PAD, h + 2 * (EAR + PAD)
             y = a.center().y() - wh / 2
-            x = a.left() if edge == "left" else a.right() + 1 - ww
+            x = line if edge == "left" else line - ww
         self.setGeometry(round(x), round(y), round(ww), round(wh))
         if over and sys.platform == "win32" and time.time() - self.raised_at > 0.4:
             # the taskbar is also "always on top"; whoever was raised last wins, so keep winning
@@ -236,11 +321,12 @@ class Island(QWidget):
 
     def settle(self):
         """Jump straight to the target state (used for screenshots/tests)."""
+        self.edge = self.want_edge()
         self.tick()
         self.mascot.snap()
-        for s in (self.W, self.H, self.dark, *self.fade.values()):
+        for s in (self.W, self.H, self.dark, self.peek, *self.fade.values(), *self.thumbs.values()):
             s.snap()
-        self.place()
+        self.place(snap=True)
 
     # ---------- painting ----------
     def body(self):
@@ -298,11 +384,14 @@ class Island(QWidget):
         if lip > 0.02:
             self.draw_lip(p, b, now, min(1, lip))
         self.buttons = {}
-        for mode, draw in (("pill", self.draw_pill), ("toast", self.draw_toast), ("open", self.draw_open)):
+        for mode, draw in (("pill", self.draw_pill), ("toast", self.draw_toast), ("open", self.draw_open),
+                           ("settings", self.draw_settings)):
             a = max(0.0, min(1.0, self.fade[mode].x))
             if a > 0.02:
                 p.setOpacity(a)
+                kept, self.buttons = self.buttons, {}
                 draw(p, b, now)
+                self.buttons = {**kept, **self.buttons} if mode == self.mode else kept  # a fading view isn't clickable
         p.end()
 
     def draw_night(self, p, b, now, a):
@@ -417,9 +506,9 @@ class Island(QWidget):
         p.setBrush(QColor(c.red(), c.green(), c.blue(), 200))
         p.drawRoundedRect(QRectF(b.left() + 24, b.bottom() - 6, (b.width() - 48) * left, 2.5), 1.25, 1.25)
 
-    def row(self, p, k):
+    def row(self, p, k, view="open"):
         """Stagger: row k fades/slides in a little after row k-1 (fade only under reduced motion)."""
-        a = max(0.0, min(1.0, self.fade["open"].x))
+        a = max(0.0, min(1.0, self.fade[view].x))
         t = max(0.0, min(1.0, (a - k * 0.09) / (1 - k * 0.09)))
         p.setOpacity(t)
         return 0 if self.calm else (1 - t) * 12
@@ -444,13 +533,20 @@ class Island(QWidget):
         p.drawEllipse(pin)
         k = max(0.0, min(1.0, self.pin_s.x))
         jelly.pin(p, pin.center(), 10.5, mix(jelly.PORCELAIN, col, k), 40 * (1 - self.pin_s.x) - 10 * h)
+        h = self.hv("gear")
+        gear = QRectF(pin.left() - 8 - 28, y + 22, 28, 28)
+        self.buttons["gear"] = gear
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(255, 255, 255, int(14 + 22 * h)))
+        p.drawEllipse(gear)
+        jelly.gear(p, gear.center(), 10, mix(jelly.PORCELAIN, col, 0.85 * h), 30 * h)  # turns a notch on hover
 
         label = "OFF RECORD" if paused else "BREAK" if L.get("idle", 0) > 300 else "LIVE"
         bf = font(10.5, QFont.Bold, NUM)
         bf.setLetterSpacing(QFont.AbsoluteSpacing, 0.6)
         p.setFont(bf)
         bw = QFontMetricsF(p.font()).horizontalAdvance(label) + 34
-        badge = QRectF(pin.left() - 8 - bw, y + 24, bw, 24)
+        badge = QRectF(gear.left() - 8 - bw, y + 24, bw, 24)
         if paused:
             fill = QLinearGradient(badge.topLeft(), badge.topRight())
             fill.setColorAt(0, QColor(155, 140, 255, 70))
@@ -492,28 +588,9 @@ class Island(QWidget):
             src, text, ink, icon = "quip:" + self.quip, self.quip, QColor(244, 244, 248), "bubble"
         else:
             src, text, ink, icon = "task", sub, QColor(214, 214, 220), None
-        if src != self.line_src:
-            self.line_src, self.line_t0 = src, now
-        age = now - self.line_t0
-        ease = 1 - (1 - min(1.0, age / 0.22)) ** 3          # fade + slide in over 220 ms
-        if self.calm:
-            pass                                            # reduced motion: a plain fade, no typing
-        elif icon:
-            text = text[: int(age * 90)]                    # captions and replies type themselves out
-        elif sub == self.task:
-            text = sub[: int((now - self.task_t0) * 80)]
         base = p.opacity()
-        p.setOpacity(base * ease)
-        tx = x + (0 if self.calm else (1 - ease) * 10)
-        if icon == "info":
-            jelly.info(p, QPointF(tx + 8, y + 73), 8, col if col.lightness() > 60 else QColor("#7AA2FF"))
-        elif icon == "bubble":
-            jelly.bubble(p, QPointF(tx + 9, y + 72), 8.5, jelly.PORCELAIN)
-        p.setPen(ink)
-        f = font(13.5, QFont.Medium)
-        p.setFont(f)
-        line = QRectF(tx + (24 if icon else 0), y + 64, W - (24 if icon else 0), 38)
-        p.drawText(line, Qt.TextWordWrap | Qt.AlignLeft | Qt.AlignTop, text)
+        line, f = self.info_line(p, "open", src, text, ink, icon, x, y + 64, W, col, now,
+                                 self.task_t0 if src == "task" and sub == self.task else None)
         if undo:  # the underline doubles as the countdown: it shrinks until the offer expires
             ux = line.left() + QFontMetricsF(f).horizontalAdvance("moved to side quests. ")
             uf = font(13.5, QFont.Bold)
@@ -587,7 +664,6 @@ class Island(QWidget):
         y = y0 + self.row(p, 4)
         d = max(0.0, min(1.0, self.dark.x))  # 0 = "go dark", 1 = "resume": the label and icon morph between them
         base = p.opacity()
-        self.disabled = {"personal"} if (paused or L.get("client") in (None, "", PERSONAL)) else set()
         for bx, key in zip(cols, ("dark", "personal", "open")):
             off = key in self.disabled
             h, pr = (0.0, 1.0) if off else (self.hv(key), self.pv(key))
@@ -734,6 +810,390 @@ class Island(QWidget):
         p.setPen(QColor(255, 255, 255, 140))  # quiet but still readable
         p.drawText(QRectF(rect.left(), rect.top() - 4, 80, 12), Qt.AlignLeft | Qt.AlignVCenter, "60m ago")
 
+    def info_line(self, p, view, src, text, ink, icon, x, top, W, col, now, t0=None):
+        """The line that explains things. It fades and slides in when what it shows changes, then types itself
+        out (captions at 90 chars/s, a new task at 80 from when it arrived). Returns the text rect and font."""
+        st = self.lines.setdefault(view, [None, 0.0])
+        if src != st[0]:
+            st[:] = src, now
+        age = now - st[1]
+        ease_in = 1 - (1 - min(1.0, age / 0.22)) ** 3          # fade + slide in over 220 ms
+        if self.calm:
+            pass                                               # reduced motion: a plain fade, no typing
+        elif icon:
+            text = text[: int(age * 90)]
+        elif t0 is not None:
+            text = text[: int((now - t0) * 80)]
+        p.setOpacity(p.opacity() * ease_in)
+        tx = x + (0 if self.calm else (1 - ease_in) * 10)
+        bright = col if col.lightness() > 60 else QColor("#7AA2FF")
+        if icon == "info":
+            jelly.info(p, QPointF(tx + 8, top + 9), 8, bright)
+        elif icon == "check":  # a saved change: the tick draws itself in once
+            jelly.check(p, QPointF(tx + 8, top + 9), 8.5, age, bright, not self.calm)
+        elif icon == "bubble":
+            jelly.bubble(p, QPointF(tx + 9, top + 8), 8.5, jelly.PORCELAIN)
+        p.setPen(ink)
+        f = font(13.5, QFont.Medium)
+        p.setFont(f)
+        line = QRectF(tx + (24 if icon else 0), top, W - (24 if icon else 0), 38)
+        p.drawText(line, Qt.TextWordWrap | Qt.AlignLeft | Qt.AlignTop, text)
+        return line, f
+
+    # ---------- settings, inside the island ----------
+    def draw_settings(self, p, b, now):
+        """Same 400 px column as the open card: header 18-46, info 54-72, then three rows of segmented
+        controls at 86, 132 and 178. The content slides in from the right, like a page being pushed."""
+        col = self.color()
+        a = max(0.0, min(1.0, self.fade["settings"].x))
+        x, y0, W = b.left() + 20 + (0 if self.calm else (1 - a) * 16), b.top(), b.width() - 40
+
+        y = y0 + self.row(p, 0, "settings")
+        h = self.hv("back")
+        back_ = QRectF(x, y + 18, 28, 28)
+        self.buttons["back"] = back_
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(255, 255, 255, int(14 + 22 * h)))
+        p.drawEllipse(back_)
+        c = back_.center() + QPointF(-0.5 - 1.8 * h, 0)  # the chevron leans the way it takes you
+        jelly.stroke(p, mix(jelly.PORCELAIN, col, 0.85 * h), 2.2)
+        p.drawPolyline([QPointF(c.x() + 2.5, c.y() - 5.5), QPointF(c.x() - 3, c.y()), QPointF(c.x() + 2.5, c.y() + 5.5)])
+        p.setPen(TXT)
+        p.setFont(font(17, QFont.ExtraBold))
+        p.drawText(QRectF(x + 40, y + 18, W - 40, 28), Qt.AlignLeft | Qt.AlignVCenter, "island settings")
+
+        # info line: a fresh "saved" beats the hovered option, which beats the hint
+        y = y0 + self.row(p, 1, "settings")
+        cap = self.caption()
+        if now < self.notice_until:
+            src, text, icon = "notice:" + self.notice, self.notice, "check"
+        elif cap:
+            src, text, icon = "cap:" + self.cap_key, cap, "info"
+        else:
+            src, text, icon = "hint", "hover an option to preview it. click to apply", "info"
+        base = p.opacity()
+        self.info_line(p, "settings", src, text, QColor(236, 238, 245), icon, x, y + 54, W, col, now)
+        p.setOpacity(base)
+
+        for i, (k, label, opts) in enumerate(SETTINGS_UI):
+            y = y0 + self.row(p, 2 + i, "settings")
+            top = y + 86 + i * 46
+            p.setPen(QColor(160, 160, 168))
+            p.setFont(font(12.5, QFont.Medium))
+            p.drawText(QRectF(x, top, 76, 34), Qt.AlignLeft | Qt.AlignVCenter, label)
+            self.segmented(p, QRectF(x + 80, top, W - 80, 34), k, opts, col)
+            p.setOpacity(base)
+
+    def segmented(self, p, r, k, opts, col):
+        """A segmented control: a glass thumb slides on a spring to the chosen option, and each label
+        brightens as the thumb arrives under it."""
+        cur, n, base = self.live["settings"].get(k), len(opts), p.opacity()
+        sw = r.width() / n
+        pick = next((j for j, o in enumerate(opts) if o[0] == cur), 0)
+        thumb = self.thumbs.get(k)
+        if thumb is None:
+            thumb = self.thumbs[k] = Spring(pick, 300, 28)  # first sight: already in place
+        thumb.target = pick
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(255, 255, 255, 13))
+        p.drawRoundedRect(r, r.height() / 2, r.height() / 2)
+        t = QRectF(r.left() + 3 + thumb.x * sw, r.top() + 3, sw - 6, r.height() - 6)
+        rad = t.height() / 2
+        for g in range(3, 0, -1):
+            p.setBrush(QColor(0, 0, 0, 22 // g))
+            p.drawRoundedRect(t.adjusted(-g * 0.6, g * 0.5, g * 0.6, g * 1.1), rad + g, rad + g)
+        glass = QLinearGradient(0, t.top(), 0, t.bottom())
+        glass.setColorAt(0, QColor(255, 255, 255, 52))
+        glass.setColorAt(1, QColor(255, 255, 255, 30))
+        rim = QLinearGradient(0, t.top(), 0, t.bottom())
+        rim.setColorAt(0, QColor(255, 255, 255, 90))
+        rim.setColorAt(1, QColor(255, 255, 255, 14))
+        p.setPen(QPen(QBrush(rim), 1))
+        p.setBrush(glass)
+        p.drawRoundedRect(t.adjusted(0.5, 0.5, -0.5, -0.5), rad, rad)
+        for j, (v, label, *_) in enumerate(opts):
+            key = f"set:{k}:{v}"
+            seg = QRectF(r.left() + j * sw, r.top(), sw, r.height())
+            self.buttons[key] = seg
+            off = key in self.disabled
+            h = 0.0 if off else self.hv(key)
+            near = max(0.0, 1 - abs(thumb.x - j))  # 1 when the thumb sits here
+            if h > 0.01 and near < 0.99:  # a faint wash under the cursor, never on the chosen one
+                p.setPen(Qt.NoPen)
+                p.setBrush(QColor(255, 255, 255, int(12 * h * (1 - near))))
+                p.drawRoundedRect(seg.adjusted(3, 3, -3, -3), rad, rad)
+            p.setOpacity(base * (0.38 if off else 1))
+            ink = mix(QColor(150, 150, 158), TXT, max(near, 0.75 * h))
+            p.setFont(font(13, QFont.Bold if near > 0.5 else QFont.DemiBold))
+            tw_ = QFontMetricsF(p.font()).horizontalAdvance(label)
+            gx = seg.center().x() - (tw_ + (20 if k == "edge" else 0)) / 2
+            if k == "edge":  # a tiny screen with the island on that edge
+                self.edge_glyph(p, QPointF(gx + 7, seg.center().y()), v, ink, mix(ink, col, near))
+                gx += 20
+            pr = self.pv(key)
+            p.save()
+            p.translate(seg.center())
+            p.scale(pr, pr)  # squish while held
+            p.translate(-seg.center())
+            p.setPen(ink)
+            p.drawText(QRectF(gx, seg.top(), tw_ + 4, seg.height()), Qt.AlignLeft | Qt.AlignVCenter, label)
+            p.restore()
+            p.setOpacity(base)
+
+    def edge_glyph(self, p, c, edge, ink, accent):
+        scr = QRectF(c.x() - 7, c.y() - 5, 14, 10)
+        p.setPen(QPen(ink, 1.3))
+        p.setBrush(Qt.NoBrush)
+        p.drawRoundedRect(scr, 2.5, 2.5)
+        bar = {"top": QRectF(c.x() - 3, scr.top() + 1.6, 6, 2), "bottom": QRectF(c.x() - 3, scr.bottom() - 3.6, 6, 2),
+               "left": QRectF(scr.left() + 1.6, c.y() - 2.5, 2, 5), "right": QRectF(scr.right() - 3.6, c.y() - 2.5, 2, 5)}[edge]
+        p.setPen(Qt.NoPen)
+        p.setBrush(accent)
+        p.drawRoundedRect(bar, 1, 1)
+
+    # ---------- the hover preview ----------
+    def place_peek(self, now, dt, moving):
+        """Show the preview while an option is hovered (with the same hover intent as captions), and glide
+        it along the island from option to option instead of closing and reopening."""
+        key = self.cap_key if (self.mode == "settings" and not moving and (self.cap_key or "").startswith("set:")) else None
+        if key and key != self.peek_key:
+            self.peek_key, self.peek_t0 = key, now
+        self.peek.target = 1.0 if key else 0.0
+        self.peek.step(dt)
+        seg = self.buttons.get(self.peek_key)
+        if (self.peek.x < 0.01 and not key) or seg is None:
+            self.peek_along = None
+            if self.peek_win.isVisible():
+                self.peek_win.hide()
+            return
+        g, body = self.mapToGlobal(seg.center()), self.body()
+        tl, br = self.mapToGlobal(body.topLeft()), self.mapToGlobal(body.bottomRight())
+        scr = self.screen().availableGeometry()
+        ww, wh, side = PEEK_W + 2 * PEEK_M, PEEK_H + 2 * PEEK_M, self.edge in ("top", "bottom")
+        along = g.x() if side else g.y()
+        if self.peek_along is None:
+            self.peek_along = Spring(along, 260, 26)
+        self.peek_along.target = along
+        self.peek_along.step(dt)
+        a, gap = self.peek_along.x, 8 - PEEK_M + NUB
+        if side:
+            x = max(scr.left() + 4, min(scr.right() - 4 - ww, a - ww / 2))
+            y = br.y() + gap if self.edge == "top" else tl.y() - gap - wh
+            self.nub = a - x
+        else:
+            y = max(scr.top() + 4, min(scr.bottom() - 4 - wh, a - wh / 2))
+            x = br.x() + gap if self.edge == "left" else tl.x() - gap - ww
+            self.nub = a - y
+        self.peek_win.setGeometry(round(x), round(y), ww, wh)
+        if not self.peek_win.isVisible():
+            self.peek_win.show()
+        self.peek_win.update()
+
+    def draw_peek(self, p, now):
+        """A small card with an arrow at the option: a tiny screen acting the option out, and its name."""
+        if not self.peek_key:
+            return
+        a = max(0.0, min(1.0, self.peek.x))
+        _, k, v = self.peek_key.split(":")
+        M, e = PEEK_M, self.edge
+        card = QRectF(M, M, PEEK_W, PEEK_H)
+        n = max(M + 22, min(M + (PEEK_W if e in ("top", "bottom") else PEEK_H) - 22, self.nub))
+        tip, s1, s2 = {"top": ((n, M - NUB), (n - 9, M + 1), (n + 9, M + 1)),
+                       "bottom": ((n, M + PEEK_H + NUB), (n - 9, M + PEEK_H - 1), (n + 9, M + PEEK_H - 1)),
+                       "left": ((M - NUB, n), (M + 1, n - 9), (M + 1, n + 9)),
+                       "right": ((M + PEEK_W + NUB, n), (M + PEEK_W - 1, n - 9), (M + PEEK_W - 1, n + 9))}[e]
+        tip = QPointF(*tip)
+        sc = 1.0 if self.calm else 0.9 + 0.1 * a  # grows out of its arrow
+        p.translate(tip)
+        p.scale(sc, sc)
+        p.translate(-tip)
+        p.setOpacity(a)
+        p.setPen(Qt.NoPen)
+        for i in range(6, 0, -1):
+            p.setBrush(QColor(0, 0, 0, 11))
+            p.drawRoundedRect(card.adjusted(-i * 1.3, -i * 1.3 + 2, i * 1.3, i * 1.3 + 3), 16 + i, 16 + i)
+        shape = QPainterPath()
+        shape.addRoundedRect(card, 16, 16)
+        arrow = QPainterPath(QPointF(*s1))
+        arrow.lineTo(tip)
+        arrow.lineTo(QPointF(*s2))
+        arrow.closeSubpath()
+        shape = shape.united(arrow)
+        g = QLinearGradient(0, card.top(), 0, card.bottom())
+        g.setColorAt(0, QColor(20, 20, 22))
+        g.setColorAt(1, QColor(6, 6, 8))
+        p.setBrush(g)
+        p.drawPath(shape)
+        p.setPen(QPen(QColor(255, 255, 255, 26), 1))
+        p.setBrush(Qt.NoBrush)
+        p.drawPath(shape)
+        S = QRectF(card.left() + 10, card.top() + 10, PEEK_W - 20, (PEEK_W - 20) * 10 / 16)
+        self.mini(p, S, k, v, now)
+        f = font(9.5, QFont.Bold, NUM)
+        f.setLetterSpacing(QFont.AbsoluteSpacing, 0.8)
+        p.setFont(f)
+        p.setPen(QColor(235, 235, 240, 210))
+        lab = QRectF(S.left() + 2, S.bottom() + 8, S.width() - 4, 16)
+        p.drawText(lab, Qt.AlignLeft | Qt.AlignVCenter, OPTION[k, v][2].upper())
+        col = self.color() if self.color().lightness() > 60 else TXT
+        tag, ink = (("NOT ON MACOS", DIM) if self.peek_key in self.disabled else
+                    ("CURRENT", col) if self.live["settings"].get(k) == v else ("", DIM))
+        if tag:
+            p.setPen(ink)
+            p.drawText(lab, Qt.AlignRight | Qt.AlignVCenter, tag)
+
+    def mini_rect(self, S, edge, tb, over, size, depth=1.0):
+        """Where the island sits on the tiny screen: the same rules as place(), at a toy scale."""
+        w, h = S.width() * MINI[size][0], max(3.0, S.height() * MINI[size][1])
+        if size == "lip" and edge in ("left", "right"):
+            w, h = h, w
+        if edge in ("top", "bottom"):
+            h *= depth
+        else:
+            w *= depth
+        off = 0 if over or tb != edge else S.height() * 0.09 if edge in ("top", "bottom") else S.width() * 0.065
+        x = {"left": S.left() + off, "right": S.right() - off - w}.get(edge, S.center().x() - w / 2)
+        y = {"top": S.top() + off, "bottom": S.bottom() - off - h}.get(edge, S.center().y() - h / 2)
+        return QRectF(x, y, w, h)
+
+    def mini(self, p, S, k, v, now):
+        """Act the option out on a tiny screen, like a short looping clip: a new edge tucks into the old one and
+        blooms out of the new; the taskbar choice glides it over or under; the resting choice shows a cursor
+        coming by. A dashed outline marks exactly where it will end up. Holds still under reduced motion."""
+        st, col = self.live["settings"], self.color()
+        col = col if col.lightness() > 60 else QColor("#7AA2FF")
+        edge, over, rest, tb = self.edge, st.get("taskbar") == "over", st.get("rest", "lip"), self.live.get("taskbar")
+        if k == "taskbar":
+            tb = edge  # that choice only matters where the two share an edge, so show them sharing one
+        p.save()
+        clip = QPainterPath()
+        clip.addRoundedRect(S, 9, 9)
+        p.setClipPath(clip, Qt.IntersectClip)
+        wall = QLinearGradient(S.topLeft(), S.bottomRight())
+        for pos, c in ((0, "#2b5876"), (0.65, "#7b4397"), (1, "#dc6a49")):  # the dashboard previews' wallpaper
+            wall.setColorAt(pos, QColor(c))
+        p.setPen(Qt.NoPen)
+        p.setBrush(wall)
+        p.drawRect(S)
+        p.setPen(QPen(QColor(255, 255, 255, 80), 1))
+        p.setBrush(QColor(255, 255, 255, 40))
+        p.drawRoundedRect(QRectF(S.left() + S.width() * 0.2, S.top() + S.height() * 0.3, S.width() * 0.44, S.height() * 0.42), 4, 4)
+        if tb in EDGES:
+            t = S.height() * 0.09 if tb in ("top", "bottom") else S.width() * 0.065
+            bar = {"top": QRectF(S.left(), S.top(), S.width(), t), "bottom": QRectF(S.left(), S.bottom() - t, S.width(), t),
+                   "left": QRectF(S.left(), S.top(), t, S.height()), "right": QRectF(S.right() - t, S.top(), t, S.height())}[tb]
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(16, 16, 16, 236))
+            p.drawRect(bar)
+            p.setBrush(QColor(216, 216, 216, 190))
+            for i in range(4):  # a few app icons
+                c = (QPointF(bar.left() + 9 + i * 8, bar.center().y()) if tb in ("top", "bottom")
+                     else QPointF(bar.center().x(), bar.top() + 9 + i * 8))
+                p.drawEllipse(c, 1.7, 1.7)
+        same, calm = st.get(k) == v, self.calm
+        T = now - self.peek_t0
+        if k == "edge":
+            dst = self.mini_rect(S, v, tb, over, rest)
+            if same or calm:
+                self.mini_island(p, dst, v, rest, col, 1.0, now, here=same)
+            else:
+                T %= 3.2
+                self.mini_ghost(p, dst, 1 - ease((T - 1.2) / 0.3))
+                e, d = ((edge, 1.0) if T < 0.45 else (edge, 1 - ease((T - 0.45) / 0.35)) if T < 0.8
+                        else (v, back((T - 0.8) / 0.6)))
+                self.mini_island(p, self.mini_rect(S, e, tb, over, rest, d), e, rest, col,
+                                 min(1.0, T / 0.2, (3.2 - T) / 0.3), now)
+        elif k == "taskbar":
+            dst = self.mini_rect(S, edge, tb, v == "over", rest)
+            if same or calm:
+                self.mini_island(p, dst, edge, rest, col, 1.0, now, here=same)
+            else:
+                T %= 3.0
+                self.mini_ghost(p, dst, 1 - ease((T - 1.0) / 0.3))
+                r = lerp_rect(self.mini_rect(S, edge, tb, over, rest), dst, 0 if T < 0.5 else back((T - 0.5) / 0.55))
+                self.mini_island(p, r, edge, rest, col, min(1.0, T / 0.2, (3.0 - T) / 0.3), now)
+        else:
+            hover = "pill" if v == "lip" else "open"  # hovering grows it one step; it rests at your choice
+            home, big = self.mini_rect(S, edge, tb, over, v), self.mini_rect(S, edge, tb, over, hover)
+            if calm:
+                self.mini_island(p, home, edge, v, col, 1.0, now, here=same)
+            else:
+                T %= 3.6
+                cu = ease((T - 0.5) / 0.6) if T < 2.2 else 1 - ease((T - 2.2) / 0.6)  # the cursor comes and goes
+                iu = back((T - 1.1) / 0.45) if T < 2.35 else 1 - ease((T - 2.35) / 0.4)
+                self.mini_island(p, lerp_rect(home, big, iu), edge, hover if iu > 0.5 else v, col, 1.0, now)
+                start = QPointF(S.left() + S.width() * 0.62, S.top() + S.height() * 0.66)
+                self.mini_cursor(p, start + (big.center() - start) * cu, min(1.0, T / 0.3, (3.6 - T) / 0.3))
+        p.restore()
+        p.setPen(QPen(QColor(255, 255, 255, 30), 1))
+        p.setBrush(Qt.NoBrush)
+        p.drawRoundedRect(S.adjusted(0.5, 0.5, -0.5, -0.5), 9, 9)
+
+    def mini_island(self, p, r, edge, size, col, alpha, now, here=False):
+        if r.width() < 0.5 or r.height() < 0.5 or alpha <= 0:
+            return
+        rad = min(8.0, min(r.width(), r.height()) / 2)
+        ext = {"top": r.adjusted(0, -rad, 0, 0), "bottom": r.adjusted(0, 0, 0, rad),
+               "left": r.adjusted(-rad, 0, 0, 0), "right": r.adjusted(0, 0, rad, 0)}[edge]
+        shape, box = QPainterPath(), QPainterPath()
+        shape.addRoundedRect(ext, rad, rad)
+        box.addRect(r)
+        shape = shape.intersected(box)  # flush with the screen edge, rounded on the inside
+        p.save()
+        p.setOpacity(p.opacity() * alpha)
+        if here and not self.calm:  # "you are here": a slow ring
+            u = (now % 1.8) / 1.8
+            p.setPen(QPen(QColor(col.red(), col.green(), col.blue(), int(170 * (1 - u))), 1.4))
+            p.setBrush(Qt.NoBrush)
+            p.drawRoundedRect(r.adjusted(-2 - 5 * u, -2 - 5 * u, 2 + 5 * u, 2 + 5 * u), rad + 3, rad + 3)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(10, 10, 10))
+        p.drawPath(shape)
+        if size == "lip":  # the breathing glow line on the inner side
+            c = QColor(col)
+            c.setAlpha(int(255 * (0.6 + 0.4 * (math.sin(now * 2.2) + 1) / 2)))
+            k = 1.2
+            a, b = {"top": (QPointF(r.left() + 6, r.bottom() - k), QPointF(r.right() - 6, r.bottom() - k)),
+                    "bottom": (QPointF(r.left() + 6, r.top() + k), QPointF(r.right() - 6, r.top() + k)),
+                    "left": (QPointF(r.right() - k, r.top() + 6), QPointF(r.right() - k, r.bottom() - 6)),
+                    "right": (QPointF(r.left() + k, r.top() + 6), QPointF(r.left() + k, r.bottom() - 6))}[edge]
+            p.setPen(QPen(c, 1.6, Qt.SolidLine, Qt.RoundCap))
+            p.drawLine(a, b)
+        elif r.height() > 6 and r.width() > 24:  # a creature dot and a line of text, at toy scale
+            d = min(3.0, r.height() * 0.24)
+            cy = r.top() + min(r.height() / 2, 6)
+            p.setBrush(col)
+            p.drawEllipse(QPointF(r.left() + 3 + d * 2, cy), d, d)
+            p.setBrush(QColor(255, 255, 255, 200))
+            p.drawRoundedRect(QRectF(r.left() + 6 + d * 4, cy - 1, r.width() * 0.5, 2), 1, 1)
+            if size == "open" and r.height() > 20:
+                p.setBrush(QColor(255, 255, 255, 70))
+                for i in range(2):
+                    p.drawRoundedRect(QRectF(r.left() + 6, r.top() + 14 + i * 7, r.width() * (0.8 - 0.25 * i), 2), 1, 1)
+        p.restore()
+
+    def mini_ghost(self, p, r, alpha):
+        if alpha <= 0:
+            return
+        pen = QPen(QColor(255, 255, 255, int(170 * min(1.0, alpha))), 1, Qt.CustomDashLine)
+        pen.setDashPattern([3, 2.5])
+        p.setPen(pen)
+        p.setBrush(Qt.NoBrush)
+        rad = min(6.0, min(r.width(), r.height()) / 2)
+        p.drawRoundedRect(r.adjusted(-1.5, -1.5, 1.5, 1.5), rad + 1.5, rad + 1.5)
+
+    def mini_cursor(self, p, at, alpha):
+        arrow = QPainterPath(at)
+        for dx, dy in ((0, 10.5), (2.8, 8), (4.8, 12.2), (6.5, 11.4), (4.6, 7.3), (7.8, 7.3)):
+            arrow.lineTo(at + QPointF(dx, dy))
+        arrow.closeSubpath()
+        p.save()
+        p.setOpacity(p.opacity() * max(0.0, alpha))
+        p.setPen(QPen(QColor(10, 10, 10), 0.9))
+        p.setBrush(QColor(255, 255, 255))
+        p.drawPath(arrow)
+        p.restore()
+
     def hv(self, key):
         """0..1 hover amount for a control, eased by a spring (a touch of overshoot, then it holds)."""
         return max(0.0, self.hov.setdefault(key, Spring(0, 300, 26)).x)
@@ -750,6 +1210,15 @@ class Island(QWidget):
                     "already a side quest" if L.get("client") == PERSONAL else "nothing to move yet: no session labelled")
         if key == "pin":
             return "unpin: tuck back into the edge" if self.pinned else "pin: keep the pill out instead of tucking it away"
+        if key and key.startswith("set:"):
+            _, k, v = key.split(":")
+            tb = L.get("taskbar")
+            if key in self.disabled:
+                return "macOS keeps its menu bar on top, so it hangs below"
+            if k == "taskbar" and tb != self.edge:
+                return ("your taskbar is hidden, so this changes nothing" if tb not in EDGES
+                        else f"only matters on the {tb} edge, where your taskbar is")
+            return OPTION[k, v][3]
         if key == "dark":
             return "resume tracking from right now" if L.get("paused") else "pause tracking. nothing is saved until you resume"
         pct = round(100 * L.get("today_s", 0) / self.goal) if self.goal else 0
@@ -762,7 +1231,9 @@ class Island(QWidget):
                 "today": f"billable time today, {pct}% of your {self.goal // 3600}h goal",
                 "money": "earned today at your client rates. click to make the invoice",
                 "review": "sessions waiting for bill it / nah. click to review them",
-                "mascot": "click me and i'll tell you something about your day"}.get(key)
+                "mascot": "click me and i'll tell you something about your day",
+                "gear": "island settings: where it lives and how it rests",
+                "back": "back to your session"}.get(key)
 
     def open_page(self, hash_=""):
         (self.actions.get("open") or (lambda h="": webbrowser.open("http://127.0.0.1:7777/" + h)))(hash_)
@@ -778,6 +1249,8 @@ class Island(QWidget):
         hot = self.hit(e.position())
         if hot != self.hot:
             self.hot, self.hot_t = hot, time.time()
+            if hot:
+                self.notice_until = 0.0
         self.setCursor(Qt.PointingHandCursor if self.clickable(hot) else Qt.ArrowCursor)  # the hand only promises what works
 
     def leaveEvent(self, e):
@@ -807,6 +1280,17 @@ class Island(QWidget):
                 self.mascot.react("surprised", 1.5)
             elif key == "pin":
                 self.pinned = not self.pinned
+            elif key == "gear":
+                self.in_settings = self.click_open = True
+            elif key == "back":
+                self.in_settings = False
+            elif key.startswith("set:"):  # applies at once; if it moves the island, it waits open where it lands
+                _, k, v = key.split(":")
+                if self.live["settings"].get(k) != v:
+                    update_settings({k: v})
+                    self.notice, self.notice_until = f"saved · {OPTION[k, v][2]}", time.time() + 2.6
+                    self.hold_until = time.time() + 3.5
+                self.peek_t0 = time.time()
             elif key == "mascot":
                 self.mascot.say()
                 self.click_open = True
@@ -820,7 +1304,7 @@ class Island(QWidget):
     def mouseDoubleClickEvent(self, e):
         if not self.hit(e.position()):
             self.pinned = not self.pinned
-            self.toast("pinned. double-click to tuck away" if self.pinned else "tucked into the top edge", GREY, 2)
+            self.toast("pinned. double-click to tuck away" if self.pinned else f"tucked into the {self.edge} edge", GREY, 2)
 
     def run(self):
         self.app.exec()

@@ -27,8 +27,16 @@ lock = threading.Lock()
 SETTINGS = ROOT / "settings.json"
 # On Windows the island floats over a same-edge taskbar by default (true notch look); macOS can't cover its menu bar.
 DEFAULTS = {"edge": "top", "taskbar": "over" if sys.platform == "win32" else "below", "rest": "lip"}
+CHOICES = {"edge": ("top", "bottom", "left", "right"), "taskbar": ("below", "over"), "rest": ("lip", "pill")}
 LIVE = {"paused": False, "idle": 0,  # shared between the tracker, the labeler and the island
         "settings": {**DEFAULTS, **(json.loads(SETTINGS.read_text(encoding="utf-8")) if SETTINGS.exists() else {})}}
+
+
+def update_settings(changes):
+    """Apply valid island settings (from the dashboard or the island itself) and remember them."""
+    LIVE["settings"].update({k: v for k, v in changes.items() if v in CHOICES.get(k, ())})
+    SETTINGS.write_text(json.dumps(LIVE["settings"], indent=1), encoding="utf-8")
+    return LIVE["settings"]
 
 
 def load(name, default):
