@@ -84,8 +84,10 @@ A notch tucked into the edge of your screen, glowing in your current client's co
   - what the model thinks you're doing, typed in live
   - a **flow wave** of your last hour: it ripples while you work, goes still and moonlit when you're off the record, and on hover tells you how many of the last 60 minutes were active and how long you've been in flow
   - today's totals
-  - **go dark** (pause tracking: the island turns into a night sky, off the record) · **not work** (mark this session personal) · **open lowkey**
-- **Double-click** to pin it open. It never takes keyboard focus, so it can't interrupt your typing.
+  - **go dark** (pause tracking: the island turns into a night sky, off the record) · **not work** (mark this session personal, with 5 s to undo) · **open lowkey**
+- **The pin** (or a double-click) keeps it out. It never takes keyboard focus, so it can't interrupt your typing.
+
+<p align="center"><img src="docs/images/island-details.png" alt="One primary action, undo instead of a confirm dialog, and disabled controls that say why" width="100%"></p>
 
 <p align="center"><img src="docs/images/island-moments.png" alt="Pop-out when switching clients, and the gone-dark state" width="80%"></p>
 
@@ -110,7 +112,8 @@ Every client gets its own little blob: a shape picked from the client's name, in
 | **the creature** | island | Your current client, as a blob in their colour. Click it for a one-liner about your day; click again for the next. |
 | 🌙 **go dark** | island | Pauses tracking. Nothing is saved until you resume, so the AI never sees those minutes and they can't reach an invoice. The island turns into a night sky. Not remembered after a restart. |
 | ☀️ **resume** | island, while dark | Back on the clock from this moment. |
-| 🎮 **not work** | island | Marks the current session as a side quest (personal), so it stays off the invoice. |
+| 📌 **pin** | island, open card | Keeps the pill out instead of tucking it away. Click again to unpin. |
+| 🎮 **not work** | island | Marks the current session as a side quest (personal), so it stays off the invoice. Undo stays on offer for 5 s; the shrinking underline is the countdown. Dimmed when there's nothing to move (already personal, or gone dark); hover it to see why. |
 | ↗ **open lowkey** | island | Opens the dashboard. |
 | 🕒 **today chip** | island | Billable time today. It fills up towards your daily goal (`daily_goal_h`). Click to open the dashboard. |
 | ₹ **money chip** | island | Earned today at your client rates. Click to make the invoice. |

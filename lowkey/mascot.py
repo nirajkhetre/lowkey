@@ -56,6 +56,7 @@ class Mascot:
         self.next_blink, self.blink_at, self.double = time.time() + 2, 0.0, False
         self.wander, self.wander_at = (0.0, 0.0), 0.0
         self.last, self.instant = time.time(), False
+        self.calm = False  # the OS asked for reduced motion: no hops or squash, eyes and colour still change
 
     def snap(self):
         """Skip the morph on the next frame (screenshots, tests)."""
@@ -168,9 +169,9 @@ class Mascot:
 
         # body motion: breathe, squash-and-settle on mood change, hop when excited
         breathe = 0.035 * math.sin(now * (1.3 if mood == "asleep" else 2.4))
-        squash = 0.22 * math.exp(-5 * t) * math.sin(18 * t)
+        squash = 0.0 if self.calm else 0.22 * math.exp(-5 * t) * math.sin(18 * t)
         hop = 0.0
-        if mood in ("party", "money", "surprised") and t < 2.5:
+        if mood in ("party", "money", "surprised") and t < 2.5 and not self.calm:
             hop = -rad * 0.28 * abs(math.sin(now * 8)) * math.exp(-0.6 * t)
         size = rad * 1.9
         w = size * min(1.0, aspect) * (1 + squash + breathe * 0.5)

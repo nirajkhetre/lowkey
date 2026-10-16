@@ -166,6 +166,20 @@ def check(p, c, s, now, color, active=True):
         p.drawLine(b, QPointF(b.x() + (d.x() - b.x()) * k2, b.y() + (d.y() - b.y()) * k2))
 
 
+def pin(p, c, s, color, tilt=45.0):
+    """A pushpin: leans over when loose, stands straight up when it's holding something."""
+    p.save()
+    p.translate(c)
+    p.rotate(tilt)
+    stroke(p, color.darker(160), s * 0.13)
+    p.drawLine(QPointF(0, s * 0.1), QPointF(0, s * 0.9))
+    head = QPainterPath()
+    head.addRoundedRect(QRectF(-s * 0.32, -s * 0.62, s * 0.64, s * 0.5), s * 0.16, s * 0.16)
+    head.addRoundedRect(QRectF(-s * 0.56, -s * 0.16, s * 1.12, s * 0.3), s * 0.15, s * 0.15)
+    jelly(p, head.simplified(), color, shadow=False)
+    p.restore()
+
+
 def info(p, c, s, color):
     dot = QPainterPath()
     dot.addEllipse(c, s, s)

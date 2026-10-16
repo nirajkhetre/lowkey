@@ -194,9 +194,25 @@ def refresh():
 
 
 def mark_personal():
-    if LIVE.get("session"):
+    """Moves the current session to side quests. Returns a function that puts it back (for undo)."""
+    sid = LIVE.get("session")
+    if not sid:
+        return None
+    before = {k: LIVE.get(k) for k in ("client", "color")}
+    with lock:
+        edits = load("edits.json", {})
+        old = dict(edits[sid]) if sid in edits else None
+        edits.setdefault(sid, {}).update(client=PERSONAL, billable=False)
+        save("edits.json", edits)
+    LIVE.update(client=PERSONAL, color=color(PERSONAL))
+
+    def undo():
         with lock:
             edits = load("edits.json", {})
-            edits.setdefault(LIVE["session"], {}).update(client=PERSONAL, billable=False)
+            if old is None:
+                edits.pop(sid, None)
+            else:
+                edits[sid] = old
             save("edits.json", edits)
-        LIVE.update(client=PERSONAL, color=color(PERSONAL))
+        LIVE.update(before)
+    return undo
