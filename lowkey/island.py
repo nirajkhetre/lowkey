@@ -348,13 +348,15 @@ class Island(QWidget):
         p.setFont(font(14, QFont.Bold))
         name = QFontMetricsF(p.font()).elidedText(title, Qt.ElideRight, 140)
         p.drawText(QRectF(b.left() + 48, b.top(), 150, 42), Qt.AlignVCenter | Qt.AlignLeft, name)
-        if L.get("client") and not L.get("paused") and L.get("idle", 0) < 300:  # tiny "now playing" bars
+        if L.get("client") and not L.get("paused") and L.get("idle", 0) < 300:  # a tiny live squiggle
             ex = b.left() + 48 + QFontMetricsF(p.font()).horizontalAdvance(name) + 12
-            p.setPen(Qt.NoPen)
-            p.setBrush(col)
-            for i in range(4):
-                hh = 4 + 9 * (math.sin(now * (5 + i * 1.7) + i) + 1) / 2
-                p.drawRoundedRect(QRectF(ex + i * 5, cy - hh / 2, 3, hh), 1.5, 1.5)
+            sq = QPainterPath(QPointF(ex, cy))
+            for i in range(1, 21):
+                t = i / 20
+                sq.lineTo(ex + 22 * t, cy + 4.2 * math.sin(t * 2 * math.pi * 1.5 - now * 6) * math.sin(t * math.pi))
+            p.setPen(QPen(col, 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
+            p.setBrush(Qt.NoBrush)
+            p.drawPath(sq)
         if L.get("client") and not L.get("paused"):
             p.setFont(font(13.5, QFont.Bold, NUM))
             p.setPen(col)
@@ -465,9 +467,11 @@ class Island(QWidget):
                    Qt.TextWordWrap | Qt.AlignLeft | Qt.AlignTop, text)
         p.setOpacity(base)
 
-        # activity equaliser: last 30 minutes, one bar per minute
+        # flow wave: your last hour as liquid; it ripples while you work and goes still, moonlit, when you're dark
         y = y0 + self.row(p, 2)
-        self.bars(p, QRectF(x, y + 108, b.width() - 40, 34), col, now)
+        wave = QRectF(x, y + 104, b.width() - 40, 38)
+        self.buttons["flow"] = wave
+        self.flow_wave(p, wave, col, now)
 
         # stat chips: icon + value; lift on hover, "today" fills towards your goal, "to review" pulses
         y = y0 + self.row(p, 3)
@@ -597,28 +601,73 @@ class Island(QWidget):
                 p.drawText(lab, Qt.AlignVCenter | Qt.AlignLeft, "not work" if key == "personal" else "open lowkey")
             bx += w + 10
 
-    def bars(self, p, rect, col, now):
+    def flow_stats(self, now):
+        """Active minutes in the last hour, and how long the current streak has run."""
         mins, m0 = self.live.get("minutes", {}), int(now // 60)
-        vals = [min(1.0, mins.get(m0 - 29 + i, 0) / 60) for i in range(30)]
-        bw = rect.width() / 30
+        vals = [min(1.0, mins.get(m0 - 59 + i, 0) / 60) for i in range(60)]
+        streak = 0
+        for v in reversed(vals):
+            if v < 0.4:
+                break
+            streak += 1
+        return vals, sum(v >= 0.4 for v in vals), streak
+
+    def flow_wave(self, p, rect, col, now):
+        vals, active_min, streak = self.flow_stats(now)
+        smooth = [sum(vals[max(0, i - 2):i + 3]) / len(vals[max(0, i - 2):i + 3]) for i in range(60)]
         paused = self.live.get("paused")
-        active = not paused and self.live.get("idle", 0) < 300
+        live = not paused and self.live.get("idle", 0) < 300
+        accent = NIGHT if paused else col
+        top, bottom = rect.top() + 6, rect.bottom() - 4
+        amp = 0.0 if not live else 1.0
+        pts = []
+        for i, v in enumerate(smooth):
+            x = rect.left() + rect.width() * i / 59
+            level = v * (0.25 if paused else 1.0)                       # moonlit water lies low and calm
+            ripple = (1.6 * amp + (0.6 if paused else 0)) * math.sin(now * (2.2 if live else 0.8) + i * 0.38)
+            pts.append(QPointF(x, bottom - (bottom - top) * level + ripple * (0.4 + level)))
+        line = QPainterPath(pts[0])
+        for a, b2 in zip(pts, pts[1:]):                                  # midpoint smoothing: a liquid curve
+            mid = QPointF((a.x() + b2.x()) / 2, (a.y() + b2.y()) / 2)
+            line.quadTo(a, mid)
+        line.lineTo(pts[-1])
+        area = QPainterPath(line)
+        area.lineTo(rect.right(), rect.bottom())
+        area.lineTo(rect.left(), rect.bottom())
+        area.closeSubpath()
+        fill = QLinearGradient(0, top, 0, rect.bottom())
+        fill.setColorAt(0, QColor(accent.red(), accent.green(), accent.blue(), 95))
+        fill.setColorAt(1, QColor(accent.red(), accent.green(), accent.blue(), 0))
         p.setPen(Qt.NoPen)
-        for i, v in enumerate(vals):
-            if paused:  # moonlit: low, still, breathing together
-                hh = max(3.0, rect.height() * v * 0.42 * (0.82 + 0.18 * math.sin(now * 1.1 + i * 0.22)))
-                col = DUSK if i % 7 == 3 else NIGHT
-            else:
-                wiggle = 1 + (0.18 * math.sin(now * 6 + i * 0.9) if active and v > 0 else 0)
-                hh = max(3.0, rect.height() * v * 0.92 * wiggle)
-            g = QLinearGradient(0, rect.bottom() - hh, 0, rect.bottom())
-            top = QColor(col)
-            bottom = QColor(col)
-            bottom.setAlpha(70)
-            g.setColorAt(0, top)
-            g.setColorAt(1, bottom)
-            p.setBrush(g if v > 0 else QBrush(FAINT))
-            p.drawRoundedRect(QRectF(rect.left() + i * bw + 1.5, rect.bottom() - hh, bw - 3, hh), 2, 2)
+        p.setBrush(fill)
+        p.drawPath(area)
+        p.setBrush(Qt.NoBrush)
+        p.setPen(QPen(QColor(accent.red(), accent.green(), accent.blue(), 55), 6, Qt.SolidLine, Qt.RoundCap))
+        p.drawPath(line)                                                  # soft glow under the line
+        p.setPen(QPen(accent, 2, Qt.SolidLine, Qt.RoundCap))
+        p.drawPath(line)
+        if paused:  # starlight glinting on still water
+            p.setPen(Qt.NoPen)
+            for i in range(7):
+                tw = (math.sin(now * 2 + i * 1.9) + 1) / 2
+                gx = rect.left() + rect.width() * ((i * 0.618 + 0.1) % 1)
+                p.setBrush(QColor(255, 255, 255, int(40 + 150 * tw)))
+                p.drawEllipse(QPointF(gx, bottom - 2 + (i % 3)), 0.8 + 0.8 * tw, 0.8 + 0.8 * tw)
+        # the "now" dot: pulses only while you're active
+        nowp = pts[-1]
+        if live:
+            age = (now % 2.0) / 2.0
+            ring = QColor(accent.red(), accent.green(), accent.blue(), int(130 * (1 - age)))
+            p.setPen(QPen(ring, 1.5))
+            p.setBrush(Qt.NoBrush)
+            p.drawEllipse(nowp, 4 + 9 * age, 4 + 9 * age)
+        dot = QPainterPath()
+        dot.addEllipse(nowp, 4.5, 4.5)
+        jelly.jelly(p, dot, accent if live or paused else QColor("#8a8a94"), shadow=False)
+        f = font(9.5, QFont.Medium, NUM)
+        p.setFont(f)
+        p.setPen(QColor(255, 255, 255, 70))
+        p.drawText(QRectF(rect.left(), rect.top() - 4, 80, 12), Qt.AlignLeft | Qt.AlignVCenter, "60m ago")
 
     def hv(self, key):
         """0..1 hover amount for a control, eased by a spring (a touch of overshoot, then it holds)."""
@@ -634,6 +683,10 @@ class Island(QWidget):
         if key == "dark":
             return "resume tracking from right now" if L.get("paused") else "pause tracking. nothing is saved until you resume"
         pct = round(100 * L.get("today_s", 0) / self.goal) if self.goal else 0
+        if key == "flow":
+            _, active_min, streak = self.flow_stats(time.time())
+            tail = f", in flow for {streak}m" if streak >= 5 and not L.get("paused") else ""
+            return f"last hour: {active_min} of 60 minutes active{tail}"
         return {"personal": "not work? moves this session to side quests, off the invoice",
                 "open": "open the dashboard: review sessions, send the bill, see your week",
                 "today": f"billable time today, {pct}% of your {self.goal // 3600}h goal",

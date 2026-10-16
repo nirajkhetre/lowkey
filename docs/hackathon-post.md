@@ -24,8 +24,8 @@ So I built **lowkey**: it bills your hours, lowkey. It's a Dynamic Island for Wi
 
 **🏝️ The island.** Like a MacBook notch, it hides in the top edge of the screen as a thin lip glowing in my current client's colour:
 
-- Hover, and it springs down into a pill: client avatar with a daily-goal ring, a little "now playing" equaliser, the session timer and ₹ earned.
-- Keep hovering, and it opens into a card showing what the AI thinks I'm doing (typed in live) and a 30-minute activity equaliser.
+- Hover, and it springs down into a pill: your client's creature, a tiny live squiggle, the session timer and ₹ earned.
+- Keep hovering, and it opens into a card showing what the AI thinks I'm doing (typed in live) and a flow wave of my last hour.
 - Double-click pins it open.
 - **go dark** pauses tracking (for when you're doing something nobody needs a log of).
 - **not work** marks the current session personal.

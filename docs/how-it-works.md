@@ -21,7 +21,7 @@ Every 5 seconds it asks the OS for the foreground app, its window title, how lon
 - you hit **go dark**
 - the app or title matches `never_track`
 
-Everything else is appended as one JSON line to `data/activity-YYYY-MM-DD.jsonl`. The tracker also counts active seconds per minute; those counts feed the island's equaliser.
+Everything else is appended as one JSON line to `data/activity-YYYY-MM-DD.jsonl`. The tracker also counts active seconds per minute; those counts feed the island's flow wave.
 
 ## 2. Labeler: `lowkey/labeler.py`
 

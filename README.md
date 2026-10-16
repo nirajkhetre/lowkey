@@ -79,10 +79,10 @@ A notch tucked into the edge of your screen, glowing in your current client's co
 
 <p align="center"><img src="docs/images/island-states.png" alt="The island tucked away, as a pill on hover, and fully open" width="100%"></p>
 
-- **Hover** and it springs out into a pill: your client's creature, a live "now playing" equaliser, the session timer and money earned today.
+- **Hover** and it springs out into a pill: your client's creature, a tiny live squiggle, the session timer and money earned today.
 - **Keep hovering, or click,** and it opens:
   - what the model thinks you're doing, typed in live
-  - a 30-minute activity equaliser
+  - a **flow wave** of your last hour: it ripples while you work, goes still and moonlit when you're off the record, and on hover tells you how many of the last 60 minutes were active and how long you've been in flow
   - today's totals
   - **go dark** (pause tracking: the island turns into a night sky, off the record) · **not work** (mark this session personal) · **open lowkey**
 - **Double-click** to pin it open. It never takes keyboard focus, so it can't interrupt your typing.
