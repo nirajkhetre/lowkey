@@ -1,13 +1,12 @@
 """Jelly icons: soft, glossy 3D-ish icons drawn with the same light as the island's creatures.
 
 Every icon is a QPainterPath filled with a radial "jelly" gradient, a specular highlight and a contact shadow,
-plus a few live details: the clock shows the real time, the coin flips, the check draws itself in.
+plus a few live details: the moon's stars twinkle, the sun turns, the check draws itself in.
 """
 import math
-import time
 
 from PySide6.QtCore import QPointF, QRectF, Qt
-from PySide6.QtGui import QColor, QFont, QPainterPath, QPen, QRadialGradient, QTransform
+from PySide6.QtGui import QColor, QPainterPath, QPen, QRadialGradient, QTransform
 
 INK = QColor(28, 26, 36)
 PORCELAIN = QColor("#E9E9F0")  # the neutral jelly every icon uses at rest
@@ -98,58 +97,6 @@ def gamepad(p, c, s, now, color=PORCELAIN):
     p.drawRoundedRect(QRectF(dx - th / 2, dy - arm, th, arm * 2), th / 2, th / 2)
     p.drawEllipse(QPointF(c.x() + s * 0.36, c.y() - s * 0.13), s * 0.1, s * 0.1)
     p.drawEllipse(QPointF(c.x() + s * 0.56, c.y() + s * 0.06), s * 0.1, s * 0.1)
-
-
-def open_tile(p, c, s, now, color, nudge=0.0):
-    tile = QPainterPath()
-    tile.addRoundedRect(QRectF(c.x() - s * 0.72, c.y() - s * 0.72, s * 1.44, s * 1.44), s * 0.42, s * 0.42)
-    jelly(p, tile, color)
-    ink = INK if color.lightness() > 150 else QColor(255, 255, 255)
-    stroke(p, ink, s * 0.17)
-    o = QPointF(c.x() + nudge * s * 0.12, c.y() - nudge * s * 0.12)
-    p.drawLine(QPointF(o.x() - s * 0.24, o.y() + s * 0.24), QPointF(o.x() + s * 0.24, o.y() - s * 0.24))
-    p.drawPolyline([QPointF(o.x() - s * 0.06, o.y() - s * 0.26), QPointF(o.x() + s * 0.26, o.y() - s * 0.26),
-                    QPointF(o.x() + s * 0.26, o.y() + s * 0.06)])
-
-
-def clock(p, c, s, now, color):
-    rim = QPainterPath()
-    rim.addEllipse(c, s * 0.82, s * 0.82)
-    jelly(p, rim, color)
-    p.setPen(Qt.NoPen)
-    p.setBrush(QColor(255, 255, 255, 235))
-    p.drawEllipse(c, s * 0.56, s * 0.56)
-    t = time.localtime(now)  # the hands show the real time
-    for frac, length, width in (((t.tm_hour % 12 + t.tm_min / 60) / 12, 0.3, 0.12), ((t.tm_min + t.tm_sec / 60) / 60, 0.44, 0.09)):
-        a = frac * 2 * math.pi
-        stroke(p, INK, s * width)
-        p.drawLine(c, QPointF(c.x() + s * length * math.sin(a), c.y() - s * length * math.cos(a)))
-    p.setPen(Qt.NoPen)
-    p.setBrush(color.darker(120))
-    p.drawEllipse(c, s * 0.08, s * 0.08)
-
-
-def coin(p, c, s, now, flip_t0=0.0, symbol="₹", color=PORCELAIN):
-    age = now - flip_t0
-    squash = abs(math.cos(min(age, 0.9) / 0.9 * 2 * math.pi)) if age < 0.9 else 1.0  # flips once when you earn
-    w = s * 0.82 * max(0.12, squash)
-    face = QPainterPath()
-    face.addEllipse(c, w, s * 0.82)
-    jelly(p, face, color)
-    stroke(p, color.darker(135), s * 0.09)
-    p.drawEllipse(c, w * 0.8, s * 0.66)
-    if squash > 0.45:
-        f = QFont()
-        f.setFamilies(["Bricolage Grotesque", "Segoe UI", "sans-serif"])
-        f.setPixelSize(max(6, round(s * 0.95)))
-        f.setWeight(QFont.Black)
-        p.setFont(f)
-        p.setPen(INK if color.lightness() > 150 else color.darker(200))
-        p.save()
-        p.translate(c)
-        p.scale(max(0.12, squash), 1)
-        p.drawText(QRectF(-s, -s, 2 * s, 2 * s), Qt.AlignCenter, symbol)
-        p.restore()
 
 
 def check(p, c, s, now, color, active=True):

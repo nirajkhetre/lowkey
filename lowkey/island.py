@@ -3,7 +3,8 @@
 PySide6 + QPainter: anti-aliased, per-pixel transparent, never takes keyboard focus.
 States: lip (tucked away) -> pill (hover) -> open (keep hovering or click), plus "toast" pop-outs.
 The pin button (or a double-click) keeps the pill out instead of tucking it away.
-The gear opens island settings inside the island; hovering an option pops out a tiny screen acting it out.
+The open card is laid out like a Live Activity: two stats, three icon buttons, rarer actions behind "more".
+Settings open inside the island; hovering an option pops out a tiny screen acting it out.
 """
 import ctypes, math, subprocess, sys, time, webbrowser
 
@@ -39,7 +40,7 @@ def lerp_rect(a, b, u):
     return QRectF(*(x + (y - x) * u for x, y in zip(a.getRect(), b.getRect())))
 
 
-SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 252), "settings": (440, 230)}
+SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 214), "settings": (440, 230)}
 FONTS = Path(__file__).parent / "web" / "fonts"  # Bricolage Grotesque, Instrument Serif, Geist Mono (all OFL)
 EAR, PAD = 10, 24  # concave ears where the notch meets the screen edge; room for the soft shadow
 UNDO_S = 5.0  # how long "not work" can be undone
@@ -164,6 +165,7 @@ class Island(QWidget):
         self.undo, self.undo_until, self.disabled = None, 0.0, set()
         self.pin_s = Spring(0, 260, 20)
         self.in_settings, self.hold_until = False, 0.0  # after a change moves it, it waits open for you
+        self.more, self.more_s = False, Spring(0, 300, 28)  # the footer's rarer actions
         self.notice, self.notice_until = "", 0.0
         self.thumbs = {}  # segmented-control thumbs, sliding between options
         self.slide, self.slide_edge = Spring(0, 220, 26), None  # glides when the taskbar mode moves it
@@ -227,7 +229,7 @@ class Island(QWidget):
         self.hover_since = None
         self.left_at = self.left_at or now
         if now - self.left_at > 0.35 and now > self.hold_until:  # small grace so it doesn't flicker
-            self.click_open = self.in_settings = False
+            self.click_open = self.in_settings = self.more = False
             return base
         return self.mode
 
@@ -278,6 +280,10 @@ class Island(QWidget):
             self.cap_key = self.hot
         self.pin_s.target = 1.0 if self.pinned else 0.0
         self.pin_s.step(dt)
+        self.more_s.target = 1.0 if self.more else 0.0
+        self.more_s.step(dt)
+        if self.calm:
+            self.more_s.snap()
         for k, sp in self.prs.items():
             sp.target = 0.95 if self.pressed == k else 1.0  # squish while held, springs back on release
             sp.step(dt)
@@ -324,7 +330,7 @@ class Island(QWidget):
         self.edge = self.want_edge()
         self.tick()
         self.mascot.snap()
-        for s in (self.W, self.H, self.dark, self.peek, *self.fade.values(), *self.thumbs.values()):
+        for s in (self.W, self.H, self.dark, self.peek, self.more_s, *self.fade.values(), *self.thumbs.values()):
             s.snap()
         self.place(snap=True)
 
@@ -514,74 +520,65 @@ class Island(QWidget):
         return 0 if self.calm else (1 - t) * 12
 
     def draw_open(self, p, b, now):
-        """One 400 px column on an 8 px grid: header 16-56, info 64-100, wave 108-146, chips 156-188,
-        buttons 196-236. Chips and buttons share the same three columns, so their icons line up."""
+        """Laid out like a Live Activity on one 400 px column: header 16-56 (who, for how long, how much), info
+        64-100, wave 108-146, footer 158-196. The footer keeps two quiet stats on the left and three round icon
+        buttons on the right: go dark, open lowkey (the one filled, primary action) and more. Rarer actions wait
+        behind more, which slides the footer over to them. Buttons carry no labels: hovering any control explains
+        it in the info line, so the card itself can stay calm."""
         L, col = self.live, self.color()
         x, y0, W = b.left() + 20, b.top(), b.width() - 40
         paused = L.get("paused")
-        cols = [x + i * (W + 8) / 3 for i in range(3)]
-        cw = (W - 16) / 3
 
-        # header: mascot, title + session clock, then the status badge and the pin on the trailing edge
+        # header: mascot | name over a status line | today's money on the trailing edge, where the pill keeps it
         y = y0 + self.row(p, 0)
         self.avatar(p, QPointF(x + 20, y + 36), 20, now)
-        h = self.hv("pin")
-        pin = QRectF(x + W - 28, y + 22, 28, 28)
-        self.buttons["pin"] = pin
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(255, 255, 255, int(14 + 22 * h)))
-        p.drawEllipse(pin)
-        k = max(0.0, min(1.0, self.pin_s.x))
-        jelly.pin(p, pin.center(), 10.5, mix(jelly.PORCELAIN, col, k), 40 * (1 - self.pin_s.x) - 10 * h)
-        h = self.hv("gear")
-        gear = QRectF(pin.left() - 8 - 28, y + 22, 28, 28)
-        self.buttons["gear"] = gear
-        p.setPen(Qt.NoPen)
-        p.setBrush(QColor(255, 255, 255, int(14 + 22 * h)))
-        p.drawEllipse(gear)
-        jelly.gear(p, gear.center(), 10, mix(jelly.PORCELAIN, col, 0.85 * h), 30 * h)  # turns a notch on hover
-
-        label = "OFF RECORD" if paused else "BREAK" if L.get("idle", 0) > 300 else "LIVE"
-        bf = font(10.5, QFont.Bold, NUM)
-        bf.setLetterSpacing(QFont.AbsoluteSpacing, 0.6)
-        p.setFont(bf)
-        bw = QFontMetricsF(p.font()).horizontalAdvance(label) + 34
-        badge = QRectF(gear.left() - 8 - bw, y + 24, bw, 24)
-        if paused:
-            fill = QLinearGradient(badge.topLeft(), badge.topRight())
-            fill.setColorAt(0, QColor(155, 140, 255, 70))
-            fill.setColorAt(1, QColor(255, 122, 217, 70))
-            p.setBrush(fill)
-            p.drawRoundedRect(badge, 12, 12)
-            jelly.moon(p, QPointF(badge.left() + 12, badge.center().y()), 7.5, now)
-            p.setPen(TXT)
-        else:
-            p.setBrush(QColor(col.red(), col.green(), col.blue(), 40))
-            p.drawRoundedRect(badge, 12, 12)
-            p.setBrush(col)
-            pulse = 4.1 if self.calm else 3.5 + 1.2 * (math.sin(now * 5) + 1) / 2
-            p.drawEllipse(QPointF(badge.left() + 13, badge.center().y()), pulse, pulse)
-            p.setPen(col)
-        p.drawText(badge.adjusted(22, 0, -6, 0), Qt.AlignVCenter | Qt.AlignLeft, label)
+        money = f"{self.cur}{max(0.0, self.money_view.x):,.0f}"
+        mf, lf = font(19, QFont.Bold, NUM), font(11.5, QFont.Medium)
+        mw = max(QFontMetricsF(mf).horizontalAdvance(money), QFontMetricsF(lf).horizontalAdvance("earned today"))
+        hit = QRectF(x + W - mw - 10, y + 12, mw + 14, 46)
+        self.buttons["money"] = hit
+        self.wash(p, hit, self.hv("money"))
+        flash = 0.0 if self.calm else max(0.0, 1 - (now - self.coin_t0) / 1.4)  # a fresh earning glows, then settles
+        p.setFont(mf)
+        p.setPen(mix(TXT, col, flash) if col.lightness() > 60 else TXT)
+        p.drawText(QRectF(x + W - 200, y + 14, 196, 24), Qt.AlignRight | Qt.AlignVCenter, money)
+        p.setFont(lf)
+        p.setPen(DIM)
+        p.drawText(QRectF(x + W - 200, y + 38, 196, 18), Qt.AlignRight | Qt.AlignVCenter, "earned today")
 
         title, sub = self.status()
-        tw = badge.left() - 12 - (x + 52)
+        tw = hit.left() - 12 - (x + 52)
         p.setPen(TXT)
         p.setFont(font(23, QFont.Normal, SERIF, italic=True) if paused else font(17, QFont.ExtraBold))
         p.drawText(QRectF(x + 52, y + 14, tw, 24), Qt.AlignLeft | Qt.AlignVCenter,
                    QFontMetricsF(p.font()).elidedText(title, Qt.ElideRight, tw))
-        if L.get("client") and not paused:
-            p.setPen(DIM)
-            p.setFont(font(12, QFont.Normal, NUM))
-            p.drawText(QRectF(x + 52, y + 38, tw, 18), Qt.AlignLeft | Qt.AlignVCenter,
-                       f"this session  {clock(self.session_s(now))}")
+        # the status line: one dot says it all, and it pulses only while it's really recording
+        idle = L.get("idle", 0) > 300
+        live = bool(L.get("client")) and not paused and not idle
+        dot = NIGHT if paused else col if live else GREY
+        label = ("paused" if paused else "on a break" if idle else
+                 f"this session  {clock(self.session_s(now))}" if L.get("client") else "listening")
+        c = QPointF(x + 56, y + 47)
+        if live and not self.calm:
+            u = (now % 2.0) / 2.0
+            p.setPen(QPen(QColor(dot.red(), dot.green(), dot.blue(), int(120 * (1 - u))), 1.2))
+            p.setBrush(Qt.NoBrush)
+            p.drawEllipse(c, 3.2 + 4 * u, 3.2 + 4 * u)
+        p.setPen(Qt.NoPen)
+        p.setBrush(dot)
+        p.drawEllipse(c, 3.2, 3.2)
+        p.setPen(DIM)
+        p.setFont(font(12, QFont.Normal, NUM))
+        p.drawText(QRectF(x + 65, y + 38, tw - 13, 18), Qt.AlignLeft | Qt.AlignVCenter, label)
 
-        # info line: an undo offer beats a hover hint, which beats the mascot's reply, which beats the task
+        # info line: an undo offer beats a fresh "done", then a hover hint, the mascot's reply, and the task
         y = y0 + self.row(p, 1)
         undo = self.undo and now < self.undo_until
         cap = None if (self.quip and self.cap_key == "mascot") else self.caption()
         if undo:
             src, text, ink, icon = "undo", "moved to side quests.", QColor(236, 238, 245), "info"
+        elif now < self.notice_until:
+            src, text, ink, icon = "notice:" + self.notice, self.notice, QColor(236, 238, 245), "check"
         elif cap:
             src, text, ink, icon = "cap:" + self.cap_key, cap, QColor(236, 238, 245), "info"
         elif self.quip:
@@ -611,134 +608,166 @@ class Island(QWidget):
         self.buttons["flow"] = wave
         self.flow_wave(p, wave, col, now)
 
-        # stat chips: icon + value; lift on hover, "today" fills towards your goal, "to review" pulses
+        # footer: "more" stays put on the trailing edge and slides the row between the main and the rarer actions
         y = y0 + self.row(p, 3)
-        prog = min(1.0, L.get("today_s", 0) / self.goal) if self.goal else 0
-        pending = L.get("pending", 0)
-        for cx, (key, icon, text) in zip(cols, (("today", "clock", fmt(L.get("today_s", 0))),
-                                                 ("money", "coin", f"{max(0.0, self.money_view.x):,.0f}"),
-                                                 ("review", "check", f"{pending} to review"))):
-            h = self.hv(key)
-            self.buttons[key] = QRectF(cx, y + 156, cw, 32)
-            r = QRectF(cx, y + 156 - 2 * h, cw, 32)
-            pill = QPainterPath()
-            pill.addRoundedRect(r, 16, 16)
-            p.setPen(Qt.NoPen)
-            p.setBrush(QColor(255, 255, 255, int(16 + 18 * h)))
-            p.drawPath(pill)
-            if key == "today" and prog > 0:
-                fill = QLinearGradient(r.topLeft(), r.topRight())
-                fill.setColorAt(0, QColor(col.red(), col.green(), col.blue(), 85))
-                fill.setColorAt(1, QColor(col.red(), col.green(), col.blue(), 25))
-                p.save()
-                p.setClipPath(pill, Qt.IntersectClip)
-                p.setBrush(fill)
-                p.drawRect(QRectF(r.left(), r.top(), r.width() * prog, r.height()))
-                p.restore()
-            edge = None
-            if key == "review" and pending:
-                glow = 0.5 if self.calm else (math.sin(now * 2.4) + 1) / 2
-                edge = QColor(col.red(), col.green(), col.blue(), int(50 + 100 * glow))
-            if h > 0.01:
-                edge = QLinearGradient(r.topLeft(), r.bottomRight())
-                edge.setColorAt(0, QColor(col.red(), col.green(), col.blue(), int(230 * h)))
-                edge.setColorAt(1, QColor(255, 255, 255, int(70 * h)))
-            if edge is not None:
-                p.setPen(QPen(QBrush(edge), 1.3))
-                p.setBrush(Qt.NoBrush)
-                p.drawRoundedRect(r.adjusted(0.7, 0.7, -0.7, -0.7), 15.3, 15.3)
-            ic = QPointF(r.left() + 18, r.center().y())  # same x as the button icon below
-            tint = mix(jelly.PORCELAIN, col, 0.85 * h)
-            if icon == "clock":
-                jelly.clock(p, ic, 10, now, tint)
-            elif icon == "coin":
-                jelly.coin(p, ic, 10, now, self.coin_t0, self.cur, tint)
-            else:  # the one chip that asks for attention wears the theme colour
-                jelly.check(p, ic, 10, now, col if pending else QColor("#6b6b78"), bool(pending) and not self.calm)
-            p.setFont(font(13, QFont.Bold, UI if key == "review" else NUM))  # numbers in mono: no jitter while counting
-            p.setPen(QColor(238, 238, 238))
-            p.drawText(r.adjusted(35, 0, -8, 0), Qt.AlignVCenter | Qt.AlignLeft,
-                       QFontMetricsF(p.font()).elidedText(text, Qt.ElideRight, cw - 44))
+        fy, base, m = y + 158, p.opacity(), max(0.0, min(1.0, self.more_s.x))
+        self.icon_button(p, "more", QPointF(x + W - 18, fy + 19), col, now)
+        on_more = m >= 0.5
+        rows = [(self.footer_main, 1 - m, -16 * m, not on_more), (self.footer_more, m, 16 * (1 - m), on_more)]
+        for draw, a, dx, active in sorted(rows, key=lambda r: r[3]):  # the row you're on is drawn last
+            if a > 0.01:
+                kept = dict(self.buttons)
+                p.setOpacity(base * a)
+                draw(p, x + (0 if self.calm else dx), fy, W, col, now)
+                if not active:  # only the row you're on is clickable
+                    self.buttons = kept
+        p.setOpacity(base)
 
-        # buttons: two quiet glass ones, then one filled primary at the trailing end
-        y = y0 + self.row(p, 4)
-        d = max(0.0, min(1.0, self.dark.x))  # 0 = "go dark", 1 = "resume": the label and icon morph between them
+    def footer_main(self, p, x, fy, W, col, now):
+        L, cy = self.live, fy + 19
+        accent = col if col.lightness() > 60 else QColor("#7AA2FF")
+        # today: a small activity ring filling towards your daily goal, then the time
+        prog = min(1.0, L.get("today_s", 0) / self.goal) if self.goal else 0
+        t_txt, nf, lf = fmt(L.get("today_s", 0)), font(14, QFont.Bold, NUM), font(12, QFont.Medium)
+        tw, lw = QFontMetricsF(nf).horizontalAdvance(t_txt), QFontMetricsF(lf).horizontalAdvance("today")
+        g = QRectF(x - 8, fy + 2, 40 + tw + lw, 34)
+        self.buttons["today"] = g
+        self.wash(p, g, self.hv("today"))
+        rc = QPointF(x + 9, cy)
+        p.setBrush(Qt.NoBrush)
+        p.setPen(QPen(QColor(255, 255, 255, 34), 2.6))
+        p.drawEllipse(rc, 7.5, 7.5)
+        if prog > 0:
+            p.setPen(QPen(accent, 2.6, Qt.SolidLine, Qt.RoundCap))
+            p.drawArc(QRectF(rc.x() - 7.5, rc.y() - 7.5, 15, 15), 90 * 16, -round(prog * 360 * 16))
+        p.setFont(nf)
+        p.setPen(TXT)
+        p.drawText(QRectF(x + 26, fy, tw + 4, 38), Qt.AlignLeft | Qt.AlignVCenter, t_txt)
+        p.setFont(lf)
+        p.setPen(DIM)
+        p.drawText(QRectF(x + 30 + tw, fy + 1, lw + 4, 38), Qt.AlignLeft | Qt.AlignVCenter, "today")
+        # to review: the one stat that asks for attention wears the theme colour, and only while it does
+        pending = L.get("pending", 0)
+        text = f"{pending} to review" if pending else "all reviewed"
+        rf = font(13.5, QFont.Bold if pending else QFont.Medium)
+        rw = QFontMetricsF(rf).horizontalAdvance(text)
+        rg = QRectF(g.right() + 8, fy + 2, (14 if pending else 0) + rw + 16, 34)
+        self.buttons["review"] = rg
+        self.wash(p, rg, self.hv("review"))
+        tx = rg.left() + 8
+        if pending:
+            glow = 0.5 if self.calm else (math.sin(now * 2.4) + 1) / 2
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(accent.red(), accent.green(), accent.blue(), int(40 + 50 * glow)))
+            p.drawEllipse(QPointF(tx + 4, cy), 6, 6)
+            p.setBrush(accent)
+            p.drawEllipse(QPointF(tx + 4, cy), 3.5, 3.5)
+            tx += 14
+        p.setFont(rf)
+        p.setPen(TXT if pending else DIM)
+        p.drawText(QRectF(tx, fy, rw + 4, 38), Qt.AlignLeft | Qt.AlignVCenter, text)
+        self.icon_button(p, "dark", QPointF(x + W - 106, cy), col, now)
+        self.icon_button(p, "open", QPointF(x + W - 62, cy), col, now, primary=True)
+
+    def footer_more(self, p, x, fy, W, col, now):
+        """The rarer actions. These get labels: there's room, and they're used too seldom to remember by icon."""
+        items = (("personal", "not work"), ("pin", "unpin" if self.pinned else "pin"), ("gear", "settings"))
+        f = font(13, QFont.Bold)
+        widths = [QFontMetricsF(f).horizontalAdvance(lab) + 50 for _, lab in items]
+        bx = x + W - 46 - sum(widths) - 8 * (len(items) - 1)
         base = p.opacity()
-        for bx, key in zip(cols, ("dark", "personal", "open")):
+        for (key, lab), w in zip(items, widths):
+            r = QRectF(bx, fy + 1, w, 36)
+            bx += w + 8
+            self.buttons[key] = r
             off = key in self.disabled
             h, pr = (0.0, 1.0) if off else (self.hv(key), self.pv(key))
-            primary = key == "open"
-            rect = QRectF(bx, y + 196, cw, 40)
-            self.buttons[key] = rect
-            lift = 1.6 * h
-            r2 = QRectF(rect.center().x() - cw * pr / 2, rect.center().y() - 20 * pr - lift, cw * pr, 40 * pr)
-            rad = r2.height() / 2
+            r2 = QRectF(r.center().x() - w * pr / 2, r.center().y() - 18 * pr, w * pr, 36 * pr)
             p.setOpacity(base * (0.38 if off else 1))
             p.setPen(Qt.NoPen)
-            for g in range(3, 0, -1):  # a soft shadow that deepens as the button rises
-                p.setBrush(QColor(0, 0, 0, int((14 + 22 * h) / g)))
-                p.drawRoundedRect(r2.adjusted(-g, g * 1.1 + lift * 0.7, g, g * 1.5 + lift), rad + g, rad + g)
-            if primary:  # filled with the theme colour: the one thing you're most likely to want
-                fill = QLinearGradient(0, r2.top(), 0, r2.bottom())
-                fill.setColorAt(0, col.lighter(round(112 + 10 * h)))
-                fill.setColorAt(1, col.darker(108))
-                p.setBrush(fill)
-                p.drawRoundedRect(r2, rad, rad)
-                p.setPen(QPen(QColor(255, 255, 255, int(90 + 50 * h)), 1))
-                ink = jelly.INK if col.lightness() > 140 else TXT
-            else:
-                accent = mix(QColor(255, 255, 255), col, h)      # neutral at rest, the theme colour on hover
-                glass = QLinearGradient(0, r2.top(), 0, r2.bottom())
-                glass.setColorAt(0, QColor(255, 255, 255, int(24 + 12 * h)))
-                glass.setColorAt(1, QColor(255, 255, 255, int(6 + 6 * h)))
-                edge = QLinearGradient(0, r2.top(), 0, r2.bottom())
-                edge.setColorAt(0, QColor(accent.red(), accent.green(), accent.blue(), int(70 + 170 * h)))
-                edge.setColorAt(1, QColor(accent.red(), accent.green(), accent.blue(), int(18 + 80 * h)))
-                p.setPen(QPen(QBrush(edge), 1.25))
-                p.setBrush(glass)
-                p.drawRoundedRect(r2.adjusted(0.6, 0.6, -0.6, -0.6), rad - 0.6, rad - 0.6)
-                p.setPen(QPen(QColor(255, 255, 255, int(28 + 30 * h)), 1))
-                ink = TXT
-            p.drawLine(QPointF(r2.left() + rad, r2.top() + 1.6), QPointF(r2.right() - rad, r2.top() + 1.6))  # sheen
-
-            ic = QPointF(r2.left() + 18, r2.center().y())
-            tint = mix(jelly.PORCELAIN, col, 0.85 * h)
-            if key == "dark":  # moon turns into sun: crossfade with a quarter turn
-                p.save()
-                p.setOpacity(base * (1 - d))
-                p.translate(ic)
-                p.rotate(-16 * h - 90 * d)
-                p.translate(-ic.x(), -ic.y())
-                jelly.moon(p, ic, 12, now, tint)
-                p.restore()
-                p.save()
-                p.setOpacity(base * d)
-                p.translate(ic)
-                p.rotate(90 * (1 - d))
-                p.translate(-ic.x(), -ic.y())
-                jelly.sun(p, ic, 12 * (1 + 0.1 * h), 0 if self.calm else now * 0.4, tint)
-                p.restore()
-            elif key == "personal":  # tilts like it's being picked up
-                p.save()
-                p.translate(ic)
-                p.rotate(-12 * h)
-                p.translate(-ic.x(), -ic.y())
-                jelly.gamepad(p, ic, 12, now, tint)
-                p.restore()
-            else:  # a dark tile on the bright fill; the arrow slides towards where it will take you
-                jelly.open_tile(p, ic, 12, now, QColor(24, 22, 32) if ink == jelly.INK else jelly.PORCELAIN, h)
-
-            p.setFont(font(13.5, QFont.Bold))
-            p.setPen(ink)
-            lab = QRectF(r2.left() + 35, r2.top(), r2.width() - 37, r2.height())
-            if key == "dark":  # labels swap with a short vertical slide
-                p.setOpacity(base * (1 - d))
-                p.drawText(lab.translated(0, -7 * d), Qt.AlignVCenter | Qt.AlignLeft, "go dark")
-                p.setOpacity(base * d)
-                p.drawText(lab.translated(0, 7 * (1 - d)), Qt.AlignVCenter | Qt.AlignLeft, "resume")
-            else:
-                p.drawText(lab, Qt.AlignVCenter | Qt.AlignLeft, "not work" if key == "personal" else "open lowkey")
+            p.setBrush(QColor(255, 255, 255, int(14 + 22 * h)))
+            p.drawRoundedRect(r2, r2.height() / 2, r2.height() / 2)
+            self.glyph(p, key, QPointF(r2.left() + 20, r2.center().y()), col, now, h)
+            p.setPen(TXT)
+            p.setFont(f)
+            p.drawText(r2.adjusted(36, 0, -8, 0), Qt.AlignLeft | Qt.AlignVCenter, lab)
             p.setOpacity(base)
+
+    def wash(self, p, r, h):
+        """The hover affordance for text you can click: a soft plate that fades in under the cursor."""
+        if h > 0.01:
+            p.setPen(Qt.NoPen)
+            p.setBrush(QColor(255, 255, 255, int(16 * h)))
+            p.drawRoundedRect(r, 12, 12)
+
+    def icon_button(self, p, key, c, col, now, primary=False):
+        """Round, 36 px, no label and almost no chrome: a faint disc that brightens on hover, a squish while
+        held, and an icon that reacts. The primary one is filled with the theme colour."""
+        off = key in self.disabled
+        h, pr = (0.0, 1.0) if off else (self.hv(key), self.pv(key))
+        self.buttons[key] = QRectF(c.x() - 18, c.y() - 18, 36, 36)
+        r, base = 18 * pr, p.opacity()
+        p.setOpacity(base * (0.38 if off else 1))
+        p.setPen(Qt.NoPen)
+        if primary:
+            accent = col if col.lightness() > 60 else QColor("#7AA2FF")
+            for g in range(3, 0, -1):  # a soft shadow that deepens on hover
+                p.setBrush(QColor(0, 0, 0, int((16 + 20 * h) / g)))
+                p.drawEllipse(c + QPointF(0, g * 0.8 + h), r + g * 0.6, r + g * 0.6)
+            fill = QRadialGradient(c + QPointF(-r * 0.3, -r * 0.45), r * 1.7)
+            fill.setColorAt(0, accent.lighter(round(118 + 10 * h)))
+            fill.setColorAt(1, accent.darker(110))
+            p.setBrush(fill)
+        else:
+            p.setBrush(QColor(255, 255, 255, int(14 + 24 * h)))
+        p.drawEllipse(c, r, r)
+        self.glyph(p, key, c, col, now, h)
+        p.setOpacity(base)
+
+    def glyph(self, p, key, c, col, now, h):
+        """Each control's icon, and the small thing it does when you hover it."""
+        tint, base = mix(jelly.PORCELAIN, col, 0.85 * h), p.opacity()
+        p.save()
+        if key == "dark":  # moon turns into sun: crossfade with a quarter turn
+            d = max(0.0, min(1.0, self.dark.x))
+            p.translate(c)
+            p.save()
+            p.setOpacity(base * (1 - d))
+            p.rotate(-16 * h - 90 * d)
+            jelly.moon(p, QPointF(0, 0), 11, now, tint)
+            p.restore()
+            p.setOpacity(base * d)
+            p.rotate(90 * (1 - d))
+            jelly.sun(p, QPointF(0, 0), 11 * (1 + 0.1 * h), 0 if self.calm else now * 0.4, tint)
+        elif key == "personal":  # tilts like it's being picked up
+            p.translate(c)
+            p.rotate(-12 * h)
+            jelly.gamepad(p, QPointF(0, 0), 10.5, now, tint)
+        elif key == "pin":  # leans over when loose, stands up when it's holding the island out
+            k = max(0.0, min(1.0, self.pin_s.x))
+            jelly.pin(p, c, 9.5, mix(jelly.PORCELAIN, col, max(k, 0.85 * h)), 40 * (1 - self.pin_s.x) - 10 * h)
+        elif key == "gear":  # turns a notch
+            jelly.gear(p, c, 9, tint, 30 * h)
+        elif key == "open":  # an arrow on the filled disc, leaning towards where it takes you
+            n = 1.6 * h
+            jelly.stroke(p, jelly.INK if col.lightness() > 140 or col.lightness() <= 60 else TXT, 2.3)
+            o = c + QPointF(n, -n)
+            p.drawLine(o + QPointF(-4.5, 4.5), o + QPointF(4.2, -4.2))
+            p.drawPolyline([o + QPointF(-1.8, -4.8), o + QPointF(4.8, -4.8), o + QPointF(4.8, 1.8)])
+        elif key == "more":  # three dots that turn into a close cross
+            m = max(0.0, min(1.0, self.more_s.x))
+            p.setPen(Qt.NoPen)
+            p.setBrush(tint)
+            p.setOpacity(base * (1 - m))
+            for i in (-1, 0, 1):
+                p.drawEllipse(c + QPointF(i * (5.5 + h), 0), 2.1, 2.1)
+            p.setOpacity(base * m)
+            p.translate(c)
+            p.rotate(90 * (1 - m))
+            jelly.stroke(p, tint, 2.2)
+            p.drawLine(QPointF(-4.5, -4.5), QPointF(4.5, 4.5))
+            p.drawLine(QPointF(-4.5, 4.5), QPointF(4.5, -4.5))
+        p.restore()
 
     def flow_stats(self, now):
         """Active minutes in the last hour, and how long the current streak has run."""
@@ -1226,13 +1255,14 @@ class Island(QWidget):
             _, active_min, streak = self.flow_stats(time.time())
             tail = f", in flow for {streak}m" if streak >= 5 and not L.get("paused") else ""
             return f"last hour: {active_min} of 60 minutes active{tail}"
-        return {"personal": "not work? moves this session to side quests, off the invoice",
-                "open": "open the dashboard: review sessions, send the bill, see your week",
+        return {"personal": "moves this session to side quests, off the invoice",
+                "open": "open the dashboard: review, bill, see your week",
                 "today": f"billable time today, {pct}% of your {self.goal // 3600}h goal",
-                "money": "earned today at your client rates. click to make the invoice",
-                "review": "sessions waiting for bill it / nah. click to review them",
+                "money": "earned today at your rates. click to make the invoice",
+                "review": "sessions waiting for bill it / nah. click to review",
                 "mascot": "click me and i'll tell you something about your day",
                 "gear": "island settings: where it lives and how it rests",
+                "more": "back to the main controls" if self.more else "more: not work, pin and settings",
                 "back": "back to your session"}.get(key)
 
     def open_page(self, hash_=""):
@@ -1273,15 +1303,21 @@ class Island(QWidget):
             elif key == "personal":  # acts at once and offers undo, instead of asking "are you sure?"
                 self.undo = self.actions["personal"]()
                 self.undo_until = time.time() + UNDO_S
+                self.more = False
                 self.toast("marked as a side quest", GREY)
             elif key == "undo" and self.undo:
                 self.undo()
                 self.undo, self.toast_until = None, 0.0
                 self.mascot.react("surprised", 1.5)
             elif key == "pin":
-                self.pinned = not self.pinned
+                self.pinned, self.more = not self.pinned, False
+                self.notice = "pinned: it stays out as a pill" if self.pinned else "unpinned: it tucks back in"
+                self.notice_until = time.time() + 2.6
+            elif key == "more":
+                self.more = not self.more
             elif key == "gear":
                 self.in_settings = self.click_open = True
+                self.more = False
             elif key == "back":
                 self.in_settings = False
             elif key.startswith("set:"):  # applies at once; if it moves the island, it waits open where it lands
