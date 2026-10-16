@@ -124,28 +124,38 @@ Every client gets its own little blob: a shape picked from the client's name, in
 | ◔ **today** | island, open card | Billable time today. The ring fills up towards your daily goal (`daily_goal_h`). Click to open the dashboard. |
 | ₹ **earned today** | island, open card | Earned today at your client rates; it glows when it ticks up. Click to make the invoice. |
 | ● **to review** | island, open card | Sessions you haven't approved yet. Its dot pulses while something waits; click to review them. |
-| **bill it ✅ / nah 🙅** | dashboard card | Approve a session for the invoice, or leave it off. |
-| **client dropdown / ✏️** | dashboard card | Move a session to another client, or edit its invoice line. |
-| 🧾 **why?** | dashboard card | Shows the exact windows behind the line: your receipts. |
-| 💸 **send the bill** | dashboard header | A receipt-style invoice per client from approved sessions → PDF or CSV. |
-| ✨ **wrapped** | dashboard header | Your week as a shareable card. |
-| ⚙️ **settings** | dashboard header | Island edge, taskbar behaviour, resting style, each with live previews. |
-| **← / →, ◐** | dashboard header | Change day, toggle light/dark theme. |
+| **bill it / nah** | dashboard card | The two buttons on a session waiting for review: approve it for the invoice, or leave it off. Either way it settles into a sticker, flies home to the island, and **undo** stays on offer. |
+| **the client sticker** | dashboard card | Click it to move the session to another client. |
+| **the line itself** | dashboard card | Click it to edit the invoice line (`Enter` saves, `Esc` cancels). |
+| **why?** | dashboard card | Unfolds the exact windows behind the line: your receipts. |
+| **all · to review · billed · side quests** | dashboard | Filters, with counts. The cards re-flow on springs. |
+| **vibe check queue** | dashboard | Click to start reviewing: it filters to what's waiting and focuses the first one. Hover it for the keyboard shortcuts. |
+| **‹ day ›** | dashboard header | Change day. The page slides the way you went. |
+| ✦ **wrapped** · ⚙ **settings** · ◐ **theme** | dashboard header | Icon buttons; hover one and it says what it does. The theme follows your system (dark when your OS is dark) until you pick one; pick your system's own theme again and it's back on automatic. |
+| **send the bill** | dashboard header | The one filled button: a receipt-style invoice per client from approved sessions → PDF or CSV. |
+| **undo** | snackbar | Every change shows what happened with an undo while the line runs out (5 s). `Ctrl`/`⌘` + `Z` works too. |
 
-**Keyboard in the dashboard:** `J`/`K` move · `Y` bill it · `N` nah · `E` edit · `←`/`→` day · `B` bill · `W` wrapped · `S` settings · `Esc` close.
+**Keyboard in the dashboard:** `J`/`K` move · `Y` bill it · `N` nah · `E` edit · `←`/`→` day · `B` bill · `W` wrapped · `S` settings · `Ctrl+Z` undo · `Esc` close.
 
 ### 🧾 The dashboard
 
-Your day as colour blocks, one card per work session, each with an invoice line written by the model.
+Your day as colour blocks, one card per work session, each with an invoice line written by the model. Light or dark follows your system.
 
 <p align="center"><img src="docs/images/dashboard.png" alt="lowkey dashboard" width="100%"></p>
 
-- Review like a feed: **bill it ✅ / nah 🙅**, or move the session to another client.
-- Keyboard: `J`/`K` move · `Y` bill · `N` nah · `E` edit · `←`/`→` change day · `B` bill · `W` wrapped · `S` settings.
-- **🧾 why?** shows the exact windows behind every line. If a client ever asks what they paid for, you have receipts.
-- **"backed by your windows" %** is computed by plain code, not by the model: the share of the session's time whose window titles match that client. Low score → *"🤔 check me"*.
+- **Review like a feed:** each card is just its line, a quiet details row and two buttons. The client sticker is the client picker; click the line to edit it.
+- **Keyboard:** `J`/`K` move · `Y` bill · `N` nah · `E` edit · `←`/`→` change day · `B` bill · `W` wrapped · `S` settings · `Ctrl+Z` undo.
+- **why?** unfolds the exact windows behind every line. If a client ever asks what they paid for, you have receipts.
+- **"% backed"** is computed by plain code, not by the model: the share of the session's time whose window titles match that client. A low score shows up as *"check me"*.
+- **It moves like it means it.** Real spring curves everywhere; numbers roll digit by digit; "send the bill" grows into its sheet and shrinks back into the button; changing day slides the page; filters re-flow the cards; the theme switch spreads out from the button as a circle. All of it switches off when your OS asks for reduced motion.
 
-### 💸 Send the bill · ✨ Wrapped
+#### Changes fly home
+
+Bill a session and the button settles into a ticked sticker, then a little capsule lifts off it and flies to your island: out of the page, across your desktop on the same arc, and under the island's edge. The island gulps, flashes in the client's colour, says what happened, and its numbers update. The page draws the capsule inside the browser; the island draws the very same capsule, on the same curve and clock, everywhere outside it, so a small or off-to-the-side window hands it over at its edge without a seam.
+
+<p align="center"><img src="docs/images/handoff.png" alt="A change leaving a small browser window and flying across the desktop into the island" width="100%"></p>
+
+### Send the bill · Wrapped
 
 <table>
 <tr>
@@ -160,9 +170,9 @@ Your day as colour blocks, one card per work session, each with an invoice line 
 
 ### ⚙️ Island settings
 
-Pick the **edge** (top, bottom, left, right), what happens when the island **shares an edge with your taskbar** (sit over it like a real notch, or hang below it), and whether it rests as a **tucked-away lip** or an **always-visible pill**. Every option is a card with a mini preview of *your* screen layout. Hover a card and its island springs open.
+Pick the **edge** (top, bottom, left, right), what happens when the island **shares an edge with your taskbar** (sit over it like a real notch, or hang below it), and whether it rests as a **tucked-away lip** or an **always-visible pill**. The same three rows live in the dashboard and inside the island itself. Hover an option and one live preview of *your* screen acts it out: a new edge tucks into the old one and blooms out of the new.
 
-<p align="center"><img src="docs/images/settings.png" alt="Island settings with live screen previews" width="85%"></p>
+<p align="center"><img src="docs/images/settings.png" alt="Island settings: three rows and one live preview" width="85%"></p>
 
 ## 🧠 How it works
 

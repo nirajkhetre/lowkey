@@ -5,13 +5,15 @@ States: lip (tucked away) -> pill (hover) -> open (keep hovering or click), plus
 The pin button (or a double-click) keeps the pill out instead of tucking it away.
 The open card is laid out like a Live Activity: two stats, three icon buttons, rarer actions behind "more".
 Settings open inside the island; hovering an option pops out a tiny screen acting it out.
+Changes made in the dashboard fly here as little capsules (out of the browser and across the desktop when they
+have to); the island swallows each one, gulps and says what changed.
 """
 import ctypes, math, subprocess, sys, time, webbrowser
 
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QRectF, QPointF
-from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QFontMetricsF, QFontDatabase, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient, QTransform
+from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QFontMetricsF, QFontDatabase, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient, QRegion, QTransform
 from PySide6.QtWidgets import QApplication, QWidget
 
 from . import jelly
@@ -135,6 +137,40 @@ class Peek(QWidget):
         p.end()
 
 
+def flight_at(f, t):
+    """A dashboard change t seconds into its flight: the page's own curve (an arc, pulled in as t^2.1) and scale."""
+    k = max(0.0, min(1.0, (t - f["lift"]) / f["dur"]))
+    u = k ** 2.1
+    q = 1 - u
+    (sx, sy), (cx, cy), (ix, iy) = f["S"], f["C"], f["I"]
+    x, y = q * q * sx + 2 * q * u * cx + u * u * ix, q * q * sy + 2 * q * u * cy + u * u * iy
+    size, st = 1 - 0.42 * u, max(0.0, (u - 0.5) / 0.5)
+    along, across = size * (1 + 0.55 * st), size * (1 - 0.4 * st)  # it stretches along its path as it speeds up
+    return (x, y, across, along) if f["edge"] in ("top", "bottom") else (x, y, along, across)
+
+
+class Flight(QWidget):
+    """A change crossing the desktop from the browser to the island. The page draws its capsule inside its own
+    viewport; this window draws the very same capsule (same curve, same clock) everywhere outside it, so the two
+    halves meet at the browser's edge and read as one. Small, click-through, and only alive during a flight."""
+
+    def __init__(self, island):
+        super().__init__()
+        self.island, self.c = island, None
+        self.setWindowFlags(Qt.FramelessWindowHint | Qt.WindowStaysOnTopHint | Qt.Tool | Qt.WindowDoesNotAcceptFocus
+                            | Qt.NoDropShadowWindowHint | Qt.WindowTransparentForInput)
+        for a in (Qt.WA_TranslucentBackground, Qt.WA_ShowWithoutActivating, Qt.WA_TransparentForMouseEvents,
+                  Qt.WA_MacAlwaysShowToolWindow):
+            self.setAttribute(a)
+
+    def paintEvent(self, _):
+        if self.c:
+            p = QPainter(self)
+            p.setRenderHints(QPainter.Antialiasing | QPainter.TextAntialiasing)
+            self.island.draw_flight(p, self.c["flight"], time.time())
+            p.end()
+
+
 class Island(QWidget):
     def __init__(self, live, actions, currency="₹", goal_h=6):
         self.app = QApplication.instance() or QApplication([])
@@ -171,6 +207,8 @@ class Island(QWidget):
         self.slide, self.slide_edge = Spring(0, 220, 26), None  # glides when the taskbar mode moves it
         self.peek, self.peek_along, self.peek_key, self.peek_t0, self.nub = Spring(0, 340, 30), None, None, 0.0, 0.0
         self.peek_win = Peek(self)
+        self.incoming, self.caught, self.glow_c, self.glow_t0 = [], set(), None, 0.0  # changes flying in from the dashboard
+        self.flight_win = Flight(self)
         self.calm = self.mascot.calm = reduced_motion()
         self.coin_t0, self.last_money = 0.0, None
         self.money_view = Spring(0, 60, 15)  # the ₹ chip counts up
@@ -233,6 +271,110 @@ class Island(QWidget):
             return base
         return self.mode
 
+    def catch_changes(self, now):
+        """The dashboard says when each flying change will land; swallow each one right on time, in order."""
+        for c in self.live.get("catches", ()):
+            if c["id"] not in self.caught:
+                self.caught.add(c["id"])
+                self.incoming.append(dict(c))
+                self.plan_flight(self.incoming[-1])
+        for c in self.incoming:
+            if not c.get("done") and now >= c["at"]:
+                c["done"] = True
+                if now - c["at"] < 1.5:  # stale ones (island was busy elsewhere) land quietly
+                    self.swallow(c, now)
+        self.incoming = [c for c in self.incoming if not c.get("done") or now - c["at"] < 1.0]
+
+    def plan_flight(self, c):
+        """Size the overlay to just the stretch of path the page can't draw (outside its viewport), with room for
+        the capsule itself. Nothing outside the page (say, the browser sits under the island): no overlay at all."""
+        f = c.get("flight")
+        if not f or self.calm:
+            return
+        f = c["flight"] = {**f, "color": c["color"]}
+        vx, vy, vw, vh = f["vp"]
+        w, h = f["size"]
+        xs, ys = [], []
+        for n in range(97):
+            x, y, sx, sy = flight_at(f, f["lift"] + f["dur"] * n / 96)
+            hw, hh = w * max(sx, sy, 1.0) / 2 + 4, h * max(sx, sy, 1.0) / 2 + 12  # room for its shadow too
+            if x - hw < vx or y - hh < vy or x + hw > vx + vw or y + hh > vy + vh:
+                xs += [x - hw, x + hw]
+                ys += [y - hh, y + hh]
+        if xs:
+            f["box"] = [math.floor(min(xs)), math.floor(min(ys)), math.ceil(max(xs) - min(xs)) + 1, math.ceil(max(ys) - min(ys)) + 1]
+
+    def fly_tick(self, now):
+        """Keep the overlay up while a flight is out between the page and the island; the island stays above it,
+        so the capsule ends by sliding under the island's edge."""
+        win = self.flight_win
+        c = next((c for c in self.incoming if not c.get("done") and c.get("flight", {}).get("box")
+                  and c["flight"]["t0"] + c["flight"]["lift"] <= now), None)
+        if c is None:
+            if win.isVisible():
+                win.hide()
+            win.c = None
+            return
+        if win.c is not c:
+            win.c = c
+            win.setGeometry(*c["flight"]["box"])
+            win.show()
+            self.raise_()
+        win.update()
+
+    def draw_flight(self, p, f, now):
+        """The capsule, exactly as the page draws it (island black, a dot in the client's colour, the label), clipped
+        to everything outside the browser's viewport so the page's half and this half meet seamlessly."""
+        bx, by, bw, bh = f["box"]
+        vx, vy, vw, vh = f["vp"]
+        p.setClipRegion(QRegion(0, 0, bw, bh).subtracted(QRegion(round(vx - bx), round(vy - by), round(vw), round(vh))))
+        x, y, sx, sy = flight_at(f, now - f["t0"])
+        w, h = f["size"]
+        p.translate(x - bx, y - by)
+        p.scale(sx, sy)
+        r = QRectF(-w / 2, -h / 2, w, h)
+        p.setPen(Qt.NoPen)
+        for i in range(3, 0, -1):  # the same soft drop shadow as the page's capsule
+            p.setBrush(QColor(0, 0, 0, 16))
+            p.drawRoundedRect(r.adjusted(-i * 2, -i + 3 * i, i * 2, i + 3 * i), h / 2 + i, h / 2 + i)
+        p.setPen(QPen(QColor(255, 255, 255, 36), 1))
+        p.setBrush(QColor(11, 11, 11))
+        p.drawRoundedRect(r, h / 2, h / 2)
+        col, dot = QColor(f["color"]), QPointF(r.left() + 14.5, 0)
+        glow = QRadialGradient(dot, 10)
+        c0, c1 = QColor(col), QColor(col)
+        c0.setAlpha(150)
+        c1.setAlpha(0)
+        glow.setColorAt(0, c0)
+        glow.setColorAt(1, c1)
+        p.setPen(Qt.NoPen)
+        p.setBrush(glow)
+        p.drawEllipse(dot, 10, 10)
+        p.setBrush(col)
+        p.drawEllipse(dot, 4.5, 4.5)
+        p.setPen(QColor(244, 244, 244))
+        p.setFont(font(13.5, QFont.ExtraBold))
+        p.drawText(QRectF(r.left() + 26, r.top(), w - 39, h), Qt.AlignLeft | Qt.AlignVCenter, f["label"])
+
+    def swallow(self, c, now):
+        """A change just docked: a springy gulp (it bulges inward and wider), a flash of its colour, and a pop-out
+        that says what it was. The creature reacts too."""
+        col = QColor(c["color"])
+        self.toast(c["text"], col, 2.8)
+        self.glow_c, self.glow_t0 = col, now
+        if not self.calm:
+            side = self.edge in ("top", "bottom")
+            (self.H if side else self.W).v += 420
+            (self.W if side else self.H).v += 260
+        self.mascot.react("money" if c["kind"] == "billed" else "surprised", 2.2)
+
+    def inner(self, b):
+        """The middle of the island's inward-facing side, and the direction that points into the island."""
+        return {"top": (QPointF(b.center().x(), b.bottom()), QPointF(0, -1)),
+                "bottom": (QPointF(b.center().x(), b.top()), QPointF(0, 1)),
+                "left": (QPointF(b.right(), b.center().y()), QPointF(-1, 0)),
+                "right": (QPointF(b.left(), b.center().y()), QPointF(1, 0))}[self.edge]
+
     def want_edge(self):
         e = (self.live.get("settings") or {}).get("edge")
         return e if e in EDGES else "top"
@@ -243,6 +385,8 @@ class Island(QWidget):
         st, L = self.live.get("settings") or {}, self.live
         self.over, self.rest = st.get("taskbar") == "over", st.get("rest", "lip")
         self.watch_events(now)
+        self.catch_changes(now)
+        self.fly_tick(now)
         self.quip = self.mascot.update(now)
         self.disabled = {"personal"} if (L.get("paused") or L.get("client") in (None, "", PERSONAL)) else set()
         if sys.platform == "darwin":
@@ -320,6 +464,9 @@ class Island(QWidget):
             y = a.center().y() - wh / 2
             x = line if edge == "left" else line - ww
         self.setGeometry(round(x), round(y), round(ww), round(wh))
+        tip, _ = self.inner(self.body())  # where a change from the dashboard should fly to, in screen coordinates
+        self.live["island"] = {"x": round(x) + round(tip.x()), "y": round(y) + round(tip.y()), "edge": edge,
+                               "screen": [full.x(), full.y(), full.width(), full.height()]}
         if over and sys.platform == "win32" and time.time() - self.raised_at > 0.4:
             # the taskbar is also "always on top"; whoever was raised last wins, so keep winning
             ctypes.windll.user32.SetWindowPos(int(self.winId()), -1, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)
@@ -386,6 +533,17 @@ class Island(QWidget):
         p.setClipPath(path)
         if self.dark.x > 0.02:
             self.draw_night(p, b, now, min(1.0, self.dark.x))
+        if self.glow_c is not None and now - self.glow_t0 < 0.7:  # the swallowed change's colour, fading out
+            tip, _ = self.inner(b)
+            g = QRadialGradient(tip, 120)
+            c0, c1 = QColor(self.glow_c), QColor(self.glow_c)
+            c0.setAlpha(int(170 * (1 - (now - self.glow_t0) / 0.7)))
+            c1.setAlpha(0)
+            g.setColorAt(0, c0)
+            g.setColorAt(1, c1)
+            p.setPen(Qt.NoPen)
+            p.setBrush(g)
+            p.drawRect(b)
         lip = 1 - max(s.x for s in self.fade.values())
         if lip > 0.02:
             self.draw_lip(p, b, now, min(1, lip))

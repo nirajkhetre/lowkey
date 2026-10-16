@@ -1,8 +1,9 @@
 <!doctype html>
-<html lang="en" data-theme="light">
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
 <title>lowkey — bills your hours</title>
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
 <style>
@@ -14,6 +15,12 @@
   --bg:#F3EEE3; --paper:#FFFDF7; --ink:#111; --muted:#5d5a53; --line:2.5px solid var(--ink);
   --shadow:5px 5px 0 var(--ink); --shadow-sm:3px 3px 0 var(--ink);
   --lime:#B8FF3B; --pink:#FF7AD9; --blue:#7AA2FF; --yellow:#FFD23F; --orange:#FF8A3D; --grey:#d9d4c7;
+  /* motion: real damped springs sampled into linear() (response .42s / damping .72, and .5s / .86),
+     plus Material's emphasized curves for things entering and leaving */
+  --spring:linear(0, 0.016, 0.059, 0.121, 0.196, 0.278, 0.363, 0.447, 0.529, 0.606, 0.677, 0.741, 0.797, 0.847, 0.89, 0.926, 0.955, 0.979, 0.998, 1.013, 1.023, 1.031, 1.035, 1.038, 1.038, 1.038, 1.036, 1.034, 1.031, 1.028, 1.024, 1.021, 1.018, 1.015, 1.012, 1.01, 1.008, 1.006, 1.004, 1.003, 1);
+  --spring-soft:linear(0, 0.018, 0.064, 0.129, 0.204, 0.285, 0.366, 0.445, 0.52, 0.589, 0.652, 0.709, 0.759, 0.802, 0.84, 0.872, 0.899, 0.921, 0.94, 0.955, 0.968, 0.977, 0.985, 0.991, 0.996, 0.999, 1.001, 1.003, 1.004, 1.005, 1.005, 1.005, 1.005, 1.005, 1.004, 1.004, 1.003, 1.003, 1.003, 1.002, 1);
+  --t-spring:.5s; --t-soft:.64s;
+  --enter:cubic-bezier(.2,0,0,1); --exit:cubic-bezier(.3,0,1,1);
   --display:"Bricolage Grotesque","Segoe UI Variable Display","Segoe UI",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   --serif:"Instrument Serif",Georgia,serif;
   --mono:"Geist Mono","Cascadia Code","Consolas","SF Mono",Menlo,ui-monospace,monospace;
@@ -23,31 +30,52 @@
 *{box-sizing:border-box}
 h1 em,h2 em,h3 em,.label em{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-.3px}
 html,body{margin:0}
-body{background:var(--bg);background-image:radial-gradient(var(--grey) 1px,transparent 1.2px);background-size:22px 22px;color:var(--ink);font-family:var(--display);font-size:16px;line-height:1.35;min-height:100vh}
+body{background:var(--bg);background-image:radial-gradient(var(--grey) 1px,transparent 1.2px);background-size:22px 22px;color:var(--ink);font-family:var(--display);font-size:16px;line-height:1.35;min-height:100vh;font-variant-numeric:tabular-nums}
 button,select,input{font:inherit;color:inherit}
-.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 80px}
-.btn{background:var(--paper);border:var(--line);border-radius:12px;box-shadow:var(--shadow-sm);padding:9px 13px;font-weight:700;font-stretch:88%;cursor:pointer;transition:transform .08s,box-shadow .08s;white-space:nowrap}
-.actions .btn{padding:8px 10px}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 80px;transition:transform var(--t-soft) var(--spring-soft),filter .3s}
+/* buttons press fast and spring back slow, like something physical */
+.btn{background:var(--paper);border:var(--line);border-radius:12px;box-shadow:var(--shadow-sm);padding:9px 14px;font-weight:700;font-stretch:88%;cursor:pointer;white-space:nowrap;
+  transition:transform .45s var(--spring),box-shadow .45s var(--spring),background .2s}
 .btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
-.btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink)}
-.btn.lime{background:var(--lime);color:#111}.btn.pink{background:var(--pink);color:#111}.btn.yellow{background:var(--yellow);color:#111}
-.btn.ghost{box-shadow:none;border-style:dashed}
+.btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink);transition-duration:.06s}
+.btn.lime{background:var(--lime);color:#111}
+.btn.quiet{box-shadow:none;background:transparent}          /* secondary: no shadow until you reach for it */
+.btn.quiet:hover{box-shadow:var(--shadow-sm);background:var(--paper)}
+.link{border:0;background:none;padding:6px 4px;font-weight:800;cursor:pointer;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
 .card{background:var(--paper);border:var(--line);border-radius:18px;box-shadow:var(--shadow)}
 kbd{font-family:var(--mono);font-size:.75em;border:1.5px solid var(--ink);border-radius:5px;padding:0 5px;background:var(--paper)}
 
-/* header */
-header{display:flex;align-items:center;gap:14px;flex-wrap:wrap;margin-bottom:22px}
+/* icon buttons: no labels, a tooltip explains them after a short hover (the same intent delay as the island) */
+.ib{width:36px;height:36px;border:0;border-radius:999px;background:transparent;display:grid;place-items:center;cursor:pointer;flex:none;transition:background .15s,transform .4s var(--spring)}
+.ib:hover{background:var(--bg)}
+.ib:active{transform:scale(.88);transition-duration:.06s}
+.ib svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;overflow:visible;transition:transform .4s var(--spring)}
+.ib svg *{transition:transform .45s var(--spring);transform-box:fill-box;transform-origin:center}
+#prev:hover svg{transform:translateX(-2px)} #next:hover svg{transform:translateX(2px)}
+#openWrapped:hover .star{transform:scale(1.18) rotate(-12deg)}
+#openSettings:hover .k1{transform:translateX(-4px)} #openSettings:hover .k2{transform:translateX(4px)}
+#theme .half{transform-box:view-box;transform-origin:12px 12px}
+#theme:hover .half{transform:rotate(180deg)}
+[data-tip]{position:relative}
+[data-tip]::after{content:attr(data-tip);position:absolute;top:calc(100% + 10px);left:50%;transform:translate(-50%,-4px) scale(.94);transform-origin:50% 0;background:var(--ink);color:var(--bg);font:700 12.5px/1 var(--display);padding:7px 10px;border-radius:9px;white-space:pre;opacity:0;pointer-events:none;transition:opacity .12s,transform .35s var(--spring);z-index:10}
+[data-tip]:hover::after,[data-tip]:focus-visible::after{opacity:1;transform:translate(-50%,0) scale(1);transition-delay:.35s}
+.tip{position:fixed;z-index:15;max-width:300px;background:var(--ink);color:var(--bg);border-radius:12px;padding:9px 12px;font-size:13px;font-weight:600;line-height:1.3;pointer-events:none;
+  opacity:0;transform:translate(-50%,calc(-100% - 6px)) scale(.94);transform-origin:50% 100%;transition:opacity .12s,transform .35s var(--spring)}
+.tip.show{opacity:1;transform:translate(-50%,calc(-100% - 12px)) scale(1)}
+.tip b{font-weight:800}.tip span{font-family:var(--mono);font-size:12px;opacity:.7;margin-left:6px}
+.tip div{margin-top:3px;opacity:.85}
+
+/* header: identity, one date control, one quiet tool group, one primary action */
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px}
 .logo{font-size:44px;font-weight:800;letter-spacing:-2px;line-height:1;position:relative}
 .logo .dot{color:var(--pink);animation:blink 1.6s steps(1) infinite}
 @keyframes blink{50%{opacity:.15}}
-.sticker{display:inline-block;background:var(--yellow);color:#111;border:var(--line);border-radius:999px;padding:4px 10px;font-size:13px;font-weight:800;transform:rotate(-4deg);box-shadow:var(--shadow-sm)}
-.datenav{display:flex;align-items:center;gap:6px;margin-left:auto}
-header{gap:10px}
-.pill,.chip{font-stretch:90%}
-.datenav .day{font-weight:800;font-size:18px;min-width:110px;text-align:center}
-.pill{display:inline-flex;align-items:center;gap:7px;border:var(--line);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;background:var(--paper)}
+.pill{display:inline-flex;align-items:center;gap:7px;border:var(--line);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;background:var(--paper);font-stretch:90%}
 .pill i{width:10px;height:10px;border-radius:50%;background:var(--lime);border:1.5px solid var(--ink);display:inline-block}
 .pill.warn i{background:var(--orange)}
+.grp{display:flex;align-items:center;gap:2px;border:var(--line);border-radius:999px;background:var(--paper);box-shadow:var(--shadow-sm);padding:3px}
+.datenav{margin-left:auto}
+.datenav .day{font-weight:800;font-size:16px;min-width:112px;text-align:center}
 
 /* hero */
 .hero{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:18px;margin-bottom:22px}
@@ -55,56 +83,127 @@ header{gap:10px}
 .label{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted)}
 .money{font-size:64px;font-weight:800;letter-spacing:-3px;line-height:1;margin:6px 0 4px}
 .money-card{background:var(--lime)!important;color:#111}
-.money-card .label{color:#333}
-.money-card::after{content:"💸";position:absolute;right:14px;top:8px;font-size:46px;transform:rotate(12deg)}
+.money-card .label,.money-card .sub{color:#333}
 .split{display:flex;height:22px;border:var(--line);border-radius:999px;overflow:hidden;margin:12px 0 8px}
-.split div{height:100%}
+.split div{height:100%;transform-origin:left}
 .stripes{background:repeating-linear-gradient(45deg,var(--grey) 0 6px,var(--paper) 6px 12px)}
 .big{font-size:34px;font-weight:800;letter-spacing:-1px}
 .sub{color:var(--muted);font-weight:600;font-size:14px}
-.money-card .sub{color:#333}
+.queue{font:inherit;color:inherit;text-align:left;cursor:pointer;transition:transform .45s var(--spring),box-shadow .45s var(--spring)}
+.queue:hover{transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--ink)}
+.queue:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink);transition-duration:.06s}
+.qfoot{display:grid}
+.qfoot>*{grid-area:1/1;transition:opacity .2s,transform .35s var(--spring)}
+.qfoot .keys{opacity:0;transform:translateY(5px)}
+.queue:hover .qfoot .sub:first-child{opacity:0;transform:translateY(-5px)}
+.queue:hover .qfoot .keys{opacity:1;transform:none}            /* the shortcuts show up when you reach for the queue */
+
+/* rolling digits: each digit is a column that rolls to its new value (Apple's numeric text transition) */
+.roll{display:inline-flex;line-height:1}
+.dg{display:inline-block;height:1em;overflow:hidden}
+.dg>span{display:flex;flex-direction:column;transition:transform .7s var(--spring)}
+.dg i{display:block;height:1em;font-style:normal;text-align:center}
 
 /* timeline */
 .timeline{padding:14px 16px 10px;margin-bottom:26px}
 .track{position:relative;height:46px;border:var(--line);border-radius:12px;background:var(--bg);overflow:hidden}
-.block{position:absolute;top:0;bottom:0;border-right:2px solid var(--ink);cursor:pointer;transition:filter .1s}
+.block{position:absolute;top:0;bottom:0;border-right:2px solid var(--ink);cursor:pointer;transform-origin:left;transition:filter .15s}
 .block:hover{filter:brightness(1.08) saturate(1.2)}
+.now{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);z-index:2;pointer-events:none}
+.now::after{content:"";position:absolute;top:50%;left:50%;width:10px;height:10px;border-radius:50%;background:var(--pink);border:2px solid var(--ink);transform:translate(-50%,-50%);animation:beat 2s ease-in-out infinite}
+@keyframes beat{50%{transform:translate(-50%,-50%) scale(1.25)}}
 .hours{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:6px}
 
-/* sessions */
+/* segmented controls: one ink thumb springs to the chosen option */
+.seg{position:relative;display:flex;border:var(--line);border-radius:999px;background:var(--paper);padding:3px}
+.seg button{position:relative;z-index:1;flex:1;border:0;background:none;padding:6px 13px;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;color:var(--muted);white-space:nowrap;transition:color .25s}
+.seg button:hover:not(.on):not(:disabled){color:var(--ink)}
+.seg button.on{color:var(--bg)}
+.seg button:disabled{opacity:.4;cursor:not-allowed}
+.seg button b{font-family:var(--mono);font-size:12px;font-weight:600;opacity:.7;margin-left:2px}
+.seg .thumb{position:absolute;top:3px;bottom:3px;left:3px;width:0;border-radius:999px;background:var(--ink)}
+.seg.ready .thumb{transition:left var(--t-spring) var(--spring),width var(--t-spring) var(--spring)}
+.seg:active .thumb{scale:.97;transition:left var(--t-spring) var(--spring),width var(--t-spring) var(--spring),scale .1s}
+.filters button{flex:none}
+
+/* sessions: the line is the content; the rest stays quiet until you need it */
 .bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
 .bar h2{margin:0 auto 0 0;font-size:28px;letter-spacing:-1px}
-.chip{border:var(--line);border-radius:999px;padding:5px 12px;font-weight:700;font-size:14px;background:var(--paper);cursor:pointer}
-.chip.on{background:var(--ink);color:var(--bg)}
 .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px}
-.s{display:flex;flex-direction:column;transition:transform .25s,opacity .25s;outline:none}
+.s{display:flex;flex-direction:column;transition:transform .45s var(--spring),opacity .3s,box-shadow .45s var(--spring);outline:none;scroll-margin:90px}
 .s:focus{transform:translate(-3px,-3px);box-shadow:8px 8px 0 var(--ink)}
-.s .top{display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:var(--line);border-radius:15px 15px 0 0;color:#111}
-.s .top b{font-size:17px}
-.s .top .t{margin-left:auto;font-family:var(--mono);font-size:13px;font-weight:700}
-.s .body{padding:14px;flex:1;display:flex;flex-direction:column;gap:10px;position:relative}
-.task{font-size:19px;font-weight:700;line-height:1.25;outline:none;border-radius:8px;padding:2px 4px;margin:-2px -4px}
+.s.done{opacity:.7}
+.s.done:hover,.s.done:focus{opacity:1}
+.s .top{display:flex;align-items:center;gap:8px;padding:14px 14px 0}
+.s .t{margin-left:auto;font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--muted)}
+.who{position:relative;display:inline-flex;border:var(--line);border-radius:999px;background:var(--c);color:#111;box-shadow:2px 2px 0 var(--ink);max-width:62%;transition:transform .4s var(--spring),box-shadow .4s var(--spring)}
+.who:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.who.side{color:var(--ink)}
+.who select{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:inherit;font-weight:800;font-size:14px;padding:4px 28px 4px 12px;cursor:pointer;max-width:100%;text-overflow:ellipsis}
+.who select option{color:#111;background:#fff}
+.who::after{content:"";position:absolute;right:11px;top:50%;width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.s .body{padding:10px 14px 14px;flex:1;display:flex;flex-direction:column;gap:10px}
+.task{font-size:19px;font-weight:700;line-height:1.25;outline:none;border-radius:8px;padding:2px 4px;margin:-2px -4px;cursor:text;transition:background .15s,box-shadow .2s}
+.task:hover{background:var(--bg)}
 .task[contenteditable=true]{background:var(--bg);box-shadow:inset 0 0 0 2px var(--ink)}
-.meta{display:flex;gap:8px;flex-wrap:wrap;align-items:center;font-size:13px;font-weight:700}
-.tag{border:1.5px solid var(--ink);border-radius:999px;padding:2px 9px;background:var(--bg)}
-.tag.unsure{background:var(--yellow);color:#111}
-.why{font-family:var(--mono);font-size:12px;color:var(--muted);display:none;border-top:1.5px dashed var(--ink);padding-top:8px}
-.why.open{display:block}
-.why div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.actions{display:flex;gap:8px;margin-top:auto}
-.actions select{border:var(--line);border-radius:12px;padding:8px 6px;background:var(--paper);font-weight:700;font-stretch:80%;flex:1;min-width:0}
-.stamp{position:absolute;right:12px;top:8px;font-weight:900;font-size:22px;letter-spacing:2px;padding:2px 10px;border:3px solid;border-radius:8px;transform:rotate(-12deg);opacity:.9}
-.stamp.billed{color:#0a8a2a;border-color:#0a8a2a}
-.stamp.nah{color:#c2185b;border-color:#c2185b}
-.s.done{opacity:.72}
+.meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--muted)}
+.meta i{font-style:normal;opacity:.6}
+.meta .check{background:var(--yellow);color:#111;border:1.5px solid var(--ink);border-radius:999px;padding:1px 8px;font-family:var(--display);font-weight:800}
+.meta a{color:var(--ink);text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px}
+.why{font-family:var(--mono);font-size:12px;color:var(--muted);display:grid;grid-template-rows:0fr;margin-top:-10px;transition:grid-template-rows .45s var(--spring-soft),margin-top .45s var(--spring-soft)}
+.why>div{overflow:hidden}
+.why.open{grid-template-rows:1fr;margin-top:0}
+.why.open>div{border-top:1.5px dashed var(--ink);padding-top:8px}
+.why p{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.actions{display:flex;gap:8px;align-items:center;margin-top:auto}
+.verdict{display:inline-flex;align-items:center;gap:5px;border:var(--line);border-radius:999px;padding:5px 12px;font-weight:800;font-size:14px;transform:rotate(-2deg)}
+.verdict.billed{background:var(--lime);color:#111}
+.verdict.nah{background:var(--bg);color:var(--muted)}
+.verdict svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.verdict svg path{stroke-dasharray:24}
+.verdict.fresh svg path{animation:draw .45s .28s var(--enter) both}      /* the tick draws itself in, once */
+@keyframes draw{from{stroke-dashoffset:24}}
 .empty{padding:40px;text-align:center;font-size:20px;font-weight:700}
+.skel{padding:16px;display:flex;flex-direction:column;gap:12px;min-height:180px}
+.skel i{display:block;height:14px;border-radius:8px;background:linear-gradient(90deg,var(--bg) 25%,var(--grey) 40%,var(--bg) 60%);background-size:400% 100%;animation:shimmer 1.4s ease infinite}
+.skel i:nth-child(1){width:38%;height:24px;border-radius:999px}.skel i:nth-child(2){width:92%;height:18px}.skel i:nth-child(3){width:70%;height:18px}.skel i:nth-child(4){width:46%;margin-top:auto}
+@keyframes shimmer{from{background-position:100% 50%}to{background-position:0 50%}}
 
-/* modal */
-.modal{position:fixed;inset:0;background:rgba(0,0,0,.45);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
-.modal.open{display:flex}
+/* first load: sections rise in on a stagger, the day's blocks grow out of the timeline */
+body.intro main>:not(.hero),body.intro .hero>*,body.intro #grid>*{animation:rise .8s var(--spring-soft) both;animation-delay:calc(var(--d,0) * 55ms)}
+body.intro .block,body.intro .split>div{animation:grow .9s var(--spring-soft) both;animation-delay:calc(260ms + var(--i,0) * 45ms)}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}}
+@keyframes grow{from{transform:scaleX(0)}}
+
+/* snackbar: what just happened, with a way back (the shrinking line is the undo window) */
+.snack{position:fixed;left:50%;bottom:22px;z-index:30;display:flex;align-items:center;gap:14px;background:var(--ink);color:var(--bg);padding:12px 12px 12px 18px;border-radius:14px;font-weight:800;box-shadow:0 10px 30px rgba(0,0,0,.25);
+  transform:translate(-50%,calc(100% + 40px));transition:transform .5s var(--spring);overflow:hidden;max-width:calc(100% - 32px)}
+.snack.show{transform:translate(-50%,0)}
+.snack button{border:0;background:var(--lime);color:#111;font-weight:800;border-radius:9px;padding:5px 11px;cursor:pointer;transition:transform .4s var(--spring)}
+.snack button:active{transform:scale(.92);transition-duration:.06s}
+.snack button[hidden]{display:none}
+.snack i{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--lime);transform-origin:left;transform:scaleX(0)}
+.snack.show.undoable i{animation:count 5s linear forwards}
+@keyframes count{from{transform:scaleX(1)}}
+
+/* sheets (modals): rise on a soft spring over a blurred backdrop while the page recedes */
+.modal{position:fixed;inset:0;background:rgba(17,17,17,.38);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+.modal.open{display:flex;animation:fade .3s var(--enter) both}
 .modal .card{max-width:760px;width:100%;max-height:92vh;overflow:auto;padding:22px;position:relative}
-.x{position:absolute;right:14px;top:12px}
+.modal.open .card{animation:sheet var(--t-soft) var(--spring-soft) both}
+.modal.closing{animation:fade .2s var(--exit) reverse both}
+.modal.closing .card{animation:sheet .2s var(--exit) reverse both}
+.modal.leaving{animation:fade .3s var(--exit) reverse both;pointer-events:none}
+.modal.leaving .card{visibility:hidden}
+.modal.morphed .card{animation:none}
+.modal.morphed .wrapped{animation:shift 8s ease infinite}
+body.sheeted .wrap{transform:scale(.975);filter:saturate(.85)}
+@keyframes fade{from{opacity:0}}
+@keyframes sheet{from{opacity:0;transform:translateY(28px) scale(.96)}}
+.x{position:absolute;right:12px;top:12px}
+.mtitle{margin:0 0 12px;font-size:30px;letter-spacing:-1px}
 .wrapped{background:linear-gradient(135deg,#FF7AD9,#7AA2FF 45%,#B8FF3B);background-size:200% 200%;animation:shift 8s ease infinite;color:#111}
+.modal.open .wrapped{animation:sheet var(--t-soft) var(--spring-soft) both,shift 8s ease infinite}
 @keyframes shift{50%{background-position:100% 100%}}
 .wrapped h1{font-size:52px;letter-spacing:-3px;margin:4px 0 14px;line-height:.95}
 .wgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
@@ -121,20 +220,15 @@ header{gap:10px}
 .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
 .row select,.row input{border:var(--line);border-radius:12px;padding:8px 10px;background:var(--paper);font-weight:700}
 
-/* settings: option cards with live mini-screen previews */
-.sec{margin:4px 0 6px;font-size:20px;letter-spacing:-.5px}
-.hint{color:var(--muted);font-weight:600;font-size:13.5px;margin:0 0 10px}
-.opts{display:grid;grid-template-columns:repeat(auto-fill,minmax(158px,1fr));gap:14px;margin:0 0 24px}
-.opt{border:var(--line);border-radius:16px;padding:10px;background:var(--paper);cursor:pointer;box-shadow:var(--shadow-sm);transition:transform .12s,box-shadow .12s;position:relative;text-align:left}
-.opt:hover{transform:translate(-2px,-2px);box-shadow:6px 6px 0 var(--ink)}
-.opt.on{background:var(--lime);color:#111}
-.opt.on::after{content:"✓";position:absolute;right:16px;top:16px;width:22px;height:22px;border-radius:50%;background:#111;color:var(--lime);display:grid;place-items:center;font-weight:900;font-size:13px;z-index:5}
-.opt.off{opacity:.45;cursor:not-allowed}
-.opt h4{margin:9px 2px 2px;font-size:16px}
-.opt p{margin:0 2px;font-size:12.5px;color:var(--muted);font-weight:600;line-height:1.3}
-.opt.on p{color:#333}
-.scr{aspect-ratio:16/10;border:2px solid #111;border-radius:10px;position:relative;overflow:hidden;background:linear-gradient(135deg,#2b5876,#7b4397 65%,#dc6a49)}
-.scr::before{content:"";position:absolute;left:20%;top:26%;width:44%;height:44%;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:4px}
+/* settings: one live preview screen, acted out by whatever option you hover */
+#setModal .card{max-width:560px}
+.stage{max-width:440px;margin:4px auto 0}
+.says{min-height:20px;text-align:center;font-weight:700;color:var(--muted);margin:12px 0 18px}
+.srow{display:flex;align-items:center;gap:12px;margin:0 0 10px}
+.slabel{width:76px;flex:none;font-weight:700;color:var(--muted);font-size:14px}
+.srow .seg{flex:1}
+.scr{aspect-ratio:16/10;border:2.5px solid #111;border-radius:12px;position:relative;overflow:hidden;background:linear-gradient(135deg,#2b5876,#7b4397 65%,#dc6a49)}
+.scr::before{content:"";position:absolute;left:20%;top:30%;width:44%;height:42%;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:6px}
 .tb{position:absolute;background:rgba(16,16,16,.93);z-index:1}
 .tb::before{content:"";position:absolute;background:radial-gradient(circle,#d8d8d8 42%,transparent 48%)}
 .tb-top,.tb-bottom{left:0;right:0;height:9%}.tb-top{top:0}.tb-bottom{bottom:0}
@@ -142,86 +236,137 @@ header{gap:10px}
 .tb-top::before,.tb-bottom::before{left:3%;top:22%;bottom:22%;width:24%;background-size:16% 100%;background-repeat:repeat-x}
 .tb-left::before,.tb-right::before{top:4%;left:22%;right:22%;height:24%;background-size:100% 16%;background-repeat:repeat-y}
 .tb-none{display:none}
-.isl{position:absolute;background:#0b0b0b;z-index:2;overflow:hidden;transition:all .55s cubic-bezier(.34,1.56,.64,1)}
+.isl{position:absolute;background:#0b0b0b;z-index:2;overflow:hidden;transition:all var(--t-soft) var(--spring)}
+.isl.tuck{transition-duration:.2s;transition-timing-function:var(--exit)}
 .isl i,.isl b{position:absolute;opacity:0;transition:opacity .25s .12s}
-.isl i{width:6px;height:6px;border-radius:50%;background:#B8FF3B;left:10%;top:50%;transform:translateY(-50%)}
-.isl b{height:3px;border-radius:2px;background:#eee;left:24%;width:38%;top:50%;transform:translateY(-50%)}
-.isl-top,.isl-bottom{left:50%;transform:translateX(-50%);width:26%;height:3.2%}
-.isl-top{top:var(--off);border-radius:0 0 5px 5px;box-shadow:inset 0 -1.5px 0 #B8FF3B}
-.isl-bottom{bottom:var(--off);border-radius:5px 5px 0 0;box-shadow:inset 0 1.5px 0 #B8FF3B}
-.isl-left,.isl-right{top:50%;transform:translateY(-50%);width:2.2%;height:26%}
-.isl-left{left:var(--off);border-radius:0 5px 5px 0;box-shadow:inset -1.5px 0 0 #B8FF3B}
-.isl-right{right:var(--off);border-radius:5px 0 0 5px;box-shadow:inset 1.5px 0 0 #B8FF3B}
-.opt:not(.off):hover .isl,.isl.pill{box-shadow:0 3px 10px rgba(0,0,0,.45)}
-.opt:not(.off):hover .isl-top,.opt:not(.off):hover .isl-bottom,.isl-top.pill,.isl-bottom.pill{width:46%;height:11%}
-.opt:not(.off):hover .isl-left,.opt:not(.off):hover .isl-right,.isl-left.pill,.isl-right.pill{width:40%;height:11%}
-.opt:not(.off):hover .isl-top,.isl-top.pill{border-radius:0 0 10px 10px}
-.opt:not(.off):hover .isl-bottom,.isl-bottom.pill{border-radius:10px 10px 0 0}
-.opt:not(.off):hover .isl-left,.isl-left.pill{border-radius:0 10px 10px 0}
-.opt:not(.off):hover .isl-right,.isl-right.pill{border-radius:10px 0 0 10px}
-.opt:not(.off):hover .isl i,.opt:not(.off):hover .isl b,.isl.pill i,.isl.pill b{opacity:1}
+.isl i{width:7px;height:7px;border-radius:50%;background:#B8FF3B;left:9%;top:50%;transform:translateY(-50%)}
+.isl b{height:3px;border-radius:2px;background:#eee;left:22%;width:40%;top:50%;transform:translateY(-50%)}
+.isl-top,.isl-bottom{left:50%;transform:translateX(-50%);width:24%;height:3.2%}
+.isl-top{top:var(--off);border-radius:0 0 6px 6px;box-shadow:inset 0 -1.5px 0 #B8FF3B}
+.isl-bottom{bottom:var(--off);border-radius:6px 6px 0 0;box-shadow:inset 0 1.5px 0 #B8FF3B}
+.isl-left,.isl-right{top:50%;transform:translateY(-50%);width:2.2%;height:24%}
+.isl-left{left:var(--off);border-radius:0 6px 6px 0;box-shadow:inset -1.5px 0 0 #B8FF3B}
+.isl-right{right:var(--off);border-radius:6px 0 0 6px;box-shadow:inset 1.5px 0 0 #B8FF3B}
+.isl.pill{box-shadow:0 3px 10px rgba(0,0,0,.45)}
+.isl-top.pill,.isl-bottom.pill{width:44%;height:10%}
+.isl-left.pill,.isl-right.pill{width:38%;height:10%}
+.isl-top.pill{border-radius:0 0 12px 12px}.isl-bottom.pill{border-radius:12px 12px 0 0}
+.isl-left.pill{border-radius:0 12px 12px 0}.isl-right.pill{border-radius:12px 0 0 12px}
+.isl.pill i,.isl.pill b{opacity:1}
+.isl-top.tuck,.isl-bottom.tuck{height:0!important}
+.isl-left.tuck,.isl-right.tuck{width:0!important}
 
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%) translateY(120px);background:var(--ink);color:var(--bg);padding:12px 18px;border-radius:14px;font-weight:800;transition:transform .25s;z-index:30}
-.toast.show{transform:translateX(-50%) translateY(0)}
 footer{margin-top:40px;font-family:var(--mono);font-size:12.5px;color:var(--muted);text-align:center}
 footer b{color:var(--ink)}
-.spin{display:inline-block;animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
-.burst{position:fixed;pointer-events:none;font-size:22px;z-index:40;animation:fly .9s ease-out forwards}
-@keyframes fly{to{transform:translate(var(--dx),var(--dy)) rotate(var(--r));opacity:0}}
+.burst{position:fixed;pointer-events:none;border:2px solid #111;z-index:40}
+/* a change flying home to the island: a little capsule in the island's own black, dotted in the client's colour */
+.fly{position:fixed;left:0;top:0;z-index:60;pointer-events:none;display:flex;align-items:center;gap:7px;height:30px;padding:0 13px 0 10px;border-radius:999px;
+  background:#0b0b0b;color:#f4f4f4;font:800 13.5px/1 var(--display);white-space:nowrap;will-change:transform;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 10px 26px rgba(0,0,0,.32)}
+.fly i{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c)}
 
-@media (max-width:820px){.hero{grid-template-columns:1fr}.money{font-size:48px}.datenav{margin-left:0;width:100%;justify-content:space-between}}
-@media print{body *{visibility:hidden}#receipt,#receipt *{visibility:visible}#receipt{position:absolute;left:0;top:0;width:100%;box-shadow:none;-webkit-mask:none;mask:none}body{background:#fff}}
+/* view transitions (progressive enhancement: browsers without them just update in place) */
+::view-transition-group(*){animation-duration:var(--t-spring);animation-timing-function:var(--spring)}
+/* cards: each card (and its main action) is its own layer, so filters re-flow them and "bill it" morphs into its sticker */
+html.vt-cards .s{view-transition-name:var(--vt)}
+html.vt-cards .vt-a{view-transition-name:var(--va)}
+html.vt-cards .vt-b{view-transition-name:var(--vb)}
+html.vt-cards::view-transition-old(root),html.vt-sheet::view-transition-old(root){animation:none;opacity:0}
+html.vt-cards::view-transition-new(root),html.vt-sheet::view-transition-new(root){animation:none}
+html.vt-cards::view-transition-new(*):only-child{animation:vt-in .42s var(--enter) both}
+html.vt-cards::view-transition-old(*):only-child{animation:vt-out .2s var(--exit) both}
+@keyframes vt-in{from{opacity:0;transform:scale(.94) translateY(10px)}}
+@keyframes vt-out{to{opacity:0;transform:scale(.94)}}
+/* days: the content slides along the x axis, the date rolls */
+html.vt-fwd main,html.vt-back main{view-transition-name:content}
+html.vt-fwd #dayLabel,html.vt-back #dayLabel{view-transition-name:day}
+html.vt-fwd::view-transition-old(content){animation:slide-out-l .22s var(--exit) both}
+html.vt-fwd::view-transition-new(content){animation:slide-in-r .5s var(--enter) both}
+html.vt-back::view-transition-old(content){animation:slide-out-r .22s var(--exit) both}
+html.vt-back::view-transition-new(content){animation:slide-in-l .5s var(--enter) both}
+html.vt-fwd::view-transition-old(day){animation:roll-out-u .2s var(--exit) both}
+html.vt-fwd::view-transition-new(day){animation:roll-in-u .45s var(--spring) both}
+html.vt-back::view-transition-old(day){animation:roll-out-d .2s var(--exit) both}
+html.vt-back::view-transition-new(day){animation:roll-in-d .45s var(--spring) both}
+@keyframes slide-out-l{to{opacity:0;transform:translateX(-40px)}}
+@keyframes slide-out-r{to{opacity:0;transform:translateX(40px)}}
+@keyframes slide-in-r{from{opacity:0;transform:translateX(40px)}}
+@keyframes slide-in-l{from{opacity:0;transform:translateX(-40px)}}
+@keyframes roll-out-u{to{opacity:0;transform:translateY(-12px)}}
+@keyframes roll-in-u{from{opacity:0;transform:translateY(12px)}}
+@keyframes roll-out-d{to{opacity:0;transform:translateY(12px)}}
+@keyframes roll-in-d{from{opacity:0;transform:translateY(-12px)}}
+/* sheets: a container transform. The button grows into the sheet as one solid container; what was inside
+   fades out at its own size and the sheet's content fades in at its own size, so nothing ever stretches */
+html.vt-sheet::view-transition-group(sheet){animation-duration:var(--t-soft);animation-timing-function:var(--spring-soft);
+  overflow:clip;border-radius:18px;background:var(--paper);box-shadow:0 0 0 2.5px var(--ink),var(--shadow)}
+html.vt-sheet::view-transition-old(sheet),html.vt-sheet::view-transition-new(sheet){height:auto;width:auto;object-fit:none;inset:0;margin:auto}
+html.vt-sheet::view-transition-old(sheet){animation:fade .12s linear reverse both}
+html.vt-sheet::view-transition-new(sheet){animation:fade .26s .1s linear both}
+/* theme: the new one spreads out from the switch as a circle */
+html.vt-theme::view-transition-old(root),html.vt-theme::view-transition-new(root){animation:none;mix-blend-mode:normal}
+
+@media (max-width:820px){.hero{grid-template-columns:1fr}.money{font-size:48px}.datenav{margin-left:0}.filters{overflow-x:auto;max-width:100%}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation:none!important}}
+html.still *,html.still *::before,html.still *::after{transition:none!important;animation:none!important}  /* docs screenshots: final frames only */
+@media print{body *{visibility:hidden}#receipt,#receipt *{visibility:visible}#receipt{position:absolute;left:0;top:0;width:100%;box-shadow:none;-webkit-mask:none;mask:none}body{background:#fff}.wrap{transform:none!important}}
 </style>
 </head>
-<body>
+<body class="intro">
 <div class="wrap">
   <header>
     <div class="logo">lowkey<span class="dot">.</span></div>
-    <span class="sticker">🔒 100% on-device</span>
-    <span class="pill" id="modelPill"><i></i><span>loading…</span></span>
-    <div class="datenav">
-      <button class="btn" id="prev" title="previous day (←)">←</button>
+    <span class="pill" id="modelPill" data-tip="every label is written on this machine"><i></i><span>loading…</span></span>
+    <div class="grp datenav">
+      <button class="ib" id="prev" data-tip="previous day  ←" aria-label="previous day"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
       <div class="day" id="dayLabel">—</div>
-      <button class="btn" id="next" title="next day (→)">→</button>
+      <button class="ib" id="next" data-tip="next day  →" aria-label="next day"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
     </div>
-    <button class="btn pink" id="openWrapped">✨ wrapped</button>
-    <button class="btn lime" id="openBill">💸 send the bill</button>
-    <button class="btn" id="openSettings" title="island settings (S)">⚙️</button>
-    <button class="btn ghost" id="theme" title="toggle theme">◐</button>
+    <div class="grp">
+      <button class="ib" id="openWrapped" data-tip="your week, wrapped  W" aria-label="your week, wrapped"><svg viewBox="0 0 24 24"><path class="star" d="M11 3.5l1.8 5.2 5.2 1.8-5.2 1.8L11 17.5l-1.8-5.2L4 10.5l5.2-1.8z"/><path class="star" d="M18.5 15.5v4M16.5 17.5h4"/></svg></button>
+      <button class="ib" id="openSettings" data-tip="island settings  S" aria-label="island settings"><svg viewBox="0 0 24 24"><path d="M4 8h16M4 16h16"/><circle class="k1" cx="15" cy="8" r="2.4" fill="var(--paper)"/><circle class="k2" cx="9" cy="16" r="2.4" fill="var(--paper)"/></svg></button>
+      <button class="ib" id="theme" data-tip="switch theme" aria-label="switch between light and dark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path class="half" d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
+    </div>
+    <button class="btn lime" id="openBill">send the bill</button>
   </header>
 
-  <section class="hero">
-    <div class="card money-card">
-      <div class="label">you made today</div>
-      <div class="money" id="money">—</div>
-      <div class="sub" id="moneySub">&nbsp;</div>
-    </div>
-    <div class="card">
-      <div class="label">work vs. side quests</div>
-      <div class="split" id="split"></div>
-      <div class="sub" id="splitSub">&nbsp;</div>
-    </div>
-    <div class="card">
-      <div class="label">vibe check queue</div>
-      <div class="big" id="queue">—</div>
-      <div class="sub">review with <kbd>Y</kbd> bill · <kbd>N</kbd> nah · <kbd>J</kbd>/<kbd>K</kbd> move</div>
-    </div>
-  </section>
+  <main>
+    <section class="hero" style="--d:0">
+      <div class="card money-card" style="--d:0">
+        <div class="label" id="moneyLabel">you made today</div>
+        <div class="money"><span class="roll" id="money">—</span></div>
+        <div class="sub" id="moneySub">&nbsp;</div>
+      </div>
+      <div class="card" style="--d:1">
+        <div class="label">work vs. side quests</div>
+        <div class="split" id="split"></div>
+        <div class="sub" id="splitSub">&nbsp;</div>
+      </div>
+      <button class="card queue" id="queueCard" style="--d:2">
+        <div class="label">vibe check queue</div>
+        <div class="big"><span class="roll" id="qn"></span><span id="qt">—</span></div>
+        <div class="qfoot"><div class="sub" id="queueSub">&nbsp;</div>
+          <div class="sub keys"><kbd>Y</kbd> bill · <kbd>N</kbd> nah · <kbd>J</kbd>/<kbd>K</kbd> move · <kbd>E</kbd> edit</div></div>
+      </button>
+    </section>
 
-  <section class="card timeline">
-    <div class="label" style="margin-bottom:8px">your day, in blocks</div>
-    <div class="track" id="track"></div>
-    <div class="hours" id="hours"></div>
-  </section>
+    <section class="card timeline" style="--d:3">
+      <div class="label" style="margin-bottom:8px">your day, in blocks</div>
+      <div class="track" id="track"></div>
+      <div class="hours" id="hours"></div>
+    </section>
 
-  <div class="bar">
-    <h2>today's <em>receipts</em></h2>
-    <span class="chip on" data-f="all">all</span>
-    <span class="chip" data-f="pending">to review</span>
-    <span class="chip" data-f="billed">billed</span>
-    <span class="chip" data-f="personal">side quests</span>
-  </div>
-  <div class="grid" id="grid"></div>
+    <div class="bar" style="--d:4">
+      <h2 id="receiptsTitle">today's <em>receipts</em></h2>
+      <div class="seg filters" id="filters"><span class="thumb"></span>
+        <button data-f="all">all <b class="roll"></b></button>
+        <button data-f="pending">to review <b class="roll"></b></button>
+        <button data-f="billed">billed <b class="roll"></b></button>
+        <button data-f="personal">side quests <b class="roll"></b></button>
+      </div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </main>
 
   <footer id="foot"></footer>
 </div>
@@ -229,12 +374,19 @@ footer b{color:var(--ink)}
 <div class="modal" id="wrappedModal"><div class="card wrapped" id="wrappedCard"></div></div>
 <div class="modal" id="billModal"><div class="card" id="billCard"></div></div>
 <div class="modal" id="setModal"><div class="card" id="setCard"></div></div>
-<div class="toast" id="toast"></div>
+<div class="snack" id="snack" role="status" aria-live="polite"><span id="snackMsg"></span><button id="snackUndo" hidden>undo</button><i></i></div>
+<div class="tip" id="tip"></div>
 
 <script>
 const $ = s => document.querySelector(s);
-const S = { config:null, days:[], day:null, week:{}, filter:'all', focus:0 };
+const S = { config:null, days:[], day:null, week:{}, filter:'all', focus:0, undo:null, fresh:null };
 const PERSONAL = 'Personal';
+const STILL = /HeadlessChrome/.test(navigator.userAgent);  // docs screenshots: render the settled state, no motion
+if (STILL) document.documentElement.classList.add('still');
+const REDUCED = STILL || matchMedia('(prefers-reduced-motion: reduce)').matches;
+const ICON = { check:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+               x:'<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>' };
+const CLOSE = `<button class="ib x" onclick="closeM()" aria-label="close">${ICON.x}</button>`;
 
 const fmtH = s => { const m = Math.round(s/60); return m < 60 ? `${m}m` : `${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`; };
 const fmtT = ts => new Date(ts*1000).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}).toLowerCase();
@@ -245,35 +397,144 @@ const rate = name => client(name)?.rate || 0;
 const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const weekOf = day => { const d = new Date(day+'T00:00'); const mon = new Date(d); mon.setDate(d.getDate() - (d.getDay()+6)%7); const sun = new Date(mon); sun.setDate(mon.getDate()+6); return [iso(mon), iso(sun)]; };
 const isBillable = s => s.billable && s.client !== PERSONAL && s.status !== 'nah';
+const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tag = id => String(id).replace(/[^\w-]/g, '-');
 
-function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(t._h); t._h=setTimeout(()=>t.classList.remove('show'),1800); }
-function burst(el, emojis='💸✨💰🧾'){
-  const r = el.getBoundingClientRect();
-  for (let i=0;i<14;i++){ const e=document.createElement('span'); e.className='burst'; e.textContent=[...emojis][i%[...emojis].length];
-    e.style.left=(r.left+r.width/2)+'px'; e.style.top=(r.top+r.height/2)+'px';
-    e.style.setProperty('--dx',(Math.random()*260-130)+'px'); e.style.setProperty('--dy',(Math.random()*-220-30)+'px'); e.style.setProperty('--r',(Math.random()*400-200)+'deg');
-    document.body.appendChild(e); setTimeout(()=>e.remove(),950); }
+/* ---------- motion helpers ---------- */
+const running = {};
+function transition(kind, update){  // run a DOM update as a View Transition when the browser can; otherwise just update
+  if (!document.startViewTransition || REDUCED || document.hidden) { update(); const p = Promise.resolve(); p.finished = p; return p; }
+  const html = document.documentElement;
+  running[kind] = (running[kind] || 0) + 1;
+  html.classList.add('vt-' + kind);
+  const t = document.startViewTransition(update);
+  t.finished.finally(() => { if (!--running[kind]) html.classList.remove('vt-' + kind); });
+  const p = t.updateCallbackDone.catch(() => {}); p.finished = t.finished.catch(() => {});
+  return p;
 }
-function countUp(el, to){ const from = +el.dataset.v || 0; el.dataset.v = to; const t0 = performance.now();
-  if (document.hidden) return el.textContent = money(to);
-  const step = t => { const k = Math.min(1,(t-t0)/600); el.textContent = money(from+(to-from)*(1-(1-k)**3)); if (k<1) requestAnimationFrame(step); }; requestAnimationFrame(step); }
+function roll(el, text){  // Apple's numeric text: every digit is a column that rolls to its new value
+  el.setAttribute('aria-label', text);
+  const chars = [...text], shape = chars.map(c => /\d/.test(c) ? '#' : c).join('');
+  if (el.dataset.shape !== shape) {
+    el.dataset.shape = shape;
+    el.innerHTML = chars.map(c => /\d/.test(c)
+      ? `<span class="dg" aria-hidden="true"><span>${[...'0123456789'].map(d => `<i>${d}</i>`).join('')}</span></span>`
+      : `<span aria-hidden="true">${esc(c)}</span>`).join('');
+    void el.offsetWidth;  // new columns start at 0 and roll up into place
+  }
+  const cols = [...el.querySelectorAll('.dg>span')], digits = chars.filter(c => /\d/.test(c));
+  cols.forEach((c, k) => { c.style.transitionDelay = (cols.length - 1 - k) * 22 + 'ms'; c.style.transform = `translateY(${-digits[k]}em)`; });
+}
+function clearRoll(el, text=''){ el.dataset.shape = ''; el.textContent = text; el.removeAttribute('aria-label'); }
+function snack(msg, undo){  // Google's snackbar: says what happened, and offers a way back while the line runs out
+  const s = $('#snack'), u = $('#snackUndo');
+  $('#snackMsg').textContent = msg; u.hidden = !undo; S.undo = undo || null;
+  s.classList.toggle('undoable', !!undo); s.classList.remove('show'); void s.offsetWidth; s.classList.add('show');
+  clearTimeout(s._h); s._h = setTimeout(() => { s.classList.remove('show'); S.undo = null; }, undo ? 5000 : 2200);
+}
+const toast = msg => snack(msg);
+function burst(el){  // confetti in the brand colours: thrown up, then gravity
+  if (REDUCED) return;
+  const r = el.getBoundingClientRect(), cols = ['var(--lime)','var(--pink)','var(--blue)','var(--yellow)'];
+  for (let i = 0; i < 12; i++){
+    const e = document.createElement('span'), sz = 7 + Math.random()*5, dx = Math.random()*240-120, dy = -60 - Math.random()*150, rot = Math.random()*540-270;
+    Object.assign(e.style, {left: r.left + r.width/2 + 'px', top: r.top + r.height/2 + 'px', width: sz+'px', height: sz+'px', background: cols[i%4], borderRadius: i%2 ? '50%' : '3px'});
+    e.className = 'burst'; document.body.appendChild(e);
+    e.animate([{transform:'translate(-50%,-50%) rotate(0)', opacity:1},
+               {transform:`translate(calc(-50% + ${dx*.65}px), calc(-50% + ${dy}px)) rotate(${rot/2}deg)`, opacity:1, offset:.42, easing:'cubic-bezier(.4,0,1,1)'},
+               {transform:`translate(calc(-50% + ${dx}px), calc(-50% + ${dy+190}px)) rotate(${rot}deg)`, opacity:0}],
+              {duration: 950, easing:'cubic-bezier(.15,.7,.4,1)'}).onfinish = () => e.remove();
+  }
+}
+/* ---------- hand-off: what you change here flies home to your island ---------- */
+let ISL = null;
+const islandSpot = () => fetch('/api/island').then(r => r.json()).then(j => ISL = j).catch(() => {});
+function islandPoint(){  // the island's inner edge, in this page's coordinates (usually just outside the page)
+  const g = ISL?.island, edge = g?.edge || ISL?.settings?.edge || 'top';
+  const [sx, sy, sw, sh] = g?.screen || [screen.availLeft || 0, screen.availTop || 0, screen.width, screen.height];
+  const k = Math.abs(screen.width / screen.height - sw / sh) < .02 ? screen.width / sw : 1;  // DIPs to this page's px
+  const [px, py] = g ? [g.x, g.y] : {top:[sx + sw/2, sy], bottom:[sx + sw/2, sy + sh], left:[sx, sy + sh/2], right:[sx + sw, sy + sh/2]}[edge];
+  const border = Math.max(0, (outerWidth - innerWidth) / 2);                             // the window frame
+  const ox = screenX + border, oy = screenY + outerHeight - innerHeight - border;         // the viewport's corner on screen
+  const x = px * k - ox, y = py * k - oy;
+  return {x, y, edge, k, ox, oy, live: !!g, inside: x >= 0 && x <= innerWidth && y >= 0 && y <= innerHeight};
+}
+const hex = c => /^#[0-9a-f]{6}$/i.test(c) ? c : '#9a9aa6';
+async function fly(r, text, color, islandText, kind){
+  /* It pops out of what you changed, then swoops along an arc to where your island really sits on screen, pulled
+     in faster and faster, shrinking and stretching along its path. The page draws it while it's inside the page;
+     the island gets the same path in screen coordinates and the same start time, and draws it everywhere outside
+     the page, so a small or off-to-the-side window hands it over at its edge without a seam. */
+  if (!r) return;
+  await islandSpot();
+  const I = islandPoint(), S = {x: r.left + r.width/2, y: r.top + r.height/2 - 4};
+  const dx = I.x - S.x, dy = I.y - S.y, dist = Math.hypot(dx, dy) || 1;
+  const post = body => fetch('/api/catch', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({text: islandText, color: hex(color), kind, ...body})}).catch(() => {});
+  if (REDUCED) return post({delay_ms: 0});
+  const lift = 260, dur = Math.min(1050, 520 + dist * .42), T = lift + dur, lead = 80;  // both halves start together, 80 ms out
+  const chip = document.createElement('div');
+  chip.className = 'fly'; chip.style.setProperty('--c', hex(color)); chip.innerHTML = `<i></i><span>${esc(text)}</span>`;
+  document.body.appendChild(chip);
+  const w = chip.offsetWidth, h = chip.offsetHeight, vertical = I.edge === 'top' || I.edge === 'bottom';
+  const at = (x, y, sx, sy, opacity = 1) => ({transform: `translate(${x - w/2}px, ${y - h/2}px) scale(${sx}, ${sy})`, opacity});
+  const swing = dx >= 0 ? 1 : -1, C = {x: S.x + dx/2 + dy * .2 * swing, y: S.y + dy/2 - dx * .2 * swing};  // bow the path into an arc
+  const frames = [{...at(S.x, S.y + 4, .2, .2, 0), offset: 0},
+                  {...at(S.x, S.y - 6, 1.14, 1.14), offset: lift * .55 / T},                         // pops up out of it
+                  {...at(S.x, S.y, 1, 1), offset: lift / T}];
+  for (let n = 1; n <= 60; n++){  // the same curve the island draws (island.flight_at), finely sampled
+    const t = n / 60, u = t ** 2.1, q = 1 - u;                                                       // slow to leave, quick to arrive
+    const x = q*q*S.x + 2*q*u*C.x + u*u*I.x, y = q*q*S.y + 2*q*u*C.y + u*u*I.y;
+    const size = 1 - .42 * u, st = Math.max(0, (u - .5) / .5), along = size * (1 + .55 * st), across = size * (1 - .4 * st);
+    frames.push({...at(x, y, vertical ? across : along, vertical ? along : across, I.inside && !I.live && n === 60 ? 0 : 1),
+                 offset: (lift + t * dur) / T});
+  }
+  const anim = chip.animate(frames, {duration: T, easing: 'linear', fill: 'both'});
+  anim.startTime = document.timeline.currentTime + lead;
+  anim.onfinish = () => chip.remove();
+  const scr = pt => [(pt.x + I.ox) / I.k, (pt.y + I.oy) / I.k];                                    // page px to screen DIPs
+  post({start_ms: lead, flight: {S: scr(S), C: scr(C), I: scr(I), vp: [I.ox / I.k, I.oy / I.k, innerWidth / I.k, innerHeight / I.k],
+        lift_ms: lift, dur_ms: dur, w: w / I.k, h: h / I.k, label: text, edge: I.edge}});
+}
+function placeThumb(seg){  // slide the ink thumb under the chosen option; no slide on first sight
+  const on = seg.querySelector('button.on'), th = seg.querySelector('.thumb');
+  if (!on || !th) return;
+  th.style.left = on.offsetLeft+'px'; th.style.width = on.offsetWidth+'px';
+  if (!seg.classList.contains('ready')) setTimeout(() => seg.classList.add('ready'), 50);
+}
+function showTip(el, html){
+  const t = $('#tip'), r = el.getBoundingClientRect();
+  t.innerHTML = html;
+  t.style.left = Math.min(innerWidth - 160, Math.max(160, r.left + r.width/2)) + 'px'; t.style.top = r.top + 'px';
+  t.classList.add('show');
+}
+const hideTip = () => $('#tip').classList.remove('show');
+function focusCard(i){  // focus, and bring it into view vertically only (never nudge the page sideways)
+  const el = document.querySelector(`.s[data-i="${i}"]`); if (!el) return;
+  el.focus({preventScroll:true});
+  const r = el.getBoundingClientRect(), dy = r.top < 90 ? r.top - 90 : r.bottom > innerHeight - 24 ? r.bottom - innerHeight + 24 : 0;
+  if (dy) scrollBy({top: dy, behavior: REDUCED ? 'auto' : 'smooth'});
+}
 
+/* ---------- data ---------- */
 async function boot(){
   const st = await (await fetch('/api/state')).json();
   S.config = st.config; S.days = st.days;
   const pill = $('#modelPill');
   pill.classList.toggle('warn', !st.model_ok);
-  pill.querySelector('span').textContent = st.model_ok ? `${st.model} · on your GPU` : `${st.model} offline · keyword mode`;
+  pill.querySelector('span').textContent = st.model_ok ? `100% on-device · ${st.model}` : `${st.model} offline · keyword mode`;
   $('#foot').innerHTML = `<b>0 bytes</b> of your screen time left this laptop. labels by <b>${st.model}</b> via ollama on 127.0.0.1${st.demo ? ' · <b>demo week</b>' : ''}<br>open source — read every line of what watches you.`;
   S.day = S.days.at(-1) || iso(new Date());
   await load();
-  ({'#settings': settings, '#wrapped': wrapped, '#bill': bill, '#review': () => { S.filter = 'pending'; renderCards(); }})[location.hash]?.();  // deep links (docs screenshots)
+  setTimeout(() => document.body.classList.remove('intro'), 1800);  // the entrance plays once
+  ({'#settings': () => settings(), '#wrapped': () => wrapped(), '#bill': () => bill(), '#review': review})[location.hash]?.();  // deep links (island + docs)
 }
 
 async function load(){
   const [from, to] = weekOf(S.day);
   if (!S.week[S.day]) {
-    $('#grid').innerHTML = `<div class="card empty" style="grid-column:1/-1"><span class="spin">🍳</span> cooking your timesheet… the model is reading your day (only the first time)</div>`;
+    $('#grid').innerHTML = `<p class="sub" style="grid-column:1/-1;margin:0">the model is reading your day… only the first time</p>` +
+      Array.from({length:3}, () => `<div class="card skel"><i></i><i></i><i></i><i></i></div>`).join('');
     S.week = await (await fetch(`/api/range?from=${from}&to=${to}`)).json();
   }
   S.focus = 0; render();
@@ -282,86 +543,156 @@ async function load(){
 function sessions(){ return S.week[S.day] || []; }
 
 function render(){
-  const d = new Date(S.day+'T00:00');
+  const d = new Date(S.day+'T00:00'), today = S.day === iso(new Date());
+  const wd = d.toLocaleDateString([], {weekday:'long'}).toLowerCase();
   $('#dayLabel').textContent = d.toLocaleDateString([], {weekday:'short', day:'numeric', month:'short'}).toLowerCase();
+  $('#moneyLabel').textContent = today ? 'you made today' : `you made on ${wd}`;
+  $('#receiptsTitle').innerHTML = `${today ? 'today' : wd}'s <em>receipts</em>`;
   const all = sessions();
   const bill = all.filter(isBillable), side = all.filter(s => !isBillable(s));
-  const earned = bill.reduce((a,s)=>a+s.active_s/3600*rate(s.client),0);
-  countUp($('#money'), earned);
+  roll($('#money'), money(bill.reduce((a,s)=>a+s.active_s/3600*rate(s.client),0)));
   const bs = bill.reduce((a,s)=>a+s.active_s,0), ps = side.reduce((a,s)=>a+s.active_s,0);
   $('#moneySub').textContent = all.length ? `${fmtH(bs)} billable across ${new Set(bill.map(s=>s.client)).size} clients` : 'nothing tracked yet — go touch some code';
   const tot = bs+ps || 1;
-  $('#split').innerHTML = S.config.clients.map(c => { const v = bill.filter(s=>s.client===c.name).reduce((a,s)=>a+s.active_s,0); return v ? `<div title="${c.name} ${fmtH(v)}" style="width:${v/tot*100}%;background:${c.color}"></div>` : ''; }).join('') + `<div class="stripes" style="flex:1"></div>`;
+  $('#split').innerHTML = S.config.clients.map(c => { const v = bill.filter(s=>s.client===c.name).reduce((a,s)=>a+s.active_s,0);
+    return v ? `<div data-tip-html="<b>${esc(c.name)}</b><span>${fmtH(v)}</span>" style="width:${v/tot*100}%;background:${c.color}"></div>` : ''; }).join('') +
+    `<div class="stripes" style="flex:1" data-tip-html="<b>side quests</b><span>${fmtH(ps)}</span>"></div>`;
+  $('#split').querySelectorAll('div').forEach((b, k) => { b.style.setProperty('--i', k); b.onmouseenter = () => showTip(b, b.dataset.tipHtml); b.onmouseleave = hideTip; });
   $('#splitSub').textContent = `${fmtH(bs)} work · ${fmtH(ps)} side quests (no judgement)`;
   const pending = all.filter(s=>s.status==='pending').length;
-  $('#queue').textContent = pending ? `${pending} to review` : (all.length ? 'all clear ✅' : '—');
+  if (pending) { roll($('#qn'), String(pending)); $('#qt').textContent = ' to review'; }
+  else { clearRoll($('#qn')); $('#qt').textContent = all.length ? 'all clear' : '—'; }
+  $('#queueSub').textContent = pending ? 'start reviewing →' : (all.length ? 'nothing waiting on you' : 'nothing tracked yet');
 
-  // timeline
+  // timeline: blocks for sessions, a live "now" line on today
   const tr = $('#track'), hrs = $('#hours');
   if (all.length){
-    const h0 = Math.floor(new Date(all[0].start*1000).getHours()), h1 = Math.ceil(new Date(all.at(-1).end*1000).getHours()+ (new Date(all.at(-1).end*1000).getMinutes()?1:0));
+    const nowS = Date.now()/1000, live = today && nowS - all.at(-1).end < 7200;  // "now" only matters while you're still at it
+    const endS = live ? Math.max(all.at(-1).end, nowS) : all.at(-1).end;
+    const h0 = new Date(all[0].start*1000).getHours(), e = new Date(endS*1000), h1 = e.getHours() + (e.getMinutes() || e.getSeconds() ? 1 : 0);
     const t0 = new Date(S.day+'T00:00').getTime()/1000 + h0*3600, span = (h1-h0)*3600;
-    tr.innerHTML = all.map((s,i)=>`<div class="block ${isBillable(s)?'':'stripes'}" data-i="${i}" title="${s.client} · ${fmtT(s.start)}–${fmtT(s.end)}" style="left:${(s.start-t0)/span*100}%;width:${(s.end-s.start)/span*100}%;${isBillable(s)?`background:${color(s.client)}`:''}"></div>`).join('');
+    tr.innerHTML = all.map((s,i)=>`<div class="block ${isBillable(s)?'':'stripes'}" data-i="${i}" style="--i:${i};left:${(s.start-t0)/span*100}%;width:${(s.end-s.start)/span*100}%;${isBillable(s)?`background:${color(s.client)}`:''}"></div>`).join('') +
+      (live && nowS < t0 + span ? `<div class="now" style="left:${(nowS-t0)/span*100}%"></div>` : '');
     hrs.innerHTML = Array.from({length:h1-h0+1},(_,k)=>`<span>${((h0+k+11)%12)+1}${h0+k<12?'a':'p'}</span>`).join('');
-    tr.querySelectorAll('.block').forEach(b => b.onclick = () => { S.focus = +b.dataset.i; S.filter='all'; renderCards(); document.querySelector(`.s[data-i="${b.dataset.i}"]`)?.focus(); });
+    tr.querySelectorAll('.block').forEach(b => { const s = all[+b.dataset.i];
+      b.onmouseenter = () => showTip(b, `<b>${esc(s.client)}</b><span>${fmtT(s.start)}–${fmtT(s.end)}</span><div>${esc(s.task)}</div>`);
+      b.onmouseleave = hideTip;
+      b.onclick = () => { hideTip(); S.focus = +b.dataset.i; transition('cards', () => { S.filter = 'all'; renderCards(); }).then(() => focusCard(S.focus)); }; });
   } else { tr.innerHTML=''; hrs.innerHTML=''; }
   renderCards();
 }
 
 function renderCards(){
-  document.querySelectorAll('.chip').forEach(c=>c.classList.toggle('on', c.dataset.f===S.filter));
   const all = sessions();
+  const n = {all: all.length, pending: all.filter(s=>s.status==='pending').length,
+             billed: all.filter(s=>s.status==='billed').length, personal: all.filter(s=>!isBillable(s)).length};
+  document.querySelectorAll('#filters button').forEach(b => { b.classList.toggle('on', b.dataset.f===S.filter);
+    const c = b.querySelector('b'); n[b.dataset.f] ? roll(c, String(n[b.dataset.f])) : clearRoll(c); });
+  placeThumb($('#filters'));
   const shown = all.map((s,i)=>[s,i]).filter(([s])=> S.filter==='all' || (S.filter==='pending'&&s.status==='pending') || (S.filter==='billed'&&s.status==='billed') || (S.filter==='personal'&&!isBillable(s)));
   if (!shown.length){ $('#grid').innerHTML = `<div class="card empty" style="grid-column:1/-1">${all.length ? 'nothing here bestie ✨' : 'no receipts yet. lowkey is watching (respectfully) 👀'}</div>`; return; }
   const opts = n => [...S.config.clients.map(c=>c.name), PERSONAL].map(c=>`<option ${c===n?'selected':''}>${c}</option>`).join('');
-  $('#grid').innerHTML = shown.map(([s,i]) => {
-    const unsure = s.confidence < 0.6, billable = isBillable(s);
-    return `<article class="card s ${s.status!=='pending'?'done':''}" tabindex="0" data-i="${i}">
-      <div class="top" style="background:${billable?color(s.client):'var(--grey)'}${billable?'':';color:var(--ink)'}"><b>${billable?'💼':'🎮'} ${s.client}</b><span class="t">${fmtT(s.start)} → ${fmtT(s.end)}</span></div>
+  $('#grid').innerHTML = shown.map(([s,i], k) => {
+    const billable = isBillable(s), pct = Math.round(s.confidence*100), done = s.status !== 'pending', id = tag(s.id);
+    const conf = s.by==='rules' ? `<span title="labelled by your keyword rules, not the model">keyword guess</span>`
+      : s.confidence < 0.6 ? `<span class="check" title="less than 60% of this line is backed by your windows">check me · ${pct}%</span>`
+      : `<span title="how much of this line your windows back up">${pct}% backed</span>`;
+    const verdict = s.status === 'billed'
+      ? `<span class="verdict billed vt-a ${S.fresh===s.id?'fresh':''}">${ICON.check} billed</span>`
+      : `<span class="verdict nah vt-b">off the invoice</span>`;
+    return `<article class="card s ${done?'done':''}" tabindex="0" data-i="${i}" style="--vt:s-${id};--va:a-${id};--vb:b-${id};--d:${5+Math.min(k,8)}">
+      <div class="top">
+        <label class="who ${billable?'':'side'}" style="--c:${billable?color(s.client):'var(--paper)'}" title="change client"><select data-i="${i}" aria-label="client">${opts(s.client)}</select></label>
+        <span class="t">${fmtT(s.start)} – ${fmtT(s.end)}</span>
+      </div>
       <div class="body">
-        ${s.status==='billed'?'<span class="stamp billed">BILLED</span>':s.status==='nah'?'<span class="stamp nah">NAH</span>':''}
-        <div class="task" data-i="${i}">${esc(s.task)}</div>
-        <div class="meta">
-          <span class="tag">⏱ ${fmtH(s.active_s)} active</span>
-          ${billable?`<span class="tag">${money(s.active_s/3600*rate(s.client))}</span>`:''}
-          <span class="tag ${unsure?'unsure':''}">${s.by==='rules'?'📏 keyword guess':unsure?`🤔 ${Math.round(s.confidence*100)}% backed by your windows — check me`:`🤖 ${Math.round(s.confidence*100)}% backed by your windows`}</span>
-          <a href="#" class="tag whyBtn" data-i="${i}" style="color:inherit;text-decoration:none">🧾 why?</a>
-        </div>
-        <div class="why" id="why${i}">${s.evidence.map(e=>`<div>${fmtH(e.s)} · ${esc(e.app.replace('.exe',''))} — ${esc(e.title)}</div>`).join('')}</div>
-        <div class="actions">
-          <button class="btn lime" data-act="billed" data-i="${i}">bill it ✅</button>
-          <button class="btn" data-act="nah" data-i="${i}">nah 🙅</button>
-          <select data-i="${i}" title="change client">${opts(s.client)}</select>
-          <button class="btn ghost" data-act="edit" data-i="${i}" title="edit line (E)">✏️</button>
-        </div>
+        <div class="task" data-i="${i}" title="click to edit  E">${esc(s.task)}</div>
+        <div class="meta"><span>${fmtH(s.active_s)}</span>${billable?`<i>·</i><span>${money(s.active_s/3600*rate(s.client))}</span>`:''}<i>·</i>${conf}<i>·</i><a href="#" class="whyBtn" data-i="${i}" title="the windows behind this line">why?</a></div>
+        <div class="why" id="why${i}"><div>${s.evidence.map(e=>`<p>${fmtH(e.s)} · ${esc(e.app.replace('.exe',''))} — ${esc(e.title)}</p>`).join('')}</div></div>
+        <div class="actions">${done
+          ? `${verdict}<button class="link" data-act="undo" data-i="${i}">undo</button>`
+          : `<button class="btn lime vt-a" data-act="billed" data-i="${i}">bill it</button><button class="btn quiet vt-b" data-act="nah" data-i="${i}">nah</button>`}</div>
       </div></article>`;
   }).join('');
+  S.fresh = null;
   $('#grid').querySelectorAll('[data-act]').forEach(b => b.onclick = () => act(+b.dataset.i, b.dataset.act, b));
-  $('#grid').querySelectorAll('select').forEach(sel => sel.onchange = () => update(+sel.dataset.i, {client: sel.value, billable: sel.value!==PERSONAL}, `moved to ${sel.value} 👉`));
+  $('#grid').querySelectorAll('select').forEach(sel => sel.onchange = () => update(+sel.dataset.i, {client: sel.value, billable: sel.value!==PERSONAL}, `moved to ${sel.value}`, true,
+    {from: sel.parentElement, at: '.who', text: `→ ${sel.value}`, island: `moved to ${sel.value}`, kind: 'move'}));
+  $('#grid').querySelectorAll('.task').forEach(t => t.onclick = () => t.isContentEditable || act(+t.dataset.i, 'edit'));
   $('#grid').querySelectorAll('.whyBtn').forEach(a => a.onclick = e => { e.preventDefault(); $('#why'+a.dataset.i).classList.toggle('open'); });
   $('#grid').querySelectorAll('.s').forEach(c => c.onfocus = () => S.focus = +c.dataset.i);
 }
-const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 
-async function update(i, patch, msg){
-  const s = sessions()[i]; Object.assign(s, patch);
-  await fetch('/api/edit', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:s.id, ...patch})});
-  render(); if (msg) toast(msg);
-  document.querySelector(`.s[data-i="${i}"]`)?.focus();
+/* optimistic: the change shows at once, saves in the background, and can be undone from the snackbar */
+function update(i, patch, msg, undoable = true, chip = null){
+  const s = sessions()[i], prev = Object.fromEntries(Object.keys(patch).map(k => [k, s[k]]));
+  const from = chip?.from?.getBoundingClientRect?.() || chip?.from;
+  if (patch.status === 'billed') S.fresh = s.id;
+  const done = transition('cards', () => { Object.assign(s, patch); render(); });
+  fetch('/api/edit', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:s.id, ...patch})})
+    .catch(() => snack("couldn't save that. is lowkey still running?"));
+  if (msg) snack(msg, undoable ? () => update(i, prev, 'undone', false, {from: $('#snackUndo'), text: 'undone', island: 'undone', kind: 'undo'}) : null);
+  if (chip) done.finished.then(() => {  // first it settles in place, then it flies home from where it now sits
+    const there = chip.at && document.querySelector(`.s[data-i="${i}"] ${chip.at}`);
+    fly(there?.getBoundingClientRect() || from, chip.text, isBillable(s) ? color(s.client) : '#9a9aa6', chip.island, chip.kind);
+  });
+  return done;
 }
 function act(i, what, el){
-  if (what==='billed'){ const s=sessions()[i]; if (!isBillable({...s,status:'billed'})) return toast('that one is a side quest — pick a client first'); burst(el||document.querySelector(`.s[data-i="${i}"]`)); update(i,{status:'billed'}, ['secured the bag 💰','billed. no cap 🧢','ka-ching 🧾','receipts saved ✅'][i%4]); nextPending(i); }
-  if (what==='nah') { update(i,{status:'nah'}, 'yeeted from the invoice 🗑️'); nextPending(i); }
-  if (what==='edit'){ const t=document.querySelector(`.task[data-i="${i}"]`); t.contentEditable=true; t.focus(); document.getSelection().selectAllChildren(t);
-    t.onkeydown = e => { if (e.key==='Enter'){ e.preventDefault(); t.blur(); } e.stopPropagation(); };
-    t.onblur = () => { t.contentEditable=false; const v=t.textContent.trim(); if (v && v!==sessions()[i].task) update(i,{task:v},'line updated ✍️'); }; }
+  const s = sessions()[i];
+  if (what==='billed'){ if (!isBillable({...s,status:'billed'})) return snack('that one is a side quest — pick a client first');
+    const btn = el || document.querySelector(`.s[data-i="${i}"] [data-act="billed"]`), amt = money(s.active_s/3600*rate(s.client));
+    burst(btn || document.querySelector(`.s[data-i="${i}"]`));
+    update(i, {status:'billed'}, `billed · ${s.client} · ${amt}`, true,
+           {from: btn, at: '.verdict', text: `+${amt}`, island: `billed · ${s.client} · ${amt}`, kind: 'billed'}).then(() => nextPending(i)); }
+  if (what==='nah') update(i, {status:'nah'}, 'off the invoice', true,
+           {from: el || document.querySelector(`.s[data-i="${i}"] [data-act="nah"]`), at: '.verdict', text: 'off the invoice',
+            island: `off the invoice · ${s.client}`, kind: 'nah'}).then(() => nextPending(i));
+  if (what==='undo') update(i, {status:'pending'}, 'back in the queue', false,
+           {from: el, at: '[data-act="billed"]', text: 'back to review', island: 'back in the review queue', kind: 'undo'}).then(() => focusCard(i));
+  if (what==='edit'){ const t=document.querySelector(`.task[data-i="${i}"]`); if (!t) return; t.contentEditable=true; t.focus(); document.getSelection().selectAllChildren(t);
+    t.onkeydown = e => { if (e.key==='Enter'){ e.preventDefault(); t.blur(); } if (e.key==='Escape'){ t.textContent = s.task; t.blur(); } e.stopPropagation(); };
+    t.onblur = () => { t.contentEditable=false; const v=t.textContent.trim(); if (v && v!==s.task) update(i, {task:v}, 'line updated', true, {from: t, at: '.task', text: 'line updated', island: 'invoice line updated', kind: 'edit'}); }; }
 }
-function nextPending(i){ const a=sessions(); const j=a.findIndex((s,k)=>k>i&&s.status==='pending'); if (j>=0){ S.focus=j; setTimeout(()=>document.querySelector(`.s[data-i="${j}"]`)?.focus(),60);} }
+function nextPending(i){ const a=sessions(); const j=a.findIndex((s,k)=>k>i&&s.status==='pending'); if (j>=0){ S.focus=j; focusCard(j); } }
+function review(){ transition('cards', () => { S.filter='pending'; renderCards(); }).then(() => { const first = document.querySelector('.s'); if (first) focusCard(+first.dataset.i); }); }
 
-function shiftDay(n){ const i = S.days.indexOf(S.day); const j = Math.min(S.days.length-1, Math.max(0, i+n)); if (i<0||j===i) return toast(n<0?'no older receipts':'that\'s the latest day'); S.day = S.days[j]; load(); }
+function shiftDay(n){
+  const i = S.days.indexOf(S.day), j = Math.min(S.days.length-1, Math.max(0, i+n));
+  if (i<0||j===i) return snack(n<0?'no older receipts':'that\'s the latest day');
+  const next = S.days[j];
+  if (S.week[next]) transition(n < 0 ? 'back' : 'fwd', () => { S.day = next; S.focus = 0; render(); });
+  else { S.day = next; load(); }
+}
+
+/* ---------- sheets ---------- */
+function openSheet(modal, from){  // the button you pressed grows into the sheet (when the browser can morph)
+  if (modal.classList.contains('open')) return;
+  const card = modal.querySelector('.card');
+  const go = morph => { closeOthers(modal); modal.classList.remove('closing'); modal.classList.toggle('morphed', morph);
+                        modal.classList.add('open'); document.body.classList.add('sheeted'); };
+  modal._from = from;
+  if (!from || !document.startViewTransition || REDUCED || document.hidden) return go(false);
+  from.style.viewTransitionName = 'sheet';
+  transition('sheet', () => { from.style.viewTransitionName = ''; card.style.viewTransitionName = 'sheet'; go(true); })
+    .then(() => setTimeout(() => card.style.viewTransitionName = '', 700));
+}
+const closeOthers = keep => document.querySelectorAll('.modal.open').forEach(m => m !== keep && m.classList.remove('open', 'morphed'));
+function closeM(){
+  const m = document.querySelector('.modal.open:not(.leaving)'); if (!m) return;
+  const card = m.querySelector('.card'), from = m._from;
+  const go = () => { m.classList.remove('open', 'closing', 'leaving', 'morphed'); document.body.classList.remove('sheeted'); };
+  if (m.classList.contains('morphed') && from?.isConnected && document.startViewTransition && !document.hidden) {
+    // it shrinks back into its button while the backdrop fades and the page springs back
+    card.style.viewTransitionName = 'sheet';
+    transition('sheet', () => { card.style.viewTransitionName = ''; from.style.viewTransitionName = 'sheet';
+                                m.classList.add('leaving'); document.body.classList.remove('sheeted'); })
+      .then(() => setTimeout(() => { from.style.viewTransitionName = ''; go(); }, 680));
+  } else { document.body.classList.remove('sheeted'); m.classList.add('closing'); setTimeout(go, REDUCED ? 0 : 200); }
+}
 
 /* ---------- wrapped ---------- */
-function wrapped(){
+function wrapped(from = $('#openWrapped')){
   const days = Object.entries(S.week).filter(([,a])=>a.length);
   const all = days.flatMap(([,a])=>a);
   const bill = all.filter(isBillable), side = all.filter(s=>!isBillable(s));
@@ -372,9 +703,9 @@ function wrapped(){
   const flow = bill.reduce((m,s)=> s.active_s>m.active_s?s:m, {active_s:0});
   const earned = bill.reduce((a,s)=>a+s.active_s/3600*rate(s.client),0);
   const bestDay = days.map(([d,a])=>[d,a.filter(isBillable).reduce((x,s)=>x+s.active_s,0)]).sort((a,b)=>b[1]-a[1])[0];
-  const [from,to] = weekOf(S.day);
-  $('#wrappedCard').innerHTML = `<button class="btn x" onclick="closeM()">✕</button>
-    <div class="label" style="color:#111">your week, wrapped · ${from} → ${to}</div>
+  const [from_,to] = weekOf(S.day);
+  $('#wrappedCard').innerHTML = `${CLOSE}
+    <div class="label" style="color:#111">your week, wrapped · ${from_} → ${to}</div>
     <h1>you <em>secured</em><br>${money(earned)} 💅</h1>
     <div class="wgrid">
       <div class="card"><div class="label">billable</div><div class="big">${fmtH(bill.reduce((a,s)=>a+s.active_s,0))}</div><div class="sub">across ${days.length} days</div></div>
@@ -385,82 +716,124 @@ function wrapped(){
       <div class="card"><div class="label">peak day</div><div class="big">${bestDay?new Date(bestDay[0]+'T00:00').toLocaleDateString([], {weekday:'long'}).toLowerCase():'—'}</div><div class="sub">${bestDay?fmtH(bestDay[1])+' billable':''}</div></div>
     </div>
     <p style="font-weight:800;margin:16px 0 0">screenshot this. it never left your laptop either 🔒</p>`;
-  $('#wrappedModal').classList.add('open');
+  openSheet($('#wrappedModal'), from);
 }
 
 /* ---------- bill ---------- */
-function bill(){
+function bill(from = $('#openBill')){
   const opts = S.config.clients.map(c=>`<option>${c.name}</option>`).join('');
-  const [from,to] = weekOf(S.day);
-  $('#billCard').innerHTML = `<button class="btn x" onclick="closeM()">✕</button>
-    <h2 style="margin:0 0 12px;font-size:30px;letter-spacing:-1px">send the <em>bill</em> 💸</h2>
-    <div class="row"><select id="bClient">${opts}</select><span class="sub">${from} → ${to}</span>
+  const [from_,to] = weekOf(S.day);
+  $('#billCard').innerHTML = `${CLOSE}
+    <h2 class="mtitle">send the <em>bill</em></h2>
+    <div class="row"><select id="bClient">${opts}</select><span class="sub">${from_} → ${to}</span>
       <label class="sub"><input type="checkbox" id="bPending"> include unreviewed</label></div>
     <div id="receipt" class="receipt"></div>
-    <div class="row" style="margin-top:18px"><button class="btn lime" onclick="window.print()">🖨️ save as PDF</button><button class="btn" id="csv">📋 copy CSV</button></div>`;
+    <div class="row" style="margin-top:18px"><button class="btn lime" onclick="window.print()">save as PDF</button><button class="btn quiet" id="csv">copy CSV</button></div>`;
   const draw = () => {
     const c = client($('#bClient').value), inc = $('#bPending').checked;
     const rows = Object.entries(S.week).flatMap(([d,a])=>a.map(s=>({...s,d}))).filter(s=>s.client===c.name && isBillable(s) && (s.status==='billed' || (inc && s.status==='pending')));
     const hrs = rows.reduce((a,s)=>a+s.active_s/3600,0);
     const pend = Object.values(S.week).flat().filter(s=>s.client===c.name&&s.status==='pending'&&isBillable(s)).length;
-    $('#receipt').innerHTML = `<h3>INVOICE</h3><div>${esc(S.config.me.name)} · ${esc(S.config.me.email)}</div><div>bill to: <b>${esc(c.name)}</b> · ${from} → ${to}</div>
-      <table>${rows.map(s=>`<tr><td>${s.d.slice(5)}</td><td>${esc(s.task)}</td><td class="n">${(s.active_s/3600).toFixed(2)}h</td><td class="n">${money(s.active_s/3600*c.rate)}</td></tr>`).join('') || '<tr><td>no billed sessions yet — hit "bill it ✅" on some cards</td></tr>'}</table>
+    $('#receipt').innerHTML = `<h3>INVOICE</h3><div>${esc(S.config.me.name)} · ${esc(S.config.me.email)}</div><div>bill to: <b>${esc(c.name)}</b> · ${from_} → ${to}</div>
+      <table>${rows.map(s=>`<tr><td>${s.d.slice(5)}</td><td>${esc(s.task)}</td><td class="n">${(s.active_s/3600).toFixed(2)}h</td><td class="n">${money(s.active_s/3600*c.rate)}</td></tr>`).join('') || '<tr><td>no billed sessions yet — hit "bill it" on some cards</td></tr>'}</table>
       <div>${hrs.toFixed(2)}h × ${money(c.rate)}/h</div><div class="tot">TOTAL ${money(hrs*c.rate)}</div>
       ${pend && !inc ? `<div style="margin-top:8px">⚠ ${pend} session(s) still waiting for a vibe check</div>` : ''}
       <div style="margin-top:10px;font-size:11px">generated locally by lowkey · every line backed by activity receipts</div>`;
-    $('#csv').onclick = () => { navigator.clipboard.writeText(['date,task,hours,amount', ...rows.map(s=>`${s.d},"${s.task.replace(/"/g,'""')}",${(s.active_s/3600).toFixed(2)},${Math.round(s.active_s/3600*c.rate)}`)].join('\n')); toast('CSV copied 📋'); };
+    $('#csv').onclick = () => { navigator.clipboard.writeText(['date,task,hours,amount', ...rows.map(s=>`${s.d},"${s.task.replace(/"/g,'""')}",${(s.active_s/3600).toFixed(2)},${Math.round(s.active_s/3600*c.rate)}`)].join('\n')); snack('CSV copied'); };
   };
   $('#bClient').onchange = draw; $('#bPending').onchange = draw; draw();
-  $('#billModal').classList.add('open');
+  openSheet($('#billModal'), from);
 }
-/* ---------- settings ---------- */
-const prev = ({edge, tb, over, rest}) => {
-  const thick = tb==='top'||tb==='bottom' ? 9 : 6.5;
-  const off = tb===edge && !over ? thick : 0;   // "below" pushes the island inward by the taskbar's size
-  return `<div class="scr"><div class="tb tb-${tb}"></div><div class="isl isl-${edge} ${rest==='pill'?'pill':''}" style="--off:${off}%"><i></i><b></b></div></div>`;
-};
-async function settings(){
-  const r = await (await fetch('/api/settings')).json(), st = r.settings;
-  const tb = ['top','bottom','left','right'].includes(r.taskbar) ? r.taskbar : 'bottom';
-  const mac = r.platform === 'darwin';
-  const opt = (key, val, title, sub, look, disabled) => `<button class="opt ${st[key]===val?'on':''} ${disabled?'off':''}" data-k="${key}" data-v="${val}" ${disabled?'disabled':''}>${prev(look)}<h4>${title}</h4><p>${sub}</p></button>`;
-  const edges = {top:['top','like a MacBook notch ⬆️'], bottom:['bottom','sits on the dock side ⬇️'], left:['left','peeks from the side ⬅️'], right:['right','peeks from the side ➡️']};
-  const tbText = r.taskbar && r.taskbar!=='none' ? `your taskbar is on the <b>${r.taskbar}</b>` : 'your taskbar is hidden or unknown';
-  $('#setCard').innerHTML = `<button class="btn x" onclick="closeM()">✕</button>
-    <h2 style="margin:0 0 4px;font-size:30px;letter-spacing:-1px">island <em>settings</em> ⚙️</h2>
-    <p class="hint">hover a card to preview it. changes apply instantly${r.island?'':' (the island only runs in tracking mode, not the demo)'}.</p>
-    <h3 class="sec">where does the island <em>live</em>?</h3>
-    <p class="hint">${tbText}. the previews show it.</p>
-    <div class="opts">${Object.entries(edges).map(([e,[t,sub]])=>opt('edge',e,t,sub,{edge:e,tb,over:st.taskbar==='over',rest:st.rest})).join('')}</div>
-    <h3 class="sec">when it shares an edge with the <em>taskbar</em></h3>
-    <p class="hint">only matters if the island and your taskbar are on the same side${mac?'. on macOS the menu bar always stays on top':''}.</p>
-    <div class="opts">
-      ${opt('taskbar','below','hang below it','never covers the taskbar, always fully visible',{edge:st.edge,tb:st.edge,over:false,rest:'lip'})}
-      ${opt('taskbar','over','sit on the screen edge','true notch look, floats over the taskbar',{edge:st.edge,tb:st.edge,over:true,rest:'lip'},mac)}
-    </div>
-    <h3 class="sec">when you're <em>not looking</em></h3>
-    <div class="opts">
-      ${opt('rest','lip','tucked away','just a glowing lip, hover to open',{edge:st.edge,tb,over:st.taskbar==='over',rest:'lip'})}
-      ${opt('rest','pill','always show the pill','client, timer and ₹ always visible',{edge:st.edge,tb,over:st.taskbar==='over',rest:'pill'})}
-    </div>`;
-  $('#setCard').querySelectorAll('.opt:not(.off)').forEach(b => b.onclick = async () => {
-    await fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({[b.dataset.k]: b.dataset.v})});
-    toast({edge:'island moved ✨', taskbar:'taskbar mode saved 👌', rest:'resting style saved 💤'}[b.dataset.k]);
-    settings();
+
+/* ---------- settings: the same three rows as the island's own settings, with one live preview ---------- */
+const SAYS = {
+  edge: {top:['top','hangs from the top edge, like a MacBook notch'], bottom:['bottom','sits on the bottom edge, by your taskbar'],
+         left:['left','peeks out from the left side of your screen'], right:['right','peeks out from the right side of your screen']},
+  taskbar: {below:['below it','hangs below the taskbar, never covers it'], over:['over it','sits over the taskbar: the true notch look']},
+  rest: {lip:['tucked','just a glowing lip until you hover'], pill:['pill','client, timer and money always in view']}};
+const ROWS = [['edge','lives on'], ['taskbar','taskbar'], ['rest','at rest']];
+const thick = tb => tb==='top'||tb==='bottom' ? 9 : 6.5;
+const offOf = l => l.tb===l.edge && !l.over ? thick(l.tb) : 0;   // "below" pushes the island inward by the taskbar's size
+async function settings(from = $('#openSettings')){
+  const r = await (await fetch('/api/settings')).json(), st = r.settings, mac = r.platform === 'darwin';
+  const tb = ['top','bottom','left','right'].includes(r.taskbar) ? r.taskbar : 'none';
+  const hint = `hover an option to preview it. changes apply instantly${r.island ? '' : ' · the island is off in the demo'}`;
+  const look = (k, v) => { const l = {edge:st.edge, tb, over:st.taskbar==='over', rest:st.rest};
+    if (k==='edge') l.edge = v; if (k==='taskbar'){ l.over = v==='over'; l.tb = l.edge; } if (k==='rest') l.rest = v; return l; };
+  const now = look();
+  $('#setCard').innerHTML = `${CLOSE}
+    <h2 class="mtitle">island <em>settings</em></h2>
+    <div class="stage"><div class="scr"><div class="tb tb-${now.tb}"></div><div class="isl isl-${now.edge} ${now.rest==='pill'?'pill':''}" style="--off:${offOf(now)}%"><i></i><b></b></div></div></div>
+    <p class="says" id="says">${hint}</p>
+    ${ROWS.map(([k,label]) => `<div class="srow"><span class="slabel">${label}</span><div class="seg" data-k="${k}"><span class="thumb"></span>${
+      Object.entries(SAYS[k]).map(([v,[t]]) => `<button data-v="${v}" class="${st[k]===v?'on':''}" ${k==='taskbar'&&v==='over'&&mac?'disabled':''}>${t}</button>`).join('')}</div></div>`).join('')}`;
+  openSheet($('#setModal'), from);
+  const isl = $('#setCard .isl'), tbEl = $('#setCard .tb'), says = $('#says');
+  let shown = now, intent;
+  const paint = l => { isl.className = `isl isl-${l.edge} ${l.rest==='pill'?'pill':''}`; isl.style.setProperty('--off', offOf(l)+'%'); tbEl.className = `tb tb-${l.tb}`; shown = l; };
+  const show = l => {  // same edge: glide there; a new edge: tuck into the old one, then bloom out of the new one
+    clearTimeout(show.t);
+    if (l.edge === shown.edge) return paint(l);
+    isl.classList.add('tuck');
+    show.t = setTimeout(() => {  // jump to the new edge already tucked (no transition), then let it bloom
+      isl.style.transition = 'none'; paint(l); isl.classList.add('tuck'); void isl.offsetWidth;
+      isl.style.transition = ''; isl.classList.remove('tuck');
+    }, 210);
+  };
+  const say = t => { if (says.textContent === t) return; says.textContent = t;
+    if (!REDUCED) says.animate([{opacity:0, transform:'translateY(4px)'}, {opacity:1, transform:'none'}], {duration:220, easing:'cubic-bezier(.2,0,0,1)'}); };
+  const caption = (k, v, b) => b.disabled ? 'macOS keeps its menu bar on top, so it hangs below'
+    : k==='taskbar' && r.taskbar !== st.edge ? (tb==='none' ? 'your taskbar is hidden, so this changes nothing' : `only matters on the ${r.taskbar} edge, where your taskbar is`)
+    : SAYS[k][v][1];
+  $('#setCard').querySelectorAll('.seg').forEach(seg => {
+    const k = seg.dataset.k; placeThumb(seg);
+    seg.querySelectorAll('button').forEach(b => {
+      b.onmouseenter = () => { clearTimeout(intent); intent = setTimeout(() => { show(look(k, b.dataset.v)); say(caption(k, b.dataset.v, b)); }, 80); };
+      b.onclick = async () => {
+        if (b.disabled || st[k]===b.dataset.v) return;
+        st[k] = b.dataset.v; seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x===b)); placeThumb(seg);
+        await fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({[k]: b.dataset.v})});
+        say(`saved · ${SAYS[k][b.dataset.v][0]}`);
+      };
+    });
+    seg.onmouseleave = () => { clearTimeout(intent); intent = setTimeout(() => { show(look()); say(hint); }, 120); };
   });
-  $('#setModal').classList.add('open');
 }
-function closeM(){ document.querySelectorAll('.modal').forEach(m=>m.classList.remove('open')); }
 
 /* ---------- wiring ---------- */
 $('#prev').onclick = () => shiftDay(-1); $('#next').onclick = () => shiftDay(1);
-$('#openWrapped').onclick = wrapped; $('#openBill').onclick = bill; $('#openSettings').onclick = settings;
+$('#openWrapped').onclick = () => wrapped(); $('#openBill').onclick = () => bill(); $('#openSettings').onclick = () => settings();
+$('#queueCard').onclick = review;
+$('#snackUndo').onclick = () => { const f = S.undo; S.undo = null; $('#snack').classList.remove('show'); f && f(); };
 document.querySelectorAll('.modal').forEach(m => m.onclick = e => { if (e.target===m) closeM(); });
-document.querySelectorAll('.chip').forEach(c => c.onclick = () => { S.filter = c.dataset.f; renderCards(); });
-$('#theme').onclick = () => { const r=document.documentElement; r.dataset.theme = r.dataset.theme==='dark'?'light':'dark'; try{localStorage.lowkeyTheme=r.dataset.theme}catch{} };
-try { if (localStorage.lowkeyTheme) document.documentElement.dataset.theme = localStorage.lowkeyTheme; } catch {}
+document.querySelectorAll('#filters button').forEach(b => b.onclick = () => { if (S.filter !== b.dataset.f) transition('cards', () => { S.filter = b.dataset.f; renderCards(); }); });
+addEventListener('resize', () => document.querySelectorAll('.seg').forEach(placeThumb));
+const SYS = matchMedia('(prefers-color-scheme: dark)'), sysTheme = () => SYS.matches ? 'dark' : 'light';
+function applyTheme(t){  // no choice = follow the system (dark when your OS is dark); a choice overrides it
+  const root = document.documentElement;
+  if (t) { root.dataset.theme = t; root.style.colorScheme = t; } else { delete root.dataset.theme; root.style.colorScheme = ''; }
+  const cur = root.dataset.theme || sysTheme();
+  $('#theme').dataset.tip = root.dataset.theme ? `follow your system (${sysTheme()})` : `switch to ${cur === 'dark' ? 'light' : 'dark'}`;
+}
+SYS.addEventListener('change', () => applyTheme(document.documentElement.dataset.theme));
+$('#theme').onclick = e => {  // the new theme spreads out from the switch as a circle
+  const root = document.documentElement, cur = root.dataset.theme || sysTheme(), next = cur === 'dark' ? 'light' : 'dark';
+  const pick = next === sysTheme() ? null : next;  // landing on the system's own theme means "automatic" again
+  const flip = () => { applyTheme(pick); try { pick ? localStorage.setItem('lowkey.theme', pick) : localStorage.removeItem('lowkey.theme'); } catch {} };
+  if (!document.startViewTransition || REDUCED) return flip();
+  const r = e.currentTarget.getBoundingClientRect(), x = r.left + r.width/2, y = r.top + r.height/2;
+  const R = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  root.classList.add('vt-theme');
+  const t = document.startViewTransition(flip);
+  t.ready.then(() => root.animate({clipPath:[`circle(0 at ${x}px ${y}px)`, `circle(${R}px at ${x}px ${y}px)`]},
+                                   {duration:620, easing:'cubic-bezier(.2,0,0,1)', pseudoElement:'::view-transition-new(root)'}));
+  t.finished.finally(() => root.classList.remove('vt-theme'));
+};
+try { applyTheme(localStorage.getItem('lowkey.theme')); } catch { applyTheme(null); }
 document.addEventListener('keydown', e => {
   if (e.target.isContentEditable || ['INPUT','SELECT'].includes(e.target.tagName)) return;
+  if ((e.ctrlKey || e.metaKey) && e.key==='z' && S.undo) { e.preventDefault(); return $('#snackUndo').click(); }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
   const n = sessions().length;
   if (e.key==='Escape') return closeM();
   if (e.key==='ArrowLeft') return shiftDay(-1);
@@ -469,7 +842,7 @@ document.addEventListener('keydown', e => {
   if (e.key==='b') return bill();
   if (e.key==='s') return settings();
   if (!n) return;
-  if (e.key==='j'||e.key==='k'){ S.focus = (S.focus + (e.key==='j'?1:-1) + n) % n; document.querySelector(`.s[data-i="${S.focus}"]`)?.focus(); }
+  if (e.key==='j'||e.key==='k'){ S.focus = (S.focus + (e.key==='j'?1:-1) + n) % n; focusCard(S.focus); }
   if (e.key==='y') act(S.focus,'billed');
   if (e.key==='n') act(S.focus,'nah');
   if (e.key==='e') { e.preventDefault(); act(S.focus,'edit'); }

@@ -6,6 +6,7 @@ activity -> 15-minute slots -> model labels each slot {client, task, billable}
 """
 import hashlib
 import json
+import threading
 import time
 import urllib.request
 from collections import defaultdict
@@ -175,6 +176,9 @@ def day_sessions(day):
 
 
 # ---------- live feed for the island ----------
+WAKE = threading.Event()  # set by a dashboard edit: recount now instead of waiting out the minute
+
+
 def refresh():
     # ponytail: relabels the still-growing current slot every minute; labels.json keeps those partial entries
     while True:
@@ -190,7 +194,8 @@ def refresh():
                             session_start=last["start"])
         except Exception as e:
             print("refresh:", e)
-        time.sleep(60)
+        WAKE.wait(60)
+        WAKE.clear()
 
 
 def mark_personal():
