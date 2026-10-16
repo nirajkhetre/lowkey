@@ -2,9 +2,9 @@
 
 **lowkey bills your hours. highkey private.**
 
-A Dynamic Island for Windows that watches what you work on, lets a local Gemma 4 model turn it into invoice-ready timesheet lines, and never sends a byte of your screen activity off your laptop.
+A Dynamic Island for Windows and macOS that watches what you work on, lets a local Gemma 4 model turn it into invoice-ready timesheet lines, and never sends a byte of your screen activity off your laptop.
 
-- 🏝️ **The island**: a notch tucked into the top edge of your screen, glowing in your current client's colour.
+- 🏝️ **The island**: a notch tucked into the top edge of your screen, glowing in your current client's colour. It hangs from the top of the usable screen area, so a top-docked Windows taskbar or the macOS menu bar never covers it.
   - **Hover** and it springs down into a pill: client avatar with a daily-goal ring, a live "now playing" equaliser, the session timer and ₹ earned.
   - **Keep hovering (or click)** and it opens: what the AI thinks you're doing (typed in live), a 30-minute activity equaliser, today's stats, and **go dark** / **not work** / **open lowkey** buttons.
   - **Pop-outs** when you switch clients or cross a ₹1,000 milestone.
@@ -31,7 +31,15 @@ If Ollama isn't running, lowkey falls back to keyword rules (and tells you in th
 
 ## Run it
 
-Requirements: Windows 10/11, Python 3.10+, `pip install PySide6-Essentials` (for the island), [Ollama](https://ollama.com).
+Requirements: Python 3.10+, [Ollama](https://ollama.com), and `pip install PySide6-Essentials` for the island (without it, lowkey runs dashboard-only).
+
+| | Windows 10/11 | macOS | Linux |
+|---|---|---|---|
+| Tracker | built in (Win32 API via ctypes) | built in (`osascript` + `ioreg`) | X11 only, needs `xdotool` and `xprintidle` |
+| Island | ✅ | ✅ (sits below the menu bar) | ✅ |
+| Dashboard | ✅ | ✅ | ✅ |
+
+**macOS:** the first run asks for permission to control "System Events". To read window titles (not just app names), also enable your terminal (or Python) under System Settings → Privacy & Security → **Accessibility**. Tested on Windows 11; the macOS and Linux trackers are covered by parser tests but not yet run on real hardware.
 
 ```bash
 ollama pull gemma4:e2b

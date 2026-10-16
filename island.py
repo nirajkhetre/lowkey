@@ -26,8 +26,13 @@ def clock(s):
     return f"{s // 3600}:{s % 3600 // 60:02d}:{s % 60:02d}"
 
 
-def font(px, weight=QFont.Normal, family="Segoe UI Variable Display"):
-    f = QFont(family)
+UI = ["Segoe UI Variable Display", "SF Pro Display", "Helvetica Neue", "Inter", "Ubuntu", "sans-serif"]
+NUM = ["Bahnschrift", "SF Pro Rounded", "SF Pro Display", "Helvetica Neue", "DejaVu Sans", "sans-serif"]
+
+
+def font(px, weight=QFont.Normal, families=UI):
+    f = QFont()
+    f.setFamilies(families)  # first installed family wins: Windows, then macOS, then Linux
     f.setPixelSize(round(px))
     f.setWeight(weight)
     return f
@@ -57,6 +62,7 @@ class Island(QWidget):
                             | Qt.WindowDoesNotAcceptFocus | Qt.NoDropShadowWindowHint)
         self.setAttribute(Qt.WA_TranslucentBackground)
         self.setAttribute(Qt.WA_ShowWithoutActivating)
+        self.setAttribute(Qt.WA_MacAlwaysShowToolWindow)  # macOS hides tool windows when the app is inactive
         self.setMouseTracking(True)
         self.W, self.H = Spring(SIZES["lip"][0]), Spring(SIZES["lip"][1])
         self.fade = {m: Spring(0, 320, 34) for m in ("pill", "toast", "open")}
@@ -132,9 +138,12 @@ class Island(QWidget):
         self.update()
 
     def place(self):
-        screen = QGuiApplication.primaryScreen().geometry()
+        # Hang from the top of the *work area*, not the raw screen: a top-docked Windows taskbar or the
+        # macOS menu bar would otherwise sit on top of the island. Re-read every frame, so moving or
+        # resizing the taskbar is picked up live.
+        area = QGuiApplication.primaryScreen().availableGeometry()
         ww, wh = self.W.x + 2 * (EAR + PAD), max(1.0, self.H.x) + PAD
-        self.setGeometry(round(screen.center().x() - ww / 2), screen.top(), round(ww), round(wh))
+        self.setGeometry(round(area.center().x() - ww / 2), area.top(), round(ww), round(wh))
 
     def settle(self):
         """Jump straight to the target state (used for screenshots/tests)."""
@@ -263,11 +272,11 @@ class Island(QWidget):
                 hh = 4 + 9 * (math.sin(now * (5 + i * 1.7) + i) + 1) / 2
                 p.drawRoundedRect(QRectF(ex + i * 5, cy - hh / 2, 3, hh), 1.5, 1.5)
         if L.get("client") and not L.get("paused"):
-            p.setFont(font(13.5, QFont.Bold, "Bahnschrift"))
+            p.setFont(font(13.5, QFont.Bold, NUM))
             p.setPen(col)
             p.drawText(QRectF(b.right() - 96, 0, 82, 42), Qt.AlignVCenter | Qt.AlignRight, f"{self.cur}{L.get('money', 0):,.0f}")
             p.setPen(DIM)
-            p.setFont(font(12.5, QFont.Normal, "Bahnschrift"))
+            p.setFont(font(12.5, QFont.Normal, NUM))
             p.drawText(QRectF(b.right() - 176, 0, 76, 42), Qt.AlignVCenter | Qt.AlignRight, clock(self.session_s(now)))
 
     def draw_toast(self, p, b, now):
@@ -311,7 +320,7 @@ class Island(QWidget):
         p.drawText(QRectF(x + 54, y + 14, 250, 22), Qt.AlignLeft | Qt.AlignVCenter,
                    QFontMetricsF(p.font()).elidedText(title, Qt.ElideRight, 250))
         p.setPen(DIM)
-        p.setFont(font(12, QFont.Normal, "Bahnschrift"))
+        p.setFont(font(12, QFont.Normal, NUM))
         p.drawText(QRectF(x + 54, y + 36, 250, 18), Qt.AlignLeft | Qt.AlignVCenter,
                    f"this session  {clock(self.session_s(now))}" if L.get("client") and not L.get("paused") else "")
 
@@ -342,7 +351,7 @@ class Island(QWidget):
         y = y0 + self.row(p, 3)
         cx = x
         for text in (f"today {fmt(L.get('today_s', 0))}", f"{self.cur}{L.get('money', 0):,.0f}", f"{L.get('pending', 0)} to review"):
-            p.setFont(font(12, QFont.DemiBold, "Bahnschrift"))
+            p.setFont(font(12, QFont.DemiBold, NUM))
             w = QFontMetricsF(p.font()).horizontalAdvance(text) + 20
             p.setPen(Qt.NoPen)
             p.setBrush(FAINT)

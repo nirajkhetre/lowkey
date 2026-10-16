@@ -1,5 +1,5 @@
 ---
-title: I gave Windows a Dynamic Island that writes my timesheet, and my screen never leaves my laptop
+title: I gave my laptop a Dynamic Island that writes my timesheet, and my screen never leaves my laptop
 published: false
 tags: devchallenge, hf26challenge, opensource, ai
 ---
@@ -16,7 +16,7 @@ The tools that fix this want one of two things: your money, or your screen.
 - **Your money:** in 2026, Harvest customers opened renewal bills that had jumped after the Bending Spoons acquisition. One UK consultant's monthly bill reportedly went from **$130 to $2,110** ([Silicon UK](https://www.silicon.co.uk/e-enterprise/merger-acquisition/harvest-price-shock-631249)).
 - **Your screen:** automatic trackers work by watching what you do and sending it to their cloud. Your screen is your client's code, your DMs, your bank tab. When Microsoft tried a local version of "watch everything" with Recall, people hated it so much that Signal and Brave shipped features to block it.
 
-So I built **lowkey**: it bills your hours, lowkey. It's a Dynamic Island for Windows that watches what you work on and lets an **open-weight model running on my own GPU** turn it into invoice lines. Nothing about my screen ever leaves my laptop.
+So I built **lowkey**: it bills your hours, lowkey. It's a Dynamic Island for Windows and macOS that watches what you work on and lets an **open-weight model running on my own GPU** turn it into invoice lines. Nothing about my screen ever leaves my laptop.
 
 ## What I Built
 
@@ -95,6 +95,7 @@ The whole thing is about 1,100 lines: Python (standard library plus PySide6 for 
 
 ### What went wrong (and what I changed)
 
+- **My taskbar is at the top of the screen.** The first island pinned itself to pixel row 0, and the Windows taskbar sat on top of its header. Now it hangs from the top of the *work area* (`availableGeometry()`), re-read every frame, so a top taskbar, a resized taskbar or the macOS menu bar all just push it down.
 - **Gemma 4 thinks out loud by default.** My first labelling call took **9.5 s** because the model produced a whole "Thinking Process" before answering. With thinking off and a JSON schema, the same call takes **~0.3 s**. For 15-minute slots, 30× faster is the difference between "live" and "eventually".
 - **"100% sure" on every card.** See the honesty number above. A judge model grading itself is not a metric.
 - **Repetitive invoice lines.** Merging slots first gave me lines like *"Modified product card code for theme; Modified product card for chaico theme; …"*. The second Gemma pass fixed it: *"Modified product card code/theme, previewed Masala Chai 250g, reviewed liquid file, accessed Shopify orders."*

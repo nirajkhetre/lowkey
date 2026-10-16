@@ -1,9 +1,9 @@
 """lowkey — bills your hours, lowkey. Everything stays on this machine.
 
-python lowkey.py           track this PC + serve the app on http://127.0.0.1:7777
+python lowkey.py           track this computer (Windows / macOS / Linux-X11) + island + app on http://127.0.0.1:7777
 python lowkey.py --demo    serve the bundled demo week (no tracking)
 """
-import ctypes, hashlib, json, os, sys, threading, time, urllib.request
+import ctypes, hashlib, json, os, re, subprocess, sys, threading, time, urllib.request
 from collections import defaultdict
 from datetime import datetime, timedelta
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
@@ -11,7 +11,7 @@ from pathlib import Path
 from urllib.parse import urlparse, parse_qs
 
 try:
-    import ctypes.wintypes  # tracker is Windows-only; demo mode runs anywhere
+    import ctypes.wintypes  # only the Windows tracker uses it
 except (ImportError, ValueError):
     pass
 
@@ -28,8 +28,8 @@ lock = threading.Lock()
 LIVE = {"paused": False, "idle": 0}  # shared with the island
 
 
-# ---------- tracker (Windows, stdlib only) ----------
-def foreground():
+# ---------- tracker (stdlib only): returns (app, window title, idle seconds, pid) ----------
+def foreground_windows():
     u32, k32, w = ctypes.windll.user32, ctypes.windll.kernel32, ctypes.wintypes
     hwnd = u32.GetForegroundWindow()
     buf = ctypes.create_unicode_buffer(512)
@@ -52,6 +52,36 @@ def foreground():
     return app, buf.value, idle, pid.value
 
 
+def run(*cmd):
+    return subprocess.run(cmd, capture_output=True, text=True, timeout=3).stdout.strip()
+
+
+MAC_SCRIPT = ['tell application "System Events" to set p to first application process whose frontmost is true',
+              'set t to ""',
+              'try', 'tell application "System Events" to set t to name of front window of p', 'end try',
+              'tell application "System Events" to return (name of p) & linefeed & t & linefeed & (unix id of p)']
+
+
+def foreground_mac():
+    # Window titles need System Settings > Privacy & Security > Accessibility for your terminal/Python.
+    out = run("osascript", *[a for line in MAC_SCRIPT for a in ("-e", line)]).splitlines()
+    app, title, pid = (out + ["", "", "0"])[:3]
+    m = re.search(r'"HIDIdleTime" = (\d+)', run("ioreg", "-c", "IOHIDSystem"))
+    idle = int(m.group(1)) / 1e9 if m else 0
+    return app, title, idle, int(pid) if pid.isdigit() else 0
+
+
+def foreground_linux():
+    # X11 only (needs xdotool + xprintidle). Wayland deliberately hides other apps' windows.
+    wid = run("xdotool", "getactivewindow")
+    pid = int(run("xdotool", "getwindowpid", wid) or 0)
+    app = run("ps", "-p", str(pid), "-o", "comm=") if pid else ""
+    return app, run("xdotool", "getwindowname", wid), int(run("xprintidle") or 0) / 1000, pid
+
+
+foreground = {"win32": foreground_windows, "darwin": foreground_mac}.get(sys.platform, foreground_linux)
+
+
 def track():
     never = [s.lower() for s in CONFIG.get("never_track", [])]
     while True:
@@ -69,8 +99,10 @@ def track():
                 day = datetime.now().strftime("%Y-%m-%d")
                 with open(DATA / f"activity-{day}.jsonl", "a", encoding="utf-8") as f:
                     f.write(json.dumps(ev, ensure_ascii=False) + "\n")
-        except Exception as e:  # never let the tracker die
-            print("tracker:", e)
+        except Exception as e:  # never let the tracker die (and don't spam the same error every 5s)
+            if str(e) != LIVE.get("tracker_error"):
+                print("tracker:", e)
+                LIVE["tracker_error"] = str(e)
         time.sleep(SAMPLE_S)
 
 
@@ -332,10 +364,18 @@ class Handler(SimpleHTTPRequestHandler):
 if __name__ == "__main__":
     print(f"lowkey {'(demo) ' if DEMO else ''}-> http://127.0.0.1:7777   model: {MODEL} ({'ready' if model_ok() else 'not found, using keyword rules'})")
     server = ThreadingHTTPServer(("127.0.0.1", 7777), Handler)
-    if DEMO or "--no-island" in sys.argv:
-        server.serve_forever()
+    if not DEMO:
+        threading.Thread(target=track, daemon=True).start()
+        threading.Thread(target=refresh, daemon=True).start()
+    island = None
+    if not DEMO and "--no-island" not in sys.argv:
+        try:
+            from island import Island
+            island = Island(LIVE, {"personal": mark_personal}, CONFIG["me"]["currency"], CONFIG["me"].get("daily_goal_h", 6))
+        except ImportError:
+            print("island off: pip install PySide6-Essentials to get it")
+    if island:
+        threading.Thread(target=server.serve_forever, daemon=True).start()
+        island.run()  # Qt needs the main thread (required on macOS)
     else:
-        from island import Island
-        for job in (track, refresh, server.serve_forever):
-            threading.Thread(target=job, daemon=True).start()
-        Island(LIVE, {"personal": mark_personal}, CONFIG["me"]["currency"], CONFIG["me"].get("daily_goal_h", 6)).run()
+        server.serve_forever()
