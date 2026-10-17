@@ -1,7 +1,6 @@
-<p align="center">
-  <a href="https://youtu.be/2iFeEuZe4xc"><img src="docs/images/demo-poster.jpg" alt="Watch the lowkey demo on YouTube (1:39)" width="100%"></a>
-  <br><sub><a href="https://youtu.be/2iFeEuZe4xc"><b>▶ Watch the 1:39 demo on YouTube</b></a>: the island, the local model writing your timesheet, review, and the bill.</sub>
-</p>
+https://github.com/user-attachments/assets/567075ea-37c7-4308-ba49-19b343440e81
+
+<p align="center"><sub><b>The 1:39 demo</b>: the island, the local model writing your timesheet, review, and the bill. Sound on. Also on <a href="https://youtu.be/2iFeEuZe4xc">YouTube</a>.</sub></p>
 
 <p align="center">
   <img src="docs/images/hero.png" alt="lowkey: bills your hours, lowkey. highkey private." width="100%">
