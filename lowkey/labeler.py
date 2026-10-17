@@ -13,7 +13,7 @@ import urllib.request
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-from .config import CONFIG, DATA, LIVE, MODEL, OLLAMA, PERSONAL, SLOT_S, color, load, lock, rate, save
+from .config import CONFIG, DATA, DEMO, LIVE, MODEL, OLLAMA, PERSONAL, SLOT_S, color, load, lock, rate, save, save_config
 
 
 def slots_for(day):
@@ -49,13 +49,23 @@ Given ~15 minutes of window titles and the client list, decide:
 Use the client hints (repo names, domains, project names) as strong evidence. Never invent a client."""
 
 
-def chat(messages, schema, timeout=180):
+_busy = []  # what the model is doing right now, newest last: the island and the dashboard show it while it happens
+
+
+def chat(messages, schema, timeout=180, what="thinking"):
     """One structured-output call to the local model. Thinking off: ~0.3s instead of ~9s on Gemma 4."""
     body = {"model": MODEL, "stream": False, "think": False, "format": schema, "options": {"temperature": 0},
             "messages": messages}
     req = urllib.request.Request(OLLAMA + "/api/chat", json.dumps(body).encode(), {"Content-Type": "application/json"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        return json.loads(json.loads(r.read())["message"]["content"])
+    _busy.append(what)
+    LIVE["thinking"], t0 = what, time.time()
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
+            return json.loads(json.loads(r.read())["message"]["content"])
+    finally:
+        _busy.remove(what)
+        LIVE["thinking"] = _busy[-1] if _busy else None
+        LIVE["thought"] = {"what": what, "ms": round((time.time() - t0) * 1000), "at": time.time()}
 
 
 def rules(windows):
@@ -80,7 +90,8 @@ def label(windows, use_model=True):
             "task": {"type": "string"}, "billable": {"type": "boolean"}, "confidence": {"type": "number"}}}
         try:
             out = chat([{"role": "system", "content": SYSTEM},
-                        {"role": "user", "content": f"Clients and hints:\n{hints}\n\nActivity:\n{describe(windows)}"}], schema)
+                        {"role": "user", "content": f"Clients and hints:\n{hints}\n\nActivity:\n{describe(windows)}"}], schema,
+                       what="reading 15 minutes of your windows")
             out["by"] = MODEL
             out["billable"] = out["billable"] and out["client"] != PERSONAL
             return out
@@ -97,7 +108,8 @@ def summarize(tasks, cache):
                   "(files, PR numbers, features), no client name:\n- " + "\n- ".join(tasks))
         try:
             cache[key] = chat([{"role": "user", "content": prompt}],
-                              {"type": "object", "properties": {"line": {"type": "string"}}, "required": ["line"]}, 120)["line"]
+                              {"type": "object", "properties": {"line": {"type": "string"}}, "required": ["line"]}, 120,
+                              "writing the invoice line")["line"]
             with lock:
                 save("labels.json", cache)
         except Exception as e:
@@ -163,6 +175,7 @@ def labeled(day):
             if key not in cache or (use_model and cache[key].get("by") == "rules"):
                 cache[key] = label(windows, use_model)
                 save("labels.json", cache)
+                LIVE["labels_rev"] = LIVE.get("labels_rev", 0) + 1  # the dashboard sees a new line and fetches it
             slots[start] = (windows, cache[key])
     return slots, cache, use_model
 
@@ -180,8 +193,82 @@ def day_sessions(day):
         s.pop("_last")
     sessions += [m for m in load("manual.json", []) if m.get("day") == day]  # time you logged yourself
     for s in sessions:
-        s.update(edits.get(s["id"], {}))
+        e = edits.get(s["id"], {})
+        s.update(e)
+        s["edited"] = sorted(k for k in ("client", "task") if k in e)  # so the page can say who wrote what: you or the model
     return sorted(sessions, key=lambda s: s["start"])
+
+
+# ---------- the model in its own words ----------
+def brief(day):
+    """The day in a sentence or two, written by the model from the receipts (never from raw window titles).
+    Cached by content, so it's rewritten only when the day changes. No model, no brief: nothing is faked."""
+    sess = [s for s in day_sessions(day) if s.get("status") != "nah"]
+    if not sess or not model_ok():
+        return None
+    lines = "\n".join(f"- {round(s['active_s'] / 60)} min, {'side quest' if s['client'] == PERSONAL else s['client']}: "
+                      f"{s['task']}" for s in sess)
+    key = "brief:" + hashlib.sha1(lines.encode()).hexdigest()[:16]
+    cache = load("labels.json", {})
+    if key not in cache:
+        prompt = ("Timesheet lines from a freelancer's day, in order (minutes, client, what got done):\n" + lines +
+                  "\n\nTell them how their day went in 1-2 short sentences (max 200 characters), the way a sharp friend would "
+                  "after reading it. Lead with the most concrete win (a feature, a fix, a file), then where the rest of the time "
+                  "went. Your own words: never copy a line, no times, no minutes. Use client names as written. Second person, "
+                  "all lowercase, casual. Only facts from the lines. No money, no emojis, no judgement about side quests.")
+        try:
+            out = chat([{"role": "user", "content": prompt}],
+                       {"type": "object", "required": ["line"], "properties": {"line": {"type": "string"}}}, 60,
+                       "writing your day")["line"].strip()
+        except Exception as e:
+            print("brief failed:", e)
+            return None
+        with lock:
+            cache = load("labels.json", {})
+            cache[key] = out.lower()[:300]
+            save("labels.json", cache)
+    return {"text": cache[key], "by": MODEL, "lines": len(sess)}
+
+
+GENERIC = {"chrome", "google chrome", "edge", "firefox", "github", "gitlab", "figma", "slack", "notion", "untitled",
+           "new tab", "code", "visual studio code", "terminal", "powershell", "docs", "google docs", "localhost", "home"}
+
+
+def suggest_hint(day, sid, client):
+    """You moved a session to a client: the model picks a keyword from its windows that should mean that client
+    from now on. Plain code checks it really is in those windows, isn't generic, and isn't a hint already."""
+    s = next((x for x in day_sessions(day) if x["id"] == sid), None)
+    titles = [e["title"] for e in (s or {}).get("evidence", []) if e.get("title")][:6]
+    if not titles or client == PERSONAL or not model_ok():
+        return None
+    try:
+        k = chat([{"role": "user", "content": f'These windows were work for the client "{client}":\n- ' + "\n- ".join(titles) +
+                  "\n\nCopy ONE short keyword exactly as it appears in a title (a repo, file, domain or project name, "
+                  "3-30 characters) that would identify this client's work next time. Not an app name or a generic word."}],
+                 {"type": "object", "required": ["keyword"], "properties": {"keyword": {"type": "string"}}}, 30,
+                 "learning from your fix")["keyword"].strip()
+    except Exception:
+        return None
+    have = {h.lower() for c in CONFIG["clients"] for h in c["hints"]}
+    if not 3 <= len(k) <= 30 or k.lower() in GENERIC or k.lower() in have or not any(k.lower() in t.lower() for t in titles):
+        return None
+    return k
+
+
+def teach(client, hint, forget=False):
+    """Add (or take back) a hint. Hints go into every label prompt and the keyword rules, so the next slots use it.
+    The demo's clients only change in memory."""
+    c = next((c for c in CONFIG["clients"] if c["name"] == client), None)
+    hint = str(hint).strip()[:40]
+    if c is None:
+        raise KeyError(client)
+    if len(hint) < 3:
+        raise ValueError("hint")
+    hs = [h for h in c["hints"] if h.lower() != hint.lower()]
+    c["hints"] = hs if forget else hs + [hint]
+    if not DEMO:
+        save_config({}, CONFIG["clients"])
+    return c
 
 
 # ---------- receipts you add yourself ----------
@@ -272,7 +359,8 @@ def category(src, titles, cache, use_model):
         try:
             cat = chat([{"role": "user", "content": f"Someone spent personal (non-work) time in: {src}\nExample window titles: "
                                                     f"{'; '.join(titles[:3])}\nWhich kind of time was it?"}],
-                       {"type": "object", "required": ["kind"], "properties": {"kind": {"type": "string", "enum": list(LIFE)}}}, 20)["kind"]
+                       {"type": "object", "required": ["kind"], "properties": {"kind": {"type": "string", "enum": list(LIFE)}}}, 20,
+                       f"sorting {src}")["kind"]
         except Exception:
             cat = None
     cache[key] = cat or "other"

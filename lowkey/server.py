@@ -11,7 +11,8 @@ from urllib.parse import parse_qs, urlparse
 
 from . import focus
 from .config import CONFIG, DATA, DEMO, LIVE, MODEL, PERSONAL, PORT, load, lock, save, save_config, update_settings
-from .labeler import WAKE, add_manual, day_sessions, delete_manual, life, life_week, model_ok, rename_client
+from .labeler import (WAKE, add_manual, brief, day_sessions, delete_manual, life, life_week, model_ok, rename_client,
+                      suggest_hint, teach)
 
 WEB = Path(__file__).parent / "web"
 STATUSES = ("pending", "billed", "nah")
@@ -119,6 +120,10 @@ class Handler(SimpleHTTPRequestHandler):
         if url.path == "/api/settings":
             return self.send_json({"settings": LIVE["settings"], "taskbar": LIVE.get("taskbar"),
                                    "platform": sys.platform, "island": not DEMO})
+        if url.path == "/api/pulse":  # cheap and polled: is the model working right now, and is there anything new
+            return self.send_json({"thinking": LIVE.get("thinking"), "thought": LIVE.get("thought"), "rev": LIVE.get("labels_rev", 0)})
+        if url.path == "/api/brief":
+            return self.send_json({"brief": brief(datetime.fromisoformat(q["day"]).strftime("%Y-%m-%d"))})
         if url.path == "/api/island":  # where the island sits on screen, so the dashboard can send things home to it
             return self.send_json({"island": LIVE.get("island"), "settings": LIVE["settings"]})
         if url.path == "/api/life":  # off the clock: personal time by kind and by source
@@ -174,6 +179,14 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json({"ok": True})
         if self.path == "/api/settings":
             return self.send_json({"ok": True, "settings": update_settings(self.body())})
+        if self.path == "/api/teach":  # you moved a session: what should lowkey remember from it?
+            e = self.body()
+            day = datetime.fromisoformat(e["day"]).strftime("%Y-%m-%d")
+            return self.send_json({"hint": suggest_hint(day, str(e["id"])[:80], str(e["client"]))})
+        if self.path == "/api/teach/apply":
+            e = self.body()
+            c = teach(str(e["client"]), str(e["hint"]), bool(e.get("forget")))
+            return self.send_json({"client": c, "demo": DEMO})
         if self.path == "/api/config":  # your clients and profile, edited in the dashboard
             if DEMO:
                 return self.send_json({"error": "the demo's clients are fixed; run lowkey for real to edit yours"}, 409)

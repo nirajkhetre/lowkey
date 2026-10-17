@@ -87,6 +87,7 @@ A notch tucked into the edge of your screen, glowing in your current client's co
   - three round buttons and nothing else: **go dark** (pause tracking: the island turns into a night sky, off the record), **open lowkey** (the one filled, primary action) and **•••**
 - **Built like a Live Activity:** the buttons have no labels, because hovering any of them explains it in the line under the client name. The rarer actions wait behind **•••**: not work (with 5 s to undo), pin and settings.
 - **Pin** (or double-click) keeps it out. It never takes keyboard focus, so it can't interrupt your typing.
+- **Fullscreen video or game? It steps aside**, the way the menu bar does on a Mac: no lip, no shadow, no pop-outs or nudges over your movie. Rest the cursor at the very top of the screen and it slides out from the real edge (Windows; on macOS fullscreen apps get their own Space anyway).
 - **Settings** open right inside the island. Hover an option and a little screen pops out beside it, acting out exactly where the island will go; click and it moves there for real, then waits open for you.
 
 <p align="center"><img src="docs/images/island-settings.png" alt="Island settings inside the island, with a hover preview acting out the move to the left edge" width="100%"></p>
@@ -117,6 +118,16 @@ When nothing's on, the top of the dashboard just asks: **what are you working on
 
 <p align="center"><img src="docs/images/island-focus.png" alt="A nudge when you drift, one-tap progress when you move on, and what's next with its reason" width="100%"></p>
 
+### ✦ You can see it think
+
+The model runs on your laptop, so you should be able to tell when it's working, what it wrote and why. One mark, a little sparkle in lime, blue and pink, sits on everything the model wrote and on nothing else.
+
+- **A live mind, not a status badge.** The header pill says what the model is doing while it does it (*"reading 15 minutes of your windows…"*), then what it did and how long that took on your GPU. The island's edge lights up in the same colours for as long as it thinks.
+- **The day, in its own words.** Above the numbers, the model writes how your day went in a sentence or two, from your receipts: *"you nailed the auth logic and fixed the oauth redirect for acme-website. then you spent time on chai & co…"*. It's rewritten only when the day changes, and when the model is off there's no sentence at all, never a canned one.
+- **New lines write themselves in.** When a new 15 minutes gets labelled, the card appears on the page on its own and its line writes in, left to right. Nothing you typed ever animates like that, so you can always tell whose words are whose: a card says *gemma* until you rewrite it, then *your words*.
+- **Reasons, with receipts.** *why?* now starts with the reason (*"gemma read these windows and filed them under Chai & Co. 92% of the time mentions your hints: shopify, chaico"*), and the matching words are marked in the windows below.
+- **It learns from your fixes.** Move a session to the right client and the model picks the word that should have told it (*"masala-landing"*). Plain code checks that word is really in those windows, isn't generic, and isn't already someone else's hint, then lowkey says *"learned: masala-landing means Chai & Co from now on"*, with undo. When nothing qualifies, it learns nothing rather than guess.
+
 ### 🎛️ Every control, explained
 
 **Hover anything on the island and it tells you what it does,** in the line under the client name.
@@ -145,7 +156,8 @@ When nothing's on, the top of the dashboard just asks: **what are you working on
 | **bill it / nah** | dashboard card | The two buttons on a session waiting for review: approve it for the invoice, or leave it off. Either way it settles into a sticker, flies home to the island, and **undo** stays on offer. |
 | **the client sticker** | dashboard card | Click it to move the session to another client. |
 | **the line itself** | dashboard card | Click it to edit the invoice line (`Enter` saves, `Esc` cancels). |
-| **why?** | dashboard card | Unfolds the exact windows behind the line: your receipts. |
+| **why?** | dashboard card | The reason first (who filed it, and which of your hints matched), then the exact windows behind the line, with the matching words marked. |
+| ✦ **the mind pill** | dashboard header | What the local model is doing right now, then what it did and how long it took. Grey when the model is off. |
 | **log missed time** | dashboard, your day | The gaps in your day are time lowkey didn't see. Click one (or drag across part of it, then pull either end), say what it was, `Enter`. Chips show the client and what it's worth; a time or length in your words wins. `L` picks your latest gap. Logged blocks are dotted, their cards say "added by you", and both can be undone. |
 | 👥 **your clients** | dashboard header | Add, rename, recolour and re-rate clients, edit their hints, and set your name, email, currency and daily goal. Saves as you go; renaming a client carries its history (labels, edits, receipts, intentions) to the new name. |
 | **off the clock** | dashboard | Your personal time by kind (watching, gaming, social, messaging, music…) and by app (YouTube, Valorant, WhatsApp…). Point at a kind to lift its arc in the ring; click a row for its apps; click a day in the week strip to go there. |

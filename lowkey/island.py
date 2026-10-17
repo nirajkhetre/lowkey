@@ -13,7 +13,7 @@ import ctypes, math, signal, subprocess, sys, time, webbrowser
 from pathlib import Path
 
 from PySide6.QtCore import Qt, QTimer, QRectF, QPointF
-from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QFontMetricsF, QFontDatabase, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient, QRegion, QTransform
+from PySide6.QtGui import QBrush, QColor, QConicalGradient, QCursor, QFont, QFontMetricsF, QFontDatabase, QGuiApplication, QLinearGradient, QPainter, QPainterPath, QPen, QRadialGradient, QRegion, QTransform
 from PySide6.QtWidgets import QApplication, QWidget
 
 from . import jelly
@@ -24,6 +24,7 @@ from .mascot import Mascot
 TXT, DIM, FAINT = QColor(245, 245, 245), QColor(150, 150, 150), QColor(255, 255, 255, 16)
 GREY = QColor("#7a7a7a")
 NIGHT, DUSK, AURORA = QColor("#9B8CFF"), QColor("#FF7AD9"), QColor("#4FD1C5")  # "off the record"
+MIND = (QColor("#B8FF3B"), QColor("#7AA2FF"), QColor("#FF7AD9"))  # the local model at work: the dashboard's sparkle colours
 
 
 def mix(a, b, t):
@@ -85,6 +86,36 @@ def font(px, weight=QFont.Normal, families=UI, italic=False):
     f.setPixelSize(round(px))
     f.setWeight(weight)
     return f
+
+
+class MONITORINFO(ctypes.Structure):
+    _fields_ = [("cbSize", ctypes.c_ulong), ("rcMonitor", ctypes.c_long * 4), ("rcWork", ctypes.c_long * 4), ("dwFlags", ctypes.c_ulong)]
+
+
+def fullscreen_app(own=0):
+    """True when the window in front covers the whole main screen (a video, a game, slides). Maximized windows
+    and the desktop itself don't count. Windows only; macOS gives fullscreen apps their own Space, where the island
+    isn't shown anyway."""
+    if sys.platform != "win32":
+        return False
+    try:
+        u = ctypes.windll.user32
+        h = u.GetForegroundWindow()
+        if not h or h == own or u.IsZoomed(h):
+            return False
+        cls = ctypes.create_unicode_buffer(32)
+        u.GetClassNameW(h, cls, 32)
+        if cls.value in ("Progman", "WorkerW", "Shell_TrayWnd"):
+            return False
+        r, mi = (ctypes.c_long * 4)(), MONITORINFO()
+        mi.cbSize = ctypes.sizeof(MONITORINFO)
+        u.GetWindowRect(h, r)
+        if not u.GetMonitorInfoW(u.MonitorFromWindow(h, 2), ctypes.byref(mi)) or not mi.dwFlags & 1:
+            return False  # on another monitor: the island's screen is free
+        m = mi.rcMonitor
+        return r[0] <= m[0] and r[1] <= m[1] and r[2] >= m[2] and r[3] >= m[3]
+    except Exception:
+        return False
 
 
 def reduced_motion():
@@ -188,6 +219,7 @@ class Island(QWidget):
         self.W, self.H = Spring(SIZES["lip"][0]), Spring(SIZES["lip"][1])
         self.fade = {m: Spring(0, 320, 34) for m in ("pill", "toast", "open", "settings", "prompt")}
         self.dark = Spring(0, 90, 19)  # 0 = on the record, 1 = midnight
+        self.mind = Spring(0, 120, 18)  # 1 while the local model is working: its colours run round the edge
         self.mode, self.force, self.pinned, self.click_open = "lip", None, False, False
         self.hover_since = self.left_at = None
         self.toast_msg, self.toast_until, self.toast_color, self.toast_len = "", 0.0, GREY, 2.8
@@ -203,6 +235,7 @@ class Island(QWidget):
         self.pin_s = Spring(0, 260, 20)
         self.in_settings, self.hold_until = False, 0.0  # after a change moves it, it waits open for you
         self.quitting = 0.0  # when "quit lowkey" was pressed: it tucks away, then the app ends
+        self.fs, self.fs_t = False, 0.0  # something is fullscreen: the island steps aside, like the menu bar on a Mac
         self.prompt_at, self.ring, self.last_prompt = None, (0.0, GREY), None  # the prompt on show; the info line's ring
         self.more, self.more_s = False, Spring(0, 300, 28)  # the footer's rarer actions
         self.notice, self.notice_until = "", 0.0
@@ -257,13 +290,15 @@ class Island(QWidget):
     def pick_mode(self, now):
         if self.force:
             return self.force
-        if (self.live.get("focus") or {}).get("prompt") and not self.in_settings and not self.quitting:
+        if (self.live.get("focus") or {}).get("prompt") and not self.in_settings and not self.quitting and not self.fs:
             if self.frameGeometry().contains(QCursor.pos()):
                 self.left_at, self.hold_until = None, 0.0
                 self.hover_since = self.hover_since or now
             return "prompt"  # it asked you something: it stays until you answer (or it times out)
         resting = "pill" if self.pinned or self.rest == "pill" else "lip"
-        base = "toast" if now < self.toast_until else resting
+        if self.fs:
+            resting = "lip"
+        base = "toast" if now < self.toast_until and not self.fs else resting
         if self.frameGeometry().contains(QCursor.pos()):
             self.left_at, self.hold_until = None, 0.0
             self.hover_since = self.hover_since or now
@@ -392,6 +427,8 @@ class Island(QWidget):
         dt, self.last = min(0.033, now - self.last), now
         st, L = self.live.get("settings") or {}, self.live
         self.over, self.rest = st.get("taskbar") == "over", st.get("rest", "lip")
+        if now - self.fs_t > 0.5:
+            self.fs, self.fs_t = fullscreen_app(int(self.winId())), now
         self.watch_events(now)
         self.catch_changes(now)
         self.watch_prompt(now)
@@ -411,9 +448,9 @@ class Island(QWidget):
             if (self.H.x if side else self.W.x) < 1.5:
                 self.edge = self.want_edge()
                 self.W.x = self.H.x = self.W.v = self.H.v = 0.0
-        if self.quitting:  # goodbye: the content fades and the island tucks into its edge, then the app ends
+        if self.quitting or (self.fs and self.mode == "lip"):  # goodbye, or a fullscreen app: tuck all the way in
             th, tw = (0, tw) if self.edge in ("top", "bottom") else (th, 0)
-            if now - self.quitting > 0.4:
+            if self.quitting and now - self.quitting > 0.4:
                 self.app.quit()
         self.W.target, self.H.target = tw, th
         for m, s in self.fade.items():
@@ -444,7 +481,9 @@ class Island(QWidget):
         for k, sp in self.prs.items():
             sp.target = 0.95 if self.pressed == k else 1.0  # squish while held, springs back on release
             sp.step(dt)
-        for s in (self.W, self.H, self.dark, self.slide, *self.fade.values()):
+        t = self.live.get("thought") or {}
+        self.mind.target = 1.0 if self.live.get("thinking") or now - t.get("at", 0) < 1.2 else 0.0  # long enough to see
+        for s in (self.W, self.H, self.dark, self.slide, self.mind, *self.fade.values()):
             s.step(dt)
         self.place()
         self.update()
@@ -454,7 +493,7 @@ class Island(QWidget):
         settled = (all(abs(s.v) < 1 and abs(s.target - s.x) < 0.5 for s in (self.W, self.H, self.slide, self.money_view))
                    and all(abs(s.target - s.x) < 0.01 for s in (self.dark, *self.fade.values())))
         busy = (not settled or self.mode not in ("lip", "pill") or self.hover_since or self.incoming or self.quitting
-                or (self.left_at and now - self.left_at < 0.5) or now < self.toast_until or self.peek.x > 0.01)
+                or (self.left_at and now - self.left_at < 0.5) or now < self.toast_until or self.peek.x > 0.01 or self.mind.x > 0.01)
         ms = 16 if busy else 33 if self.mode == "pill" else 66
         if self.timer.interval() != ms:
             self.timer.setInterval(ms)
@@ -470,7 +509,7 @@ class Island(QWidget):
                 else "left" if work.left() > full.left() else "right" if work.right() < full.right() else "none")
         self.live["taskbar"] = side
         edge, w, h = self.edge, max(0.0, self.W.x), max(1.0, self.H.x)
-        over = self.over and side == edge
+        over = (self.over and side == edge) or self.fs  # fullscreen: hang from the real edge, the taskbar is gone
         a = full if over else work
         self.slide.target = {"top": a.top(), "bottom": a.bottom() + 1, "left": a.left(), "right": a.right() + 1}[edge]
         if snap or self.slide_edge != edge:
@@ -489,7 +528,7 @@ class Island(QWidget):
         tip, _ = self.inner(self.body())  # where a change from the dashboard should fly to, in screen coordinates
         self.live["island"] = {"x": round(x) + round(tip.x()), "y": round(y) + round(tip.y()), "edge": edge,
                                "screen": [full.x(), full.y(), full.width(), full.height()]}
-        if over and sys.platform == "win32" and time.time() - self.raised_at > 0.4:
+        if over and not self.fs and sys.platform == "win32" and time.time() - self.raised_at > 0.4:  # never fight a game for the top
             # the taskbar is also "always on top"; whoever was raised last wins, so keep winning
             ctypes.windll.user32.SetWindowPos(int(self.winId()), -1, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010)
             self.raised_at = time.time()
@@ -535,6 +574,8 @@ class Island(QWidget):
         p = QPainter(self)
         p.setRenderHints(QPainter.Antialiasing | QPainter.TextAntialiasing | QPainter.SmoothPixmapTransform)
         now, b = time.time(), self.body()
+        if self.fs and min(b.width(), b.height()) < 1.5:  # tucked away over a fullscreen app: not even a shadow
+            return p.end()
         path, r = self.notch(b)
 
         # soft shadow
@@ -578,6 +619,17 @@ class Island(QWidget):
                 kept, self.buttons = self.buttons, {}
                 draw(p, b, now)
                 self.buttons = {**kept, **self.buttons} if mode == self.mode else kept  # a fading view isn't clickable
+        if self.mind.x > 0.02:  # the model is thinking: its colours run round the island's edge, like a live mind
+            k = min(1.0, self.mind.x)
+            g = QConicalGradient(b.center(), 0 if self.calm else -now * 160 % 360)
+            for pos, c in zip((0, 0.33, 0.66, 1), (*MIND, MIND[0])):
+                c = QColor(c)
+                c.setAlpha(int(230 * k))
+                g.setColorAt(pos, c)
+            p.setOpacity(1)
+            p.setPen(QPen(QBrush(g), 3.2))
+            p.setBrush(Qt.NoBrush)
+            p.drawPath(path)
         p.end()
 
     def draw_night(self, p, b, now, a):

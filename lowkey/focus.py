@@ -161,7 +161,8 @@ def guess_client(text):
     try:
         out = chat([{"role": "user", "content": f"Clients and hints:\n{hints}\n\nWhich client is this task for? "
                                                 f"Answer none if it isn't client work.\nTask: {text}"}],
-                   {"type": "object", "required": ["client"], "properties": {"client": {"type": "string", "enum": names + ["none"]}}}, 8)
+                   {"type": "object", "required": ["client"], "properties": {"client": {"type": "string", "enum": names + ["none"]}}}, 8,
+                   "working out whose it is")
         return out["client"] if out["client"] in names else None
     except Exception:
         return None

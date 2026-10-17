@@ -78,6 +78,33 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22p
 .pill{display:inline-flex;align-items:center;gap:7px;border:var(--line);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;background:var(--paper);font-stretch:90%}
 .pill i{width:10px;height:10px;border-radius:50%;background:var(--lime);border:1.5px solid var(--ink);display:inline-block}
 .pill.warn i{background:var(--orange)}
+/* the model's mark: one sparkle in the brand colours, only ever on what the local model wrote or is doing */
+.spark{width:15px;height:15px;flex:none;display:inline-block;vertical-align:-2px;overflow:visible}
+.spark path{fill:url(#aiG);stroke:var(--ink);stroke-width:1.7;stroke-linejoin:round}
+.warn .spark path{fill:var(--grey)}
+.mind{transition:background .3s}
+.mind span{display:inline-block;transition:opacity .2s}
+.mind.thinking{background:linear-gradient(100deg,var(--paper) 0 30%,color-mix(in srgb,var(--blue) 35%,var(--paper)) 42%,color-mix(in srgb,var(--pink) 30%,var(--paper)) 50%,var(--paper) 62% 100%) 0 0/300% 100%;animation:shimmer 1.4s linear infinite}
+.thinking .spark{animation:think 1.2s var(--spring-soft) infinite}
+@keyframes think{0%{transform:rotate(0) scale(1)}45%{transform:rotate(50deg) scale(.78)}100%{transform:rotate(90deg) scale(1)}}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:0 0}}
+/* new words from the model write themselves in, left to right; nothing a person typed ever does this */
+.writing{-webkit-mask-image:linear-gradient(90deg,#000 40%,rgba(0,0,0,.2) 50%,transparent 60%);mask-image:linear-gradient(90deg,#000 40%,rgba(0,0,0,.2) 50%,transparent 60%);
+  -webkit-mask-size:260% 100%;mask-size:260% 100%;animation:write calc(.45s + var(--len,40) * 16ms) var(--enter) both}
+@keyframes write{from{-webkit-mask-position:100% 0;mask-position:100% 0}to{-webkit-mask-position:0 0;mask-position:0 0}}
+.brief{display:flex;gap:12px;align-items:flex-start;margin:2px 4px 20px;max-width:920px}
+.brief>.spark{width:24px;height:24px;margin-top:3px}
+.brief #briefTxt{display:block;font-size:22px;font-weight:650;line-height:1.28;letter-spacing:-.3px;text-wrap:pretty}
+.brief small{display:block;font:600 12px/1.4 var(--mono);color:var(--muted);margin-top:6px}
+.brief.thinking #briefTxt{color:transparent;background:linear-gradient(100deg,var(--muted) 0 35%,var(--blue) 45%,var(--pink) 50%,var(--muted) 60% 100%) 0 0/300% 100%;-webkit-background-clip:text;background-clip:text;animation:shimmer 1.6s linear infinite}
+.meta .ai{display:inline-flex;align-items:center;gap:4px;color:var(--ink)}
+.meta .ai .spark{width:13px;height:13px}
+.why .lead{white-space:normal;font-family:var(--display);font-size:13.5px;font-weight:600;color:var(--ink);margin:0 0 7px;line-height:1.4}
+.why .lead .spark{width:13px;height:13px;margin-right:3px}
+.why mark{background:var(--lime);color:#111;border-radius:4px;padding:0 3px;font-weight:700}
+.snack.ai #snackMsg::before{content:"";display:inline-block;width:14px;height:14px;margin-right:7px;vertical-align:-2px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x2='1' y2='1'%3E%3Cstop stop-color='%23B8FF3B'/%3E%3Cstop offset='.5' stop-color='%237AA2FF'/%3E%3Cstop offset='1' stop-color='%23FF7AD9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M12 2.5c.7 5 3 7.3 8 8-5 .7-7.3 3-8 8-.7-5-3-7.3-8-8 5-.7 7.3-3 8-8z' fill='url(%23g)'/%3E%3C/svg%3E") center/contain no-repeat}
+@media (prefers-reduced-motion: reduce){.writing{animation:none;-webkit-mask-image:none;mask-image:none}.thinking .spark,.mind.thinking,.brief.thinking #briefTxt{animation-duration:4s}}
 .grp{display:flex;align-items:center;gap:2px;border:var(--line);border-radius:999px;background:var(--paper);box-shadow:var(--shadow-sm);padding:3px}
 .datenav{margin-left:auto}
 .datenav .day{font-weight:800;font-size:16px;min-width:112px;text-align:center}
@@ -551,10 +578,11 @@ html.still *,html.still *::before,html.still *::after{transition:none!important;
 </style>
 </head>
 <body class="intro">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="aiG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B8FF3B"/><stop offset=".5" stop-color="#7AA2FF"/><stop offset="1" stop-color="#FF7AD9"/></linearGradient></defs></svg>
 <div class="wrap">
   <header>
     <div class="logo">lowkey<span class="dot">.</span></div>
-    <span class="pill" id="modelPill" data-tip="every label is written on this machine"><i></i><span>loading…</span></span>
+    <span class="pill mind" id="modelPill" data-tip="gemma, running on this laptop: it writes every line you see with this mark"><svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c.7 5 3 7.3 8 8-5 .7-7.3 3-8 8-.7-5-3-7.3-8-8 5-.7 7.3-3 8-8z"/></svg><span id="mindTxt">loading…</span></span>
     <div class="grp datenav">
       <button class="ib" id="prev" data-tip="previous day  ←" aria-label="previous day"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
       <div class="day" id="dayLabel">—</div>
@@ -588,6 +616,8 @@ html.still *,html.still *::before,html.still *::after{transition:none!important;
   </section>
 
   <main>
+    <div class="brief" id="brief" hidden><svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c.7 5 3 7.3 8 8-5 .7-7.3 3-8 8-.7-5-3-7.3-8-8 5-.7 7.3-3 8-8z"/></svg>
+      <div><span id="briefTxt"></span><small id="briefBy"></small></div></div>
     <section class="hero" style="--d:0">
       <div class="card money-card" style="--d:0">
         <div class="label" id="moneyLabel">you made today</div>
@@ -673,6 +703,7 @@ const rate = name => client(name)?.rate || 0;
 const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
 const weekOf = day => { const d = new Date(day+'T00:00'); const mon = new Date(d); mon.setDate(d.getDate() - (d.getDay()+6)%7); const sun = new Date(mon); sun.setDate(mon.getDate()+6); return [iso(mon), iso(sun)]; };
 const isBillable = s => s.billable && s.client !== PERSONAL && s.status !== 'nah';
+const SPARK = '<svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c.7 5 3 7.3 8 8-5 .7-7.3 3-8 8-.7-5-3-7.3-8-8 5-.7 7.3-3 8-8z"/></svg>';
 const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const tag = id => String(id).replace(/[^\w-]/g, '-');
 
@@ -705,8 +736,9 @@ function roll(el, text){  // Apple's numeric text: every digit is a column that 
   cols.forEach((c, k) => { c.style.transitionDelay = (cols.length - 1 - k) * 22 + 'ms'; c.style.transform = `translateY(${-digits[k]}em)`; });
 }
 function clearRoll(el, text=''){ el.dataset.shape = ''; el.textContent = text; el.removeAttribute('aria-label'); }
-function snack(msg, undo){  // Google's snackbar: says what happened, and offers a way back while the line runs out
+function snack(msg, undo, ai){  // Google's snackbar: says what happened, and offers a way back while the line runs out
   const s = $('#snack'), u = $('#snackUndo');
+  s.classList.toggle('ai', !!ai);  // the model's own news wears its mark
   $('#snackMsg').textContent = msg; u.hidden = !undo; S.undo = undo || null;
   s.classList.toggle('undoable', !!undo); s.classList.remove('show'); void s.offsetWidth; s.classList.add('show');
   clearTimeout(s._h); s._h = setTimeout(() => { s.classList.remove('show'); S.undo = null; }, undo ? 5000 : 2200);
@@ -800,8 +832,10 @@ async function boot(){
   const st = await (await fetch('/api/state')).json();
   S.config = st.config; S.days = st.days;
   const pill = $('#modelPill');
+  S.model = st.model; S.modelOk = st.model_ok;
   pill.classList.toggle('warn', !st.model_ok);
-  pill.querySelector('span').textContent = st.model_ok ? `100% on-device · ${st.model}` : `${st.model} offline · keyword mode`;
+  MIND.idle = st.model_ok ? `${st.model.split(':')[0]} · on this laptop` : `${st.model} offline · keyword mode`;
+  $('#mindTxt').textContent = MIND.idle;
   $('#foot').innerHTML = `<b>0 bytes</b> of your screen time left this laptop. labels by <b>${st.model}</b> via ollama on 127.0.0.1${st.demo ? ' · <b>demo week</b>' : ''}<br>open source — read every line of what watches you.`;
   S.day = S.days.at(-1) || iso(new Date());
   await Promise.all([load(), loadFocus()]);
@@ -822,6 +856,7 @@ async function load(){
     S.week = await (await fetch(`/api/range?from=${from}&to=${to}`)).json();
   }
   S.focus = 0; render();
+  loadBrief();
 }
 
 function sessions(){ return S.week[S.day] || []; }
@@ -865,10 +900,12 @@ function renderCards(){
   const opts = n => [...S.config.clients.map(c=>c.name), PERSONAL].map(c=>`<option ${c===n?'selected':''}>${c}</option>`).join('');
   $('#grid').innerHTML = shown.map(([s,i], k) => {
     const billable = isBillable(s), pct = Math.round(s.confidence*100), done = s.status !== 'pending', id = tag(s.id);
+    const mine = (s.edited || []).includes('task');
     const conf = s.manual ? `<span title="you added this one">added by you</span><i>·</i><a href="#" class="rmBtn" data-i="${i}">remove</a>`
       : s.by==='rules' ? `<span title="labelled by your keyword rules, not the model">keyword guess</span>`
-      : s.confidence < 0.6 ? `<span class="check" title="less than 60% of this line is backed by your windows">check me · ${pct}%</span>`
-      : `<span title="how much of this line your windows back up">${pct}% backed</span>`;
+      : (mine ? `<span title="you rewrote this line">your words</span><i>·</i>` : `<span class="ai" title="${esc(s.by)} wrote this line on your laptop">${SPARK}${esc(String(s.by).split(':')[0])}</span><i>·</i>`) +
+        (s.confidence < 0.6 ? `<span class="check" title="less than 60% of this line is backed by your windows">check me · ${pct}%</span>`
+        : `<span title="how much of this line your windows back up">${pct}% backed</span>`);
     const verdict = s.status === 'billed'
       ? `<span class="verdict billed vt-a ${S.fresh===s.id?'fresh':''}">${ICON.check} billed</span>`
       : `<span class="verdict nah vt-b">off the invoice</span>`;
@@ -878,27 +915,113 @@ function renderCards(){
         <span class="t">${fmtT(s.start)} – ${fmtT(s.end)}</span>
       </div>
       <div class="body">
-        <div class="task" data-i="${i}" title="click to edit  E">${esc(s.task)}</div>
+        <div class="task ${S.writing?.has(s.id) ? 'writing' : ''}" data-i="${i}" title="click to edit  E" style="--len:${s.task.length}">${esc(s.task)}</div>
         <div class="meta"><span>${fmtH(s.active_s)}</span>${billable?`<i>·</i><span>${money(s.active_s/3600*rate(s.client))}</span>`:''}<i>·</i>${conf}${s.manual ? '' : `<i>·</i><a href="#" class="whyBtn" data-i="${i}" title="the windows behind this line">why?</a>`}</div>
-        <div class="why" id="why${i}"><div>${s.evidence.map(e=>`<p>${fmtH(e.s)} · ${esc(e.app.replace('.exe',''))} — ${esc(e.title)}</p>`).join('')}</div></div>
+        <div class="why" id="why${i}"><div>${s.manual ? '' : why(s)}</div></div>
         <div class="actions">${done
           ? `${verdict}<button class="link" data-act="undo" data-i="${i}">undo</button>`
           : `<button class="btn lime vt-a" data-act="billed" data-i="${i}">bill it</button><button class="btn quiet vt-b" data-act="nah" data-i="${i}">nah</button>`}</div>
       </div></article>`;
   }).join('');
-  S.fresh = null;
+  S.fresh = null; S.writing = null;
   $('#grid').querySelectorAll('[data-act]').forEach(b => b.onclick = () => act(+b.dataset.i, b.dataset.act, b));
-  $('#grid').querySelectorAll('select').forEach(sel => sel.onchange = () => update(+sel.dataset.i, {client: sel.value, billable: sel.value!==PERSONAL}, `moved to ${sel.value}`, true,
-    {from: sel.parentElement, at: '.who', text: `→ ${sel.value}`, island: `moved to ${sel.value}`, kind: 'move'}));
+  $('#grid').querySelectorAll('select').forEach(sel => sel.onchange = () => {
+    const s = sessions()[+sel.dataset.i];
+    update(+sel.dataset.i, {client: sel.value, billable: sel.value!==PERSONAL}, `moved to ${sel.value}`, true,
+      {from: sel.parentElement, at: '.who', text: `→ ${sel.value}`, island: `moved to ${sel.value}`, kind: 'move'});
+    if (!s.manual && sel.value !== PERSONAL) learn(s, sel.value);
+  });
   $('#grid').querySelectorAll('.task').forEach(t => t.onclick = () => t.isContentEditable || act(+t.dataset.i, 'edit'));
   $('#grid').querySelectorAll('.rmBtn').forEach(a => a.onclick = e => { e.preventDefault(); removeReceipt(+a.dataset.i); });
   $('#grid').querySelectorAll('.whyBtn').forEach(a => a.onclick = e => { e.preventDefault(); $('#why'+a.dataset.i).classList.toggle('open'); });
   $('#grid').querySelectorAll('.s').forEach(c => c.onfocus = () => S.focus = +c.dataset.i);
 }
 
+/* ---------- the mind: what the local model is doing, said while it happens ---------- */
+const MIND = {idle: '', rev: null};
+const PAST = {'reading 15 minutes of your windows': 'read your last 15 minutes', 'writing the invoice line': 'wrote an invoice line',
+              'writing your day': 'wrote your day', 'working out whose it is': 'worked out whose it is', 'learning from your fix': 'looked for something to learn'};
+const secs = ms => ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+function mind(p){  // a 0.3 s thought still shows long enough to see, then says what it did and how fast
+  const pill = $('#modelPill'), t = p.thought, ago = t ? Date.now() / 1000 - t.at : 99;
+  const busy = p.thinking || ago < 1.2, txt = busy ? `${p.thinking || t.what}…`
+    : ago < 4 ? `${PAST[t.what] || t.what.replace(/^sorting/, 'sorted')} · ${secs(t.ms)}` : MIND.idle;
+  pill.classList.toggle('thinking', !!busy);
+  const el = $('#mindTxt');
+  if (el.textContent !== txt) swapText(el, txt);
+}
+async function pulse(){
+  if (document.hidden || !S.day) return;
+  const p = await fetch('/api/pulse').then(r => r.json()).catch(() => null);
+  if (!p) return;
+  if (S.modelOk) mind(p);
+  if (MIND.rev !== null && p.rev !== MIND.rev && S.day === iso(new Date())) {
+    const busyHere = document.activeElement?.closest?.('#grid, .modal.open, #logpop, #focus');
+    if (busyHere) return;  // never re-render under your hands: try again on the next beat
+    await freshDay();
+  }
+  MIND.rev = p.rev;
+}
+setInterval(pulse, 1500);
+async function freshDay(){  // new lines from the model arrive written in; lines it rewrote write themselves again
+  const day = S.day, before = new Map(sessions().map(s => [s.id, s.task]));
+  const got = (await fetch(`/api/range?from=${day}&to=${day}`).then(r => r.json()))[day];
+  if (S.day !== day || !got) return;
+  S.writing = new Set(got.filter(s => !s.manual && before.get(s.id) !== s.task).map(s => s.id));
+  S.week[day] = got;
+  transition('cards', () => render());
+}
+function write(el){
+  if (REDUCED) return;
+  el.style.setProperty('--len', el.textContent.length);
+  el.classList.remove('writing'); void el.offsetWidth; el.classList.add('writing');
+}
+async function loadBrief(){  // the day in the model's own words, from the receipts; no model, no brief
+  const day = S.day, el = $('#brief'), txt = $('#briefTxt');
+  if (!S.modelOk || !sessions().length) { el.hidden = true; return; }
+  el.hidden = false;
+  if (el.dataset.day !== day) { el.classList.add('thinking'); txt.textContent = 'reading your day…'; $('#briefBy').textContent = ''; }
+  const b = (await fetch(`/api/brief?day=${day}`).then(r => r.json()).catch(() => ({}))).brief;
+  if (S.day !== day) return;
+  el.classList.remove('thinking');
+  if (!b) { el.hidden = true; return; }
+  const changed = txt.textContent !== b.text || el.dataset.day !== day;
+  el.dataset.day = day;
+  txt.textContent = b.text;
+  if (changed) write(txt);
+  $('#briefBy').textContent = `${String(b.by).split(':')[0]} read ${b.lines} receipt${b.lines === 1 ? '' : 's'} and wrote this, on this laptop`;
+}
+function why(s){  // the reason, then the receipts behind it: the words that matched your hints are marked
+  const c = S.config.clients.find(c => c.name === s.client), hs = (c?.hints || []).filter(h => h.length >= 3);
+  const re = hs.length ? new RegExp(`(${hs.map(h => h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'ig') : null;
+  const mark = t => re ? t.split(re).map((x, k) => k % 2 ? `<mark>${esc(x)}</mark>` : esc(x)).join('') : esc(t);
+  const hit = new Set(re ? s.evidence.flatMap(e => (`${e.app} ${e.title}`.match(re) || []).map(h => h.toLowerCase())) : []);
+  const who = s.client === PERSONAL ? 'side quests' : s.client, pct = Math.round(s.confidence * 100);
+  const lead = (s.edited || []).includes('client') ? `you moved this to <b>${esc(who)}</b>.`
+    : s.by === 'rules' ? `your keyword rules filed this under <b>${esc(who)}</b>.`
+    : `${SPARK}${esc(String(s.by).split(':')[0])} read these windows and filed them under <b>${esc(who)}</b>.`;
+  const backing = s.client === PERSONAL ? ' none of them belong to a client.'
+    : hit.size ? ` ${pct}% of the time mentions your hints: ${[...hit].map(h => `<mark>${esc(h)}</mark>`).join(' ')}.`
+    : ` nothing here mentions ${esc(who)}'s hints, so it waits for your vibe check.`;
+  return `<div class="lead">${lead}${backing}</div>` + s.evidence.map(e => `<p>${fmtH(e.s)} · ${esc(e.app.replace('.exe', ''))} — ${mark(e.title)}</p>`).join('');
+}
+async function learn(s, client){  // you corrected it: it picks what to remember, says so, and can forget it
+  const r = await call('/api/teach', {day: S.day, id: s.id, client}).catch(() => null);
+  if (!r?.hint) return;
+  const keep = c => { if (c) S.config.clients = S.config.clients.map(x => x.name === c.name ? c : x); };
+  const a = await call('/api/teach/apply', {client, hint: r.hint}).catch(() => null);
+  if (!a?.client) return;
+  keep(a.client);
+  snack(`learned: “${r.hint}” means ${client} from now on`, async () => {
+    keep((await call('/api/teach/apply', {client, hint: r.hint, forget: true}).catch(() => ({}))).client);
+    snack(`forgot “${r.hint}”`);
+  }, true);
+}
+
 /* optimistic: the change shows at once, saves in the background, and can be undone from the snackbar */
 function update(i, patch, msg, undoable = true, chip = null){
   const s = sessions()[i], prev = Object.fromEntries(Object.keys(patch).map(k => [k, s[k]]));
+  s.edited = [...new Set([...(s.edited || []), ...Object.keys(patch).filter(k => k === 'client' || k === 'task')])];
   const from = chip?.from?.getBoundingClientRect?.() || chip?.from;
   if (patch.status === 'billed') S.fresh = s.id;
   const done = transition('cards', () => { Object.assign(s, patch); render(); });
