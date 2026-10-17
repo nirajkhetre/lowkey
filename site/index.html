@@ -16,11 +16,12 @@
 @font-face{font-family:"Geist Mono";src:url(fonts/GeistMono.ttf) format("truetype");font-weight:100 900;font-display:swap}
 :root{--bg:#F3EEE3;--paper:#FFFDF7;--ink:#111;--muted:#5d5a53;--lime:#B8FF3B;--pink:#FF7AD9;--blue:#7AA2FF;--yellow:#FFD23F;
   --line:3px solid var(--ink);--shadow:6px 6px 0 var(--ink);--spring:cubic-bezier(.34,1.56,.64,1);
+  --spring-soft:linear(0,.018,.064,.129,.204,.285,.366,.445,.52,.589,.652,.709,.759,.802,.84,.872,.899,.921,.94,.955,.968,.977,.985,.991,.996,.999,1.001,1.003,1.004,1.005,1.005,1.005,1.005,1.005,1.004,1.004,1.003,1.003,1.003,1.002,1);
   --display:"Bricolage Grotesque",system-ui,sans-serif;--serif:"Instrument Serif",Georgia,serif;--mono:"Geist Mono",ui-monospace,monospace}
 *{box-sizing:border-box;margin:0}
-html{scroll-behavior:smooth}
+html{scroll-behavior:smooth;overflow-x:clip}
 body{font-family:var(--display);color:var(--ink);background:var(--bg) radial-gradient(#d3ccbb 1.6px,transparent 1.9px) 0 0/26px 26px;
-  line-height:1.45;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  line-height:1.45;-webkit-font-smoothing:antialiased}
 a{color:inherit}
 em{font-family:var(--serif);font-weight:400;font-style:italic;letter-spacing:-.005em}
 .wrap{width:min(1160px,100% - 32px);margin-inline:auto}
@@ -118,15 +119,100 @@ section{padding:70px 0}
 .dark .item span{color:#b9b9be}
 @media (max-width:860px){.dark .grid4{grid-template-columns:1fr 1fr}}
 @media (max-width:480px){.dark .grid4{grid-template-columns:1fr}}
-.install{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.install{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px}
 .install .card{padding:22px}
 .install b{display:block;font-size:19px;margin-bottom:10px}
 pre{font:14px/1.5 var(--mono);background:#111;color:#e8ffe0;border-radius:12px;padding:12px 14px;overflow-x:auto;white-space:pre}
 .note{margin-top:18px;color:var(--muted)}
-@media (max-width:860px){.install{grid-template-columns:1fr}}
+@media (max-width:860px){.install{grid-template-columns:minmax(0,1fr)}}
 footer{padding:40px 0 60px;border-top:2.5px solid var(--ink)}
 footer .wrap{display:flex;gap:18px;flex-wrap:wrap;align-items:center;justify-content:space-between}
 footer p{color:var(--muted)}
+/* ---------- the guide: island, creature, bubble ---------- */
+#gisl{--p:0;position:fixed;left:50%;top:10px;z-index:60;transform:translateX(-50%);width:260px;height:44px;border-radius:24px;
+  background:#0b0b0c;color:#fff;cursor:pointer;outline:none;box-shadow:0 10px 30px rgba(0,0,0,.28),0 0 0 1px rgba(255,255,255,.04) inset;
+  transition:width .62s var(--spring-soft),height .62s var(--spring-soft),border-radius .62s var(--spring-soft),box-shadow .3s}
+#gisl:focus-visible{box-shadow:0 0 0 3px var(--bg),0 0 0 6px var(--blue)}
+#gisl.hello{width:430px}
+#gisl.menu{width:440px;height:236px;border-radius:30px;cursor:default}
+#gisl.talk{width:320px}
+.g-face{position:absolute;inset:0;display:flex;align-items:center;gap:12px;padding:0 16px 0 10px;white-space:nowrap;font-weight:600;font-size:15px;
+  opacity:0;filter:blur(6px);transform:scale(.94);pointer-events:none;transition:opacity .22s,filter .3s,transform .5s var(--spring)}
+#gisl.rest .g-rest,#gisl.hello .g-hello,#gisl.menu .g-menu,#gisl.talk .g-talk{opacity:1;filter:none;transform:none;pointer-events:auto;transition-delay:.1s}
+.g-slot{width:28px;height:28px;flex:none}
+.g-roll{overflow:hidden;display:inline-block;height:1.4em;line-height:1.4em;flex:1;min-width:0}
+.g-roll span{display:block;overflow:hidden;text-overflow:ellipsis}
+.g-spark{color:var(--lime);font-size:14px;animation:twinkle 2.4s ease-in-out infinite}
+@keyframes twinkle{50%{opacity:.35;transform:scale(.8) rotate(20deg)}}
+.g-menu{flex-direction:column;align-items:stretch;justify-content:flex-start;padding:10px 14px 14px;gap:10px;white-space:normal}
+.g-menu>.g-slot{position:absolute;left:10px;top:8px}
+.g-menu b{margin-left:38px;line-height:28px;font-size:15px}
+.g-chips{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.g-chips button{display:flex;align-items:center;gap:9px;padding:9px 11px;border:0;border-radius:14px;background:#1c1c20;color:#fff;
+  font:600 14px var(--display);cursor:pointer;text-align:left;transition:background .2s,transform .35s var(--spring)}
+.g-chips button i{font:700 11px var(--mono);font-style:normal;width:20px;height:20px;display:grid;place-items:center;border-radius:7px;background:#2c2c32;color:#b9b9be}
+.g-chips button:hover,.g-chips button:focus-visible{background:#2a2a30;transform:scale(1.03);outline:none}
+.g-chips button:hover i,.g-chips button:focus-visible i{background:var(--lime);color:#111}
+.g-talk{padding-left:16px}
+.g-dot{width:9px;height:9px;border-radius:50%;background:var(--lime);box-shadow:0 0 0 0 rgba(184,255,59,.6);animation:ping 1.6s infinite}
+@keyframes ping{70%{box-shadow:0 0 0 8px rgba(184,255,59,0)}100%{box-shadow:0 0 0 0 rgba(184,255,59,0)}}
+.g-home{margin-left:auto;width:28px;height:28px;border-radius:50%;border:0;background:#26262a;color:#fff;font-size:13px;cursor:pointer;flex:none;transition:transform .3s var(--spring),background .2s}
+.g-home:hover{background:#3a3a40;transform:rotate(90deg)}
+.g-prog{position:absolute;left:22px;right:22px;bottom:5px;height:2px;border-radius:2px;background:rgba(255,255,255,.08);overflow:hidden;opacity:.9}
+.g-prog:after{content:"";position:absolute;inset:0;background:var(--lime);transform-origin:left;transform:scaleX(var(--p))}
+#gisl.menu .g-prog{opacity:0}
+.g-glow{position:absolute;inset:-3px;border-radius:inherit;z-index:-1;opacity:0;filter:blur(10px);transition:opacity .5s;
+  background:conic-gradient(from var(--a,0deg),var(--lime),var(--blue),var(--pink),var(--lime));animation:spin 3s linear infinite}
+#gisl.talk .g-glow{opacity:.75}
+@property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
+@keyframes spin{to{--a:360deg}}
+#gbuddy{position:fixed;left:0;top:0;width:64px;height:64px;z-index:61;pointer-events:none;will-change:transform}
+.g-body{position:absolute;inset:0;border-radius:47% 47% 43% 43%/52% 52% 46% 46%;
+  background:radial-gradient(circle at 34% 28%,#f2ffd0 0,#B8FF3B 42%,#86c414 100%);box-shadow:inset -4px -6px 10px rgba(60,90,0,.25)}
+.g-body:after{content:"";position:absolute;left:22%;top:14%;width:22%;height:12%;border-radius:50%;background:rgba(255,255,255,.55);filter:blur(1px)}
+.g-eyes{position:absolute;inset:0}
+.g-eyes i{position:absolute;top:33%;width:15%;height:31%;border-radius:9px;background:#111;transform-origin:center 60%}
+.g-eyes i:first-child{left:30%}.g-eyes i:last-child{right:30%}
+.g-blink{position:absolute;inset:0;transform-origin:50% 48%;animation:gblink 9.7s infinite}
+@keyframes gblink{0%,40%,43%,93%,95.5%,97%,100%{transform:none}41.5%,94.5%,96.3%{transform:scaleY(.12)}}
+.g-shadow{position:absolute;left:12%;right:12%;bottom:-9px;height:10px;border-radius:50%;background:rgba(17,17,17,.22);filter:blur(3px);opacity:0;transition:opacity .3s}
+#gbubble{position:absolute;z-index:59;background:var(--paper);border:3px solid var(--ink);border-radius:20px;box-shadow:6px 6px 0 var(--ink);padding:16px 18px 14px;
+  transform-origin:var(--tail) 30px}
+#gbubble[data-side=right]{transform-origin:calc(100% - 0px) 30px}
+#gbubble[data-side=top]{transform-origin:var(--tail) 0}
+#gbubble:before{content:"";position:absolute;width:16px;height:16px;background:var(--paper);border:3px solid var(--ink);border-width:0 0 3px 3px;
+  left:-10px;top:var(--tail);transform:translateY(-50%) rotate(45deg)}
+#gbubble[data-side=right]:before{left:auto;right:-10px;border-width:3px 3px 0 0}
+#gbubble[data-side=top]:before{left:var(--tail);top:-10px;transform:translateX(-50%) rotate(45deg);border-width:3px 0 0 3px}
+.g-kick{display:flex;justify-content:space-between;font:600 12px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.g-text{font-size:17px;line-height:1.45;min-height:3em}
+.g-text .w{display:inline-block;opacity:0;transform:translateY(6px);filter:blur(3px);transition:opacity .35s,transform .45s var(--spring),filter .35s}
+.g-text.in .w{opacity:1;transform:none;filter:none}
+.g-text .m{background:linear-gradient(transparent 56%,var(--lime) 56%);white-space:pre-wrap}
+.g-text .c{font:14px var(--mono);background:#efe9dc;padding:1px 3px;white-space:pre-wrap}
+.g-foot{display:flex;align-items:center;gap:8px;margin-top:14px}
+.g-dots{display:flex;gap:5px;margin-right:auto}
+.g-dots i{width:7px;height:7px;border-radius:9px;background:#d6d0c3;transition:width .4s var(--spring),background .3s}
+.g-dots i.on{width:20px;background:var(--ink)}
+.g-foot button{border:2.5px solid var(--ink);border-radius:12px;background:var(--paper);font:700 14px var(--display);padding:6px 12px;cursor:pointer;
+  box-shadow:3px 3px 0 var(--ink);transition:transform .25s var(--spring),box-shadow .25s var(--spring)}
+.g-foot button:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.g-foot button:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--ink)}
+.g-foot .g-next{background:var(--lime)}
+.g-foot .g-prev{width:36px;padding:2px 0 6px;font-size:22px;line-height:1}
+.g-foot button:disabled{opacity:.35;pointer-events:none}
+.g-focus{position:relative}
+.g-focus:after{content:"";position:absolute;inset:8px;border-radius:30px;pointer-events:none;border:2.5px dashed rgba(17,17,17,.3);animation:ring .7s var(--spring) both}
+section.dark.g-focus:after{border-color:rgba(184,255,59,.7)}
+header.g-focus:after{inset:-8px}
+@keyframes ring{from{transform:scale(1.04);opacity:0}}
+#gtag{position:fixed;left:0;top:0;z-index:58;pointer-events:none;padding:6px 12px 6px 9px;border-radius:999px;background:#111;color:#fff;
+  font:600 13px var(--display);white-space:nowrap;opacity:0;scale:.6;transition:opacity .2s,scale .35s var(--spring)}
+#gtag span{color:var(--lime)}
+#gtag.on{opacity:1;scale:1}
+@media (max-width:760px){.hero{padding-top:84px}#gisl{top:76px;width:250px;height:40px}#gisl.hello{width:min(340px,calc(100vw - 32px))}#gisl.hello .g-hello span:last-child{white-space:normal;font-size:13px;line-height:1.2}
+  #gisl.menu{width:calc(100vw - 32px);height:250px}#gisl.talk{width:min(300px,calc(100vw - 32px))}.g-face{font-size:14px}}
+@media (prefers-reduced-motion:reduce){#gisl,.g-face{transition:none}}
 /* entrance */
 .rise{opacity:0;translate:0 26px;transition:opacity .7s ease,translate .9s var(--spring)}
 .rise.in{opacity:1;translate:0 0}
@@ -136,11 +222,11 @@ footer p{color:var(--muted)}
 <body>
 <nav><div class="wrap">
   <a class="mark" href="#">lowkey<i></i></a>
-  <div class="links"><a href="#video">video</a><a href="#how">how it works</a><a href="#privacy">privacy</a><a href="#install">install</a><a href="https://github.com/nirajkhetre/lowkey">github</a></div>
+  <div class="links"><a href="https://github.com/nirajkhetre/lowkey">github</a></div>
   <a class="btn go" href="demo/">try it live</a>
 </div></nav>
 
-<header class="wrap hero">
+<header id="top" class="wrap hero">
   <div>
     <h1>your timesheet, <em>written</em> for you.</h1>
     <p class="lead">lowkey is a Dynamic Island for your laptop. It notices which client you're working on, lets <b>Gemma 4 running on your own machine</b> turn it into invoice-ready lines, and sends <b>nothing</b> anywhere.</p>
@@ -189,7 +275,7 @@ footer p{color:var(--muted)}
   </div>
 </div></section>
 
-<section><div class="wrap">
+<section id="details"><div class="wrap">
   <div class="head rise"><div><div class="kicker">the details</div><h2>small things, <em>done right.</em></h2></div></div>
   <div class="grid">
     <div class="card feat rise"><div class="pic"><img src="img/island-states.png" alt="the island tucked away, as a pill on hover, and fully open" loading="lazy"></div><div class="txt"><h3>an island, not an app window</h3><p>A notch at the edge of your screen, glowing in your client's colour. Hover and it opens: who you're working for, this session, what you've earned today.</p></div></div>
@@ -237,5 +323,6 @@ if (still) el.textContent = line; else [...line].forEach((c, i) => setTimeout(()
 const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && (e.target.classList.add('in'), io.unobserve(e.target))), {threshold: .12});
 document.querySelectorAll('.rise').forEach(el => io.observe(el));
 </script>
+<script src="guide.js"></script>
 </body>
 </html>

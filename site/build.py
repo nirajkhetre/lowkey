@@ -17,6 +17,7 @@ shutil.rmtree(DIST, ignore_errors=True)
 (DIST / "img").mkdir()
 
 shutil.copy(SITE / "index.html", DIST / "index.html")
+shutil.copy(SITE / "guide.js", DIST / "guide.js")
 for d in (DIST / "fonts", DIST / "demo" / "fonts"):
     shutil.copytree(ROOT / "lowkey" / "web" / "fonts", d)
 for name in IMAGES:
