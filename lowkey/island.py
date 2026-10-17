@@ -93,15 +93,16 @@ class MONITORINFO(ctypes.Structure):
 
 
 def fullscreen_app(own=0):
-    """True when the window in front covers the whole main screen (a video, a game, slides). Maximized windows
-    and the desktop itself don't count. Windows only; macOS gives fullscreen apps their own Space, where the island
+    """True when the window in front fits the whole main screen exactly (a video, a game, slides). A maximized
+    window doesn't count: it hangs over the screen's edges by its invisible borders (a fullscreen one doesn't, even
+    when Windows still calls it maximized, as Chrome does for fullscreen video). Neither does the desktop. Windows only; macOS gives fullscreen apps their own Space, where the island
     isn't shown anyway."""
     if sys.platform != "win32":
         return False
     try:
         u = ctypes.windll.user32
         h = u.GetForegroundWindow()
-        if not h or h == own or u.IsZoomed(h):
+        if not h or h == own:
             return False
         cls = ctypes.create_unicode_buffer(32)
         u.GetClassNameW(h, cls, 32)
@@ -113,7 +114,7 @@ def fullscreen_app(own=0):
         if not u.GetMonitorInfoW(u.MonitorFromWindow(h, 2), ctypes.byref(mi)) or not mi.dwFlags & 1:
             return False  # on another monitor: the island's screen is free
         m = mi.rcMonitor
-        return r[0] <= m[0] and r[1] <= m[1] and r[2] >= m[2] and r[3] >= m[3]
+        return all(abs(a - b) <= 1 for a, b in zip(r, m))
     except Exception:
         return False
 
