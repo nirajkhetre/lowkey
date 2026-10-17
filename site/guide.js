@@ -54,7 +54,7 @@
       <div class="g-face g-talk"><span class="g-dot"></span><span class="g-roll"><span class="g-what"></span></span><button type="button" class="g-home" aria-label="send the guide home">✕</button></div>
       <div class="g-prog"></div>
     </div>
-    <div id="gbuddy" aria-hidden="true"><div class="g-shadow"></div><div class="g-body"><div class="g-eyes"><div class="g-blink"><i></i><i></i></div></div></div></div>
+    <div id="gbuddy" aria-hidden="true"><div class="g-shadow"></div><div class="g-body mb" data-mood="working"><div class="g-eyes"><div class="g-blink"><i></i><i></i></div></div><b class="g-z">z<small>z</small></b><span class="g-spk"></span></div></div>
     <div id="gbubble" role="dialog" aria-live="polite" aria-label="lowkey guide" hidden>
       <div class="g-kick"><span class="g-sec"></span><span class="g-count"></span></div>
       <p class="g-text"></p>
@@ -325,7 +325,7 @@
 
   /* ---------- summon: double-click (or double-tap) a section ---------- */
   // A single click never summons the guide: clicks are for reading, links and buttons.
-  const SKIP = 'a, button, iframe, input, textarea, pre, code, #gbubble, #gisl, nav, .video';
+  const SKIP = 'a, button, iframe, input, textarea, pre, code, #gbubble, #gisl, nav, .video, [data-play], .moods';
   const SECTIONS = IDS.map(i => '#' + i).join(',');
   const sectionOf = node => {
     const el = node?.nodeType === 1 ? node : node?.parentElement, s = el?.closest(SECTIONS);
@@ -363,6 +363,38 @@
     tx = lerp(tx, mouse.x + 18, .22); ty = lerp(ty, mouse.y + 20, .22);
     tag.style.transform = `translate(${tx}px, ${ty}px)`;
   }
+
+  /* ---------- moods: the creatures in "the details" can lend the guide theirs ---------- */
+  const MOODS = {working: 'working', lockedin: 'locked in', sidequest: 'side quest', away: 'away', gonedark: 'gone dark',
+    unsure: 'not sure yet', switched: 'switched client', milestone: '₹1,000 milestone', goal: 'daily goal hit'};
+  const GLOW = {working: '184,255,59', lockedin: '122,162,255', switched: '122,162,255', sidequest: '200,200,210', away: '255,122,217',
+    milestone: '255,122,217', gonedark: '150,190,40', unsure: '200,200,210', goal: '184,255,59'};
+  let moodT;
+  window.lowkeyGuide = {
+    point() {  // where a spark should fly: the creature if you can see it, else the island
+      const r = body.getBoundingClientRect();
+      if (r.bottom > 0 && r.top < innerHeight && r.width > 4) return {x: r.left + r.width / 2, y: r.top + r.height / 2};
+      const i = isl.getBoundingClientRect();
+      return {x: i.left + i.width / 2, y: i.top + i.height / 2};
+    },
+    mood(m) {  // squash, shut the eyes, change while they're shut, open, bounce
+      if (!MOODS[m]) return;
+      const blink = body.querySelector('.g-blink');
+      if (REDUCED) { body.dataset.mood = m; return; }
+      body.animate([{transform: 'scale(1)'}, {transform: 'scale(1.22, .78)'}, {transform: 'scale(.92, 1.1)'}, {transform: 'scale(1)'}],
+        {duration: 560, easing: 'cubic-bezier(.2,0,0,1)', composite: 'add'});
+      blink.classList.add('shut');
+      setTimeout(() => { body.dataset.mood = m; }, 110);
+      setTimeout(() => blink.classList.remove('shut'), 230);
+      isl.animate([{boxShadow: `0 0 0 0 rgba(${GLOW[m]},.0), 0 10px 30px rgba(0,0,0,.28)`}, {boxShadow: `0 0 0 6px rgba(${GLOW[m]},.55), 0 10px 40px rgba(${GLOW[m]},.5)`},
+        {boxShadow: `0 0 0 0 rgba(${GLOW[m]},0), 0 10px 30px rgba(0,0,0,.28)`}], {duration: 900, easing: 'ease-out'});
+      if (state === 'rest' && !at) {
+        clearTimeout(moodT);
+        roll(isl.querySelector('.g-now'), m === 'working' ? 'back to working' : `mood · ${MOODS[m]}`);
+        moodT = setTimeout(() => state === 'rest' && !at && roll(isl.querySelector('.g-now'), `you're at · ${SAY[current].name}`), 2400);
+      }
+    },
+  };
 
   /* ---------- hello ---------- */
   toHome();

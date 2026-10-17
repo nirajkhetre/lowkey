@@ -167,13 +167,47 @@ footer p{color:var(--muted)}
 @property --a{syntax:"<angle>";inherits:false;initial-value:0deg}
 @keyframes spin{to{--a:360deg}}
 #gbuddy{position:fixed;left:0;top:0;width:64px;height:64px;z-index:61;pointer-events:none;will-change:transform}
-.g-body{position:absolute;inset:0;border-radius:47% 47% 43% 43%/52% 52% 46% 46%;
-  background:radial-gradient(circle at 34% 28%,#f2ffd0 0,#B8FF3B 42%,#86c414 100%);box-shadow:inset -4px -6px 10px rgba(60,90,0,.25)}
-.g-body:after{content:"";position:absolute;left:22%;top:14%;width:22%;height:12%;border-radius:50%;background:rgba(255,255,255,.55);filter:blur(1px)}
+.g-body{position:absolute;inset:0}
+/* ---------- creatures: one body, nine moods (guide, mood grid and the mini islands all use .mb) ---------- */
+@property --c1{syntax:"<color>";inherits:true;initial-value:#f2ffd0}
+@property --c2{syntax:"<color>";inherits:true;initial-value:#B8FF3B}
+@property --c3{syntax:"<color>";inherits:true;initial-value:#86c414}
+@property --ek{syntax:"<color>";inherits:true;initial-value:#111}
+.mb{--c1:#f2ffd0;--c2:#B8FF3B;--c3:#86c414;--ek:#111;border-radius:47% 47% 43% 43%/52% 52% 46% 46%;
+  background:radial-gradient(circle at 34% 28%,var(--c1) 0,var(--c2) 42%,var(--c3) 100%);box-shadow:inset -4px -6px 10px rgba(0,0,0,.16);
+  transition:--c1 .55s ease,--c2 .55s ease,--c3 .55s ease,--ek .3s ease}
+.mb:after{content:"";position:absolute;left:22%;top:14%;width:22%;height:12%;border-radius:50%;background:rgba(255,255,255,.55);filter:blur(1px)}
+.mb[data-mood=lockedin],.mb[data-mood=switched]{--c1:#e6eeff;--c2:#7AA2FF;--c3:#4467cf}
+.mb[data-mood=sidequest]{--c1:#77777e;--c2:#303034;--c3:#141416;--ek:#fff}
+.mb[data-mood=away],.mb[data-mood=milestone]{--c1:#ffe3f6;--c2:#FF7AD9;--c3:#d6439c}
+.mb[data-mood=gonedark]{--c1:#c9e07c;--c2:#6f8f1e;--c3:#40560c}
+.mb[data-mood=unsure]{--c1:#efeff2;--c2:#a9a9b0;--c3:#6c6c74}
 .g-eyes{position:absolute;inset:0}
-.g-eyes i{position:absolute;top:33%;width:15%;height:31%;border-radius:9px;background:#111;transform-origin:center 60%}
+.g-eyes i{position:absolute;top:33%;width:15%;height:31%;border-radius:9px;background:var(--ek);transform-origin:center 60%;border:0 solid var(--ek);
+  transition:top .38s var(--spring),width .38s var(--spring),height .38s var(--spring),border-radius .3s,background-color .25s,border-width .2s,rotate .38s var(--spring),left .38s var(--spring),right .38s var(--spring)}
 .g-eyes i:first-child{left:30%}.g-eyes i:last-child{right:30%}
+.mb[data-mood=lockedin] .g-eyes i{top:44%;height:11%;width:18%;border-radius:6px}
+.mb[data-mood=lockedin] .g-eyes i:first-child{rotate:14deg}.mb[data-mood=lockedin] .g-eyes i:last-child{rotate:-14deg}
+.mb[data-mood=sidequest] .g-eyes i,.mb[data-mood=goal] .g-eyes i{top:38%;width:18%;height:12%;background:transparent;border-width:3px 3px 0;border-radius:99px 99px 0 0}
+.mb[data-mood=away] .g-eyes i{top:50%;height:5%;width:17%;border-radius:4px}
+.mb[data-mood=gonedark] .g-eyes i{top:40%;width:12%;height:12%;background:transparent;border-width:3px 3px 0 0;border-radius:2px}
+.mb[data-mood=gonedark] .g-eyes i:first-child{rotate:45deg;left:31%}.mb[data-mood=gonedark] .g-eyes i:last-child{rotate:-135deg;right:31%}
+.mb[data-mood=unsure] .g-eyes i:first-child{width:16%;height:34%;top:30%}.mb[data-mood=unsure] .g-eyes i:last-child{width:10%;height:17%;top:42%}
+.mb[data-mood=switched] .g-eyes i{width:19%;height:25%;top:33%;border-radius:50%}
+.mb[data-mood=milestone] .g-eyes i{width:21%;height:24%;top:32%;border-radius:0;background:#FFD23F;
+  clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
+.mb[data-mood=milestone] .g-eyes i:first-child{left:26%}.mb[data-mood=milestone] .g-eyes i:last-child{right:26%}
+.mb{container-type:size}
+.g-z{position:absolute;right:-6%;top:-22%;font:800 30cqw/1 var(--display);color:#111;opacity:0;pointer-events:none;transition:opacity .3s}
+.g-z small{font-size:70%;margin-left:2px;vertical-align:top}
+.mb[data-mood=away] .g-z{opacity:1;animation:zz 2.4s ease-in-out infinite}
+@keyframes zz{50%{transform:translate(4px,-4px)}}
+.g-spk{position:absolute;inset:-14%;pointer-events:none;opacity:0;transition:opacity .3s}
+.g-spk:before,.g-spk:after{content:"✦";position:absolute;font-size:24cqw;color:#FFD23F;animation:twinkle 1.6s ease-in-out infinite}
+.g-spk:before{left:0;top:6%}.g-spk:after{right:2%;top:30%;animation-delay:-.8s;color:var(--lime)}
+.mb[data-mood=goal] .g-spk,.mb[data-mood=milestone] .g-spk{opacity:1}
 .g-blink{position:absolute;inset:0;transform-origin:50% 48%;animation:gblink 9.7s infinite}
+.g-blink.shut{animation:none;transform:scaleY(.1);transition:transform .09s}
 @keyframes gblink{0%,40%,43%,93%,95.5%,97%,100%{transform:none}41.5%,94.5%,96.3%{transform:scaleY(.12)}}
 .g-shadow{position:absolute;left:12%;right:12%;bottom:-9px;height:10px;border-radius:50%;background:rgba(17,17,17,.22);filter:blur(3px);opacity:0;transition:opacity .3s}
 #gbubble{position:absolute;z-index:59;background:var(--paper);border:3px solid var(--ink);border-radius:20px;box-shadow:6px 6px 0 var(--ink);padding:16px 18px 14px;
@@ -218,6 +252,7 @@ header.g-focus:after{inset:-8px}
 .rise.in{opacity:1;translate:0 0}
 @media (prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important}.rise{opacity:1;translate:0 0}.isl svg path{stroke-dashoffset:0}}
 </style>
+<link rel="stylesheet" href="play.css">
 </head>
 <body>
 <nav><div class="wrap">
@@ -278,10 +313,10 @@ header.g-focus:after{inset:-8px}
 <section id="details"><div class="wrap">
   <div class="head rise"><div><div class="kicker">the details</div><h2>small things, <em>done right.</em></h2></div></div>
   <div class="grid">
-    <div class="card feat rise"><div class="pic"><img src="img/island-states.png" alt="the island tucked away, as a pill on hover, and fully open" loading="lazy"></div><div class="txt"><h3>an island, not an app window</h3><p>A notch at the edge of your screen, glowing in your client's colour. Hover and it opens: who you're working for, this session, what you've earned today.</p></div></div>
-    <div class="card feat rise"><div class="pic"><img src="img/island-focus.png" alt="a nudge when you drift, and one-tap progress when you move on" loading="lazy"></div><div class="txt"><h3>it keeps you on track, gently</h3><p>Say what you're working on. Drift to YouTube for 8 minutes and you get one quiet nudge, at most three an hour, never over a fullscreen movie.</p></div></div>
+    <div class="card feat rise" data-play="states" aria-label="an island, not an app window: open it live"><div class="pic"><span class="play-chip"><i>▶</i>try it live</span><img src="img/island-states.png" alt="the island tucked away, as a pill on hover, and fully open" loading="lazy"></div><div class="txt"><h3>an island, not an app window</h3><p>A notch at the edge of your screen, glowing in your client's colour. Hover and it opens: who you're working for, this session, what you've earned today.</p></div></div>
+    <div class="card feat rise" data-play="nudge" aria-label="it keeps you on track: open it live"><div class="pic"><span class="play-chip"><i>▶</i>try it live</span><img src="img/island-focus.png" alt="a nudge when you drift, and one-tap progress when you move on" loading="lazy"></div><div class="txt"><h3>it keeps you on track, gently</h3><p>Say what you're working on. Drift to YouTube for 8 minutes and you get one quiet nudge, at most three an hour, never over a fullscreen movie.</p></div></div>
     <div class="card feat rise"><div class="pic light"><img src="img/log-time.png" alt="click a gap in your day and say what it was" loading="lazy"></div><div class="txt"><h3>log what it couldn't see</h3><p>A phone call or a meeting shows up as a gap in your day. Click it, type "call with nimbus", and it's billed like any other session.</p></div></div>
-    <div class="card feat rise"><div class="pic light"><img src="img/mascot-moods.png" alt="the creature's nine moods" loading="lazy" style="max-height:260px"></div><div class="txt"><h3>every client gets a creature</h3><p>A little blob in the client's colour that follows your cursor, blinks, falls asleep when you walk away, and morphs when you switch clients.</p></div></div>
+    <div class="card feat rise"><div class="pic light" id="moods-pic"><img src="img/mascot-moods.png" alt="the creature's nine moods" loading="lazy" style="max-height:260px"></div><div class="txt"><h3>every client gets a creature</h3><p>A little blob in the client's colour that follows your cursor, blinks, falls asleep when you walk away, and morphs when you switch clients. Tap one to lend the guide its mood.</p></div></div>
   </div>
 </div></section>
 
@@ -324,5 +359,6 @@ const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && (e
 document.querySelectorAll('.rise').forEach(el => io.observe(el));
 </script>
 <script src="guide.js"></script>
+<script src="play.js"></script>
 </body>
 </html>
