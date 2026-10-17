@@ -1,6 +1,6 @@
 <p align="center">
-  <a href="docs/video/lowkey-demo.mp4"><img src="docs/images/demo-poster.jpg" alt="Watch the lowkey demo video (1:39)" width="100%"></a>
-  <br><sub><a href="docs/video/lowkey-demo.mp4"><b>▶ Watch the 1:39 demo</b></a>: the island, the local model writing your timesheet, review, and the bill.</sub>
+  <a href="https://cdn.jsdelivr.net/gh/nirajkhetre/lowkey@main/docs/video/lowkey-demo.mp4"><img src="docs/images/demo-poster.jpg" alt="Watch the lowkey demo video (1:39)" width="100%"></a>
+  <br><sub><a href="https://cdn.jsdelivr.net/gh/nirajkhetre/lowkey@main/docs/video/lowkey-demo.mp4"><b>▶ Watch the 1:39 demo</b></a>: the island, the local model writing your timesheet, review, and the bill.</sub>
 </p>
 
 <p align="center">
@@ -22,7 +22,7 @@
 </p>
 
 <p align="center">
-  <a href="docs/video/lowkey-demo.mp4">Demo video</a> ·
+  <a href="https://cdn.jsdelivr.net/gh/nirajkhetre/lowkey@main/docs/video/lowkey-demo.mp4">Demo video</a> ·
   <a href="#-quick-start">Quick start</a> ·
   <a href="#-what-you-get">What you get</a> ·
   <a href="#-how-it-works">How it works</a> ·
