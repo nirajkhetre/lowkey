@@ -48,7 +48,7 @@
     <div id="gisl" class="rest" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false" aria-label="lowkey guide: pick a section to have it explained">
       <div class="g-glow"></div>
       <div class="g-face g-rest"><span class="g-slot"></span><span class="g-roll"><span class="g-now">ask me about this page</span></span><span class="g-spark">✦</span></div>
-      <div class="g-face g-hello"><span class="g-slot"></span><span>hi! click any section and I'll explain it.</span></div>
+      <div class="g-face g-hello"><span class="g-slot"></span><span>hi! ${FINE ? 'double-click' : 'double-tap'} anything, or select some text, and I'll explain it.</span></div>
       <div class="g-face g-menu"><span class="g-slot"></span><b>where should I take you?</b>
         <div class="g-chips">${IDS.map((id, i) => `<button type="button" data-go="${id}"><i>${i + 1}</i>${SAY[id].name}</button>`).join('')}</div></div>
       <div class="g-face g-talk"><span class="g-dot"></span><span class="g-roll"><span class="g-what"></span></span><button type="button" class="g-home" aria-label="send the guide home">✕</button></div>
@@ -60,7 +60,7 @@
       <p class="g-text"></p>
       <div class="g-foot"><span class="g-dots"></span><button type="button" class="g-prev" aria-label="previous">‹</button><button type="button" class="g-next">next</button></div>
     </div>
-    <div id="gtag" aria-hidden="true"><span>✦</span> ask lowkey</div>`);
+    <div id="gtag" aria-hidden="true"><span>✦</span> double-click to ask</div>`);
   const isl = $('#gisl'), buddy = $('#gbuddy'), body = buddy.querySelector('.g-body'), eyes = buddy.querySelector('.g-eyes');
   const [eyeL, eyeR] = eyes.querySelectorAll('i'), shadow = buddy.querySelector('.g-shadow'), bub = $('#gbubble'), tag = $('#gtag');
 
@@ -323,18 +323,42 @@
   });
   addEventListener('resize', () => { if (at && !flight) { const p = perch(at); B.x = p.x; B.y = p.y; placeBubble(); } });
 
-  /* ---------- click any section ---------- */
+  /* ---------- summon: double-click / double-tap a section, or select some text in it ---------- */
+  // A single click never summons the guide: clicks are for reading, links and buttons.
   const SKIP = 'a, button, iframe, input, textarea, pre, code, #gbubble, #gisl, nav, .video';
-  const target = e => {
-    const s = e.target.closest?.(IDS.map(i => '#' + i).join(','));
-    return s && !e.target.closest(SKIP) ? s : null;
+  const SECTIONS = IDS.map(i => '#' + i).join(',');
+  const sectionOf = node => {
+    const el = node?.nodeType === 1 ? node : node?.parentElement, s = el?.closest(SECTIONS);
+    return s && !el.closest(SKIP) ? s : null;
   };
-  document.addEventListener('click', e => {
-    const s = target(e);
-    if (!s || !getSelection().isCollapsed) return;
-    if (s.id === at && !bub.hidden) return;
+  const target = e => sectionOf(e.target);
+  let lastAsk = {id: null, t: 0};
+  function ask(s) {
+    if (!s || (s.id === at && !bub.hidden)) return;
+    const now = performance.now();
+    if (s.id === lastAsk.id && now - lastAsk.t < 900) return;  // a double-click also selects a word: one summon, not two
+    lastAsk = {id: s.id, t: now};
     explain(s.id);
+  }
+  document.addEventListener('dblclick', e => ask(target(e)));
+  let tap = {t: 0, x: 0, y: 0}, down = false, selT;
+  document.addEventListener('pointerdown', () => { down = true; });
+  document.addEventListener('pointerup', e => {
+    down = false;
+    if (e.pointerType === 'touch') {  // double-tap, for phones that don't send dblclick
+      const now = performance.now(), near = Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 30;
+      if (now - tap.t < 320 && near) ask(target(e));
+      tap = {t: now, x: e.clientX, y: e.clientY};
+    }
+    setTimeout(selected, 0);
   });
+  document.addEventListener('selectionchange', () => { clearTimeout(selT); selT = setTimeout(() => !down && selected(), 500); });  // phones: once the handles settle
+  function selected() {
+    const sel = getSelection();
+    if (sel.isCollapsed || sel.toString().trim().length < 3) return;
+    const a = sectionOf(sel.anchorNode);
+    if (a && a === sectionOf(sel.focusNode)) ask(a);
+  }
 
   // the "ask lowkey" tag trails the pointer over parts it can explain
   let tagOn = false, tx = 0, ty = 0;
@@ -353,8 +377,8 @@
   /* ---------- hello ---------- */
   toHome();
   requestAnimationFrame(frame);
-  const ask = location.hash.match(/^#ask=(\w+)/);  // shareable: lowkey.nirajlabs.tech/#ask=privacy
-  if (ask && SAY[ask[1]]) return setTimeout(() => explain(ask[1], 0, true), 700);
+  const link = location.hash.match(/^#ask=(\w+)/);  // shareable: lowkey.nirajlabs.tech/#ask=privacy
+  if (link && SAY[link[1]]) return setTimeout(() => explain(link[1], 0, true), 700);
   setTimeout(() => {
     if (state !== 'rest' || at) return;
     setIsland('hello');
