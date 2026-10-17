@@ -240,6 +240,94 @@
     draw();
   }
 
+  /* ================= 4. install, as three little terminals ================= */
+  // Each card replays its step: the command types itself, runs, and finishes. They play in order (1 → 2 → 3) when
+  // the section comes into view, then loop. The output mirrors what the real tools print (sizes rounded).
+  const STEPS = [
+    {copy: 'ollama pull gemma4:e2b', run: [
+      ['cmd', 'ollama pull gemma4:e2b'], ['out', 'pulling manifest'], ['bar', 'pulling model', 4.6, 2600], ['out', 'verifying sha256 digest'],
+      ['out', 'writing manifest'], ['ok', 'success']]},
+    {copy: 'git clone https://github.com/nirajkhetre/lowkey\ncd lowkey\npip install -r requirements.txt', run: [
+      ['cmd', 'git clone https://github.com/nirajkhetre/lowkey'], ['out', 'Cloning into \'lowkey\'...'], ['bar', 'Receiving objects', 0, 900],
+      ['cmd', 'cd lowkey'], ['cmd', 'pip install -r requirements.txt'], ['out', 'Collecting PySide6-Essentials>=6.7'], ['out', 'Collecting shiboken6'],
+      ['bar', 'Installing', 0, 1500], ['ok', 'Successfully installed PySide6-Essentials shiboken6']]},
+    {copy: 'python -m lowkey --demo', run: [
+      ['cmd', 'python -m lowkey --demo'], ['pause', 500], ['ok', 'lowkey (demo) -> http://127.0.0.1:7777   model: gemma4:e2b (ready)'], ['link']]},
+  ];
+  const cards = $$('.install .card');
+  if (cards.length === 3) {
+    const terms = cards.map((card, i) => {
+      card.querySelector('pre').outerHTML = `<div class="term" data-i="${i}"><div class="term-bar"><i></i><i></i><i></i><span>${i === 2 ? 'lowkey' : i === 1 ? 'code' : '~'}</span>
+        <button type="button" class="term-copy" aria-label="copy the command${i === 1 ? 's' : ''}">copy</button></div>
+        <div class="term-body" aria-hidden="true"></div><pre class="sr">${STEPS[i].copy}</pre></div>`;
+      return card.querySelector('.term');
+    });
+    let token = 0, played = false;
+    const wait = (ms, t) => new Promise((res, rej) => setTimeout(() => t === token ? res() : rej('stale'), ms));
+    const line = (body, cls, html = '') => { const l = document.createElement('div'); l.className = 'tl ' + cls; l.innerHTML = html; body.append(l); body.scrollTop = body.scrollHeight; return l; };
+    const esc = s => s.replace(/[&<>]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;'}[c]));
+    async function play(term, steps, t) {
+      const body = $('.term-body', term);
+      body.innerHTML = '';
+      term.classList.remove('done');
+      for (const [kind, a, b, c] of steps) {
+        if (kind === 'pause') { await wait(a, t); continue; }
+        if (kind === 'cmd') {
+          const l = line(body, 'cmd', '<span class="pr">$</span> <span class="tx"></span><i class="cur"></i>'), tx = $('.tx', l);
+          for (const ch of a) { tx.textContent += ch; await wait(22 + Math.random() * 38, t); }
+          await wait(260, t);
+          $('.cur', l).remove();
+          continue;
+        }
+        if (kind === 'out') { await wait(260, t); line(body, 'out', esc(a)); continue; }
+        if (kind === 'ok') { await wait(320, t); line(body, 'ok', '<span class="ck">✓</span> ' + esc(a)); continue; }
+        if (kind === 'link') { await wait(300, t); line(body, 'link', '<a href="demo/">open it in your browser ↗</a> <span>(or try the live demo here)</span>'); continue; }
+        if (kind === 'bar') {
+          const l = line(body, 'bar', `${esc(a)} <span class="pb"><i></i></span> <span class="pc">0%</span>${b ? ` <span class="sz"></span>` : ''}`);
+          const fill = $('.pb i', l), pc = $('.pc', l), sz = $('.sz', l), t0 = performance.now();
+          await new Promise((res, rej) => {
+            const step = now => {
+              if (t !== token) return rej('stale');
+              const p = Math.min(1, (now - t0) / c), e = 1 - Math.pow(1 - p, 2.2);
+              fill.style.transform = `scaleX(${e})`; pc.textContent = `${Math.round(e * 100)}%`;
+              if (sz) sz.textContent = `${(e * b).toFixed(1)} / ${b} GB`;
+              p < 1 ? requestAnimationFrame(step) : res();
+            };
+            requestAnimationFrame(step);
+          });
+        }
+      }
+      term.classList.add('done');
+    }
+    function still() {  // reduced motion: just the finished terminals
+      terms.forEach((term, i) => {
+        const body = $('.term-body', term);
+        body.innerHTML = STEPS[i].run.filter(s => s[0] !== 'pause').map(([k, a, b]) => k === 'cmd' ? `<div class="tl cmd"><span class="pr">$</span> ${esc(a)}</div>`
+          : k === 'out' ? `<div class="tl out">${esc(a)}</div>` : k === 'ok' ? `<div class="tl ok"><span class="ck">✓</span> ${esc(a)}</div>`
+          : k === 'bar' ? `<div class="tl bar">${esc(a)} <span class="pb"><i style="transform:none"></i></span> <span class="pc">100%</span>${b ? ` <span class="sz">${b} / ${b} GB</span>` : ''}</div>`
+          : '<div class="tl link"><a href="demo/">open it in your browser ↗</a></div>').join('');
+        term.classList.add('done');
+      });
+    }
+    async function loop() {
+      const t = ++token;
+      try {
+        terms.forEach(x => { $('.term-body', x).innerHTML = '<div class="tl cmd"><span class="pr">$</span> <i class="cur"></i></div>'; x.classList.remove('done'); });
+        for (let i = 0; i < 3; i++) { cards[i].classList.add('live'); await play(terms[i], STEPS[i].run, t); cards[i].classList.remove('live'); await wait(500, t); }
+        await wait(7000, t);
+        loop();
+      } catch { cards.forEach(c => c.classList.remove('live')); }
+    }
+    if (REDUCED) still();
+    else new IntersectionObserver((es, io) => { if (es.some(e => e.isIntersecting) && !played) { played = true; io.disconnect(); loop(); } }, {threshold: .35}).observe($('.install'));
+    terms.forEach((term, i) => $('.term-copy', term).addEventListener('click', async e => {
+      const b = e.currentTarget;
+      try { await navigator.clipboard.writeText(STEPS[i].copy); b.textContent = 'copied'; } catch { b.textContent = 'select it'; }
+      b.classList.add('ok');
+      setTimeout(() => { b.textContent = 'copy'; b.classList.remove('ok'); }, 1600);
+    }));
+  }
+
   /* ================= 2. windows with a live island ================= */
   const CLIENTS = {
     'Acme Studio': {c: ['#f2ffd0', '#B8FF3B', '#86c414'], money: '₹5,220', task: 'Fixed OAuth redirect bug on the login page, reviewed PR #42', glow: '184,255,59'},

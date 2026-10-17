@@ -283,3 +283,31 @@ html.pw-lock{overflow:hidden}
 .cap-fly{position:fixed;left:0;top:0;z-index:70;pointer-events:none;padding:5px 12px;border:2.5px solid var(--ink);border-radius:999px;font:800 13px var(--mono);
   box-shadow:3px 3px 0 var(--ink);white-space:nowrap}
 .lg-pop[hidden]{display:none}
+
+/* ---------- install: three little terminals ---------- */
+.install .card{display:flex;flex-direction:column;transition:transform .4s var(--spring),box-shadow .4s var(--spring)}
+.install .card.live{transform:translate(-3px,-3px);box-shadow:9px 9px 0 var(--ink)}
+.term{flex:1;display:flex;flex-direction:column;background:#0f0f13;border-radius:12px;overflow:hidden;box-shadow:inset 0 0 0 1px #26262c}
+.term-bar{display:flex;align-items:center;gap:6px;height:30px;padding:0 6px 0 11px;background:#1a1a20;border-bottom:1px solid #26262c}
+.term-bar>i{width:9px;height:9px;border-radius:50%;background:#3a3a44}
+.term-bar>i:nth-child(1){background:var(--pink)}.term-bar>i:nth-child(2){background:var(--yellow)}.term-bar>i:nth-child(3){background:var(--lime)}
+.term-bar span{margin-left:8px;font:12px var(--mono);color:#7d7d88}
+.term-copy{margin-left:auto;border:0;border-radius:7px;background:#26262c;color:#cfcfd6;font:600 11px var(--mono);padding:4px 9px;cursor:pointer;transition:background .2s,color .2s}
+.term-copy:hover{background:#34343c;color:#fff}
+.term-copy.ok{background:var(--lime);color:#111}
+.term-body{height:172px;overflow:hidden;padding:10px 12px;font:12.5px/1.6 var(--mono);color:#cfcfd6}
+.term .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:pre}
+.tl{white-space:pre-wrap;overflow-wrap:anywhere;animation:tl-in .25s ease-out}
+@keyframes tl-in{from{opacity:0;transform:translateY(3px)}}
+.tl.cmd{color:#fff}.tl .pr{color:var(--lime)}
+.tl.out{color:#8b8b96}
+.tl.ok{color:var(--lime)}.tl.ok .ck{font-weight:800}
+.tl.bar{color:#8b8b96;display:flex;align-items:center;gap:8px;white-space:nowrap}
+.pb{position:relative;flex:1;min-width:40px;height:8px;border-radius:5px;background:#26262c;overflow:hidden}
+.pb i{position:absolute;inset:0;background:linear-gradient(90deg,var(--lime),#d6ff8a);transform-origin:left;transform:scaleX(0)}
+.pc,.sz{color:#cfcfd6;font-variant-numeric:tabular-nums}
+.tl.link a{color:var(--blue)}.tl.link span{color:#6e6e78}
+.cur{display:inline-block;width:7px;height:14px;margin-left:2px;vertical-align:-2px;background:var(--pink);animation:tcur 1s step-end infinite}
+@keyframes tcur{50%{opacity:0}}
+.term.done .term-bar span:after{content:" · done";color:var(--lime)}
+@media (max-width:860px){.term-body{height:196px}}
