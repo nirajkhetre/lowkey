@@ -261,6 +261,14 @@ Shorter slots give the model less to go on per label (it picks the slot's main c
 
 The synthetic week is deliberately easy for keywords, since its window titles contain client names. The model earns its place on real days, where titles don't name the client, and in writing invoice lines, which rules can't do.
 
+### Re-run the numbers
+
+```bash
+python -m lowkey.eval
+```
+
+It labels every slot of the demo week at 5, 10 and 15 minutes, with the model and with the keyword rules, and prints a table like the one above (slots, right client per slot, minutes billed right, ms per label). The answer key is the client hints: a slot's client is whoever owns most of its seconds. It calls the model directly, skips the cache and writes nothing. Without Ollama it prints the rules rows and says the model rows were skipped. Latency depends on your hardware.
+
 ## ❓ FAQ
 
 <details><summary><b>Does it record my screen?</b></summary>

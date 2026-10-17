@@ -255,6 +255,27 @@ def test_a_new_slot_length_never_orphans_reviews():
         LIVE["settings"]["slot"] = slot
 
 
+def test_eval_slices_and_scores_against_hints():
+    from lowkey import eval as ev
+    with tempfile.TemporaryDirectory() as d:
+        real, labeler.DATA = labeler.DATA, Path(d)
+        try:
+            t = 1_700_000_100 - 1_700_000_100 % SLOT_S
+            (Path(d) / "activity-x.jsonl").write_text("\n".join(json.dumps(e) for e in [
+                {"ts": t, "dur": 400, "app": "Code.exe", "title": "auth.ts - acme-website"},
+                {"ts": t + 400, "dur": 200, "app": "chrome.exe", "title": "Instagram"}]), encoding="utf-8")
+            five, fifteen = ev.slots(5), ev.slots(15)
+        finally:
+            labeler.DATA = real
+    assert [sum(w.values()) for w in five] == [300, 300] and len(fifteen) == 1
+    assert [ev.truth(w)[0] for w in five] == ["Acme Studio", "Personal"]   # second slot: 200 s Instagram, 100 s acme
+    # rules picks any hinted client over Personal: right on slot 1, wrong on slot 2, which still bills 100 s right
+    n, slot_pct, min_pct, _, _ = ev.score(five, labeler.rules)
+    assert (n, slot_pct, round(min_pct, 1)) == (2, 50, 66.7)
+    n, slot_pct, min_pct, _, _ = ev.score(fifteen, labeler.rules)
+    assert (n, slot_pct, round(min_pct, 1)) == (1, 100, 66.7)                # one slot, Acme's by majority
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):
