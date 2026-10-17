@@ -184,6 +184,7 @@ def test_receipts_renames_and_off_the_clock():
     assert labeler.source("chrome.exe", "lofi beats - YouTube - Google Chrome") == "YouTube"
     assert labeler.source("chrome.exe", "Swiggy - Order food online - Google Chrome") == "Swiggy"  # site first or last
     assert labeler.source("msedge.exe", "(3) WhatsApp - Personal - Microsoft Edge") == "WhatsApp"
+    assert labeler.source("chrome.exe", "New Tab - Google Chrome") is None                     # a blank tab isn't anywhere
     assert labeler.category("Netflix", [], {}, False) == "watching" and labeler.category("Tiny Tool", [], {}, False) == "other"
     me, clients, renames = server.clean_config({"me": {"daily_goal_h": "7"}, "renames": {"Acme Studio": "Acme Labs", "x": "nope"},
                                                 "clients": [{"name": "Acme Labs", "rate": "1500", "hints": ["acme", "a", ""], "color": "red"}]})

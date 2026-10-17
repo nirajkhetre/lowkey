@@ -105,8 +105,8 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22p
 
 /* focus: one intention at a time. Now (with an honest ring: time against your estimate), one line to say what's
    next, and the queue with its reasons. Not a list app: there's no list screen. */
-.focus{padding:16px 18px;margin-bottom:22px;display:grid;gap:14px}
-.fnow{display:flex;align-items:center;gap:14px;min-height:58px}
+.focus{padding:16px 18px;margin-bottom:22px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}  /* a long intention ellipsizes, never widens the page */
+.fnow{display:flex;flex-wrap:wrap;align-items:center;gap:14px;min-height:58px}
 .ring{width:56px;height:56px;flex:none;position:relative;--c:var(--lime)}
 .ring svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
 .ring circle{fill:none;stroke-width:6}
@@ -114,7 +114,7 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22p
 .ring .fg{stroke:var(--c);stroke-linecap:round;transition:stroke-dashoffset .9s var(--spring-soft),stroke .3s}
 .ring b{position:absolute;inset:0;display:grid;place-items:center;font:700 12px/1 var(--mono)}
 .ring.full .fg{filter:drop-shadow(0 0 4px var(--c))}
-.fnow .what{flex:1;min-width:0}
+.fnow .what{flex:1 1 180px;min-width:0}
 .kick{font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
 .fnow h3{margin:2px 0 4px;font-size:22px;letter-spacing:-.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .fline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font:600 12.5px var(--mono);color:var(--muted)}
@@ -221,7 +221,7 @@ html.vt-focus .vtf{view-transition-name:var(--vt)}
 
 /* first load: sections rise in on a stagger, the day's blocks grow out of the timeline */
 body.intro .focus,body.intro main>:not(.hero),body.intro .hero>*,body.intro #grid>*{animation:rise .8s var(--spring-soft) both;animation-delay:calc(var(--d,0) * 55ms)}
-body.intro .block,body.intro .split>div,body.intro .lbar>div{animation:grow .9s var(--spring-soft) both;animation-delay:calc(260ms + var(--i,0) * 45ms)}
+body.intro .block,body.intro .split>div{animation:grow .9s var(--spring-soft) both;animation-delay:calc(260ms + var(--i,0) * 45ms)}
 @keyframes rise{from{opacity:0;transform:translateY(16px)}}
 @keyframes grow{from{transform:scaleX(0)}}
 
@@ -287,18 +287,92 @@ body.sheeted .wrap{transform:scale(.975);filter:saturate(.85)}
 .me{display:grid;grid-template-columns:1.2fr 1.4fr .6fr .7fr;gap:8px}
 .me label{font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:grid;gap:4px}
 @media (max-width:640px){.crow,.chead{grid-template-columns:34px 1fr 36px}.crow .crate,.crow .chints,.chead span:nth-child(3),.chead span:nth-child(4){grid-column:2/3}.me{grid-template-columns:1fr 1fr}}
-/* off the clock: personal time by kind and source. Neutral, like a screen-time summary: no scores, no scolding */
-.life{padding:14px 16px 12px;margin-bottom:26px}
-.life .top{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
-.life .top .sub{margin-left:auto;font-family:var(--mono);font-size:12.5px}
-.lbar{display:flex;height:14px;border:var(--line);border-radius:999px;overflow:hidden;background:var(--bg)}
-.lbar div{height:100%;transform-origin:left;transition:filter .15s}
-.lbar div:hover{filter:brightness(1.08)}
-.lcats{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px;margin-top:10px}
-.lcat{display:flex;align-items:baseline;gap:7px;font-weight:700;font-size:14px;min-width:0}
-.lcat i{width:10px;height:10px;border-radius:50%;background:var(--c);border:1.5px solid var(--ink);flex:none;align-self:center}
-.lcat b{font:600 12.5px var(--mono);color:var(--muted)}
-.lcat small{color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+/* off the clock: personal time by kind and by app. Neutral, like Screen Time: no scores, no scolding.
+   A ring for the share, a row per kind (opens to its apps), and the week around it for context. */
+.life{padding:16px 18px 18px;margin-bottom:26px}
+.lhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-bottom:12px;min-height:20px}
+.lcmp{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font:600 12.5px var(--mono);color:var(--muted);text-align:right}
+.lcmp svg{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transition:transform .5s var(--spring)}
+.lcmp.up svg{transform:rotate(180deg)}
+.lcmp.near svg{display:none}
+.lcmp span.swap{animation:swap .3s var(--enter)}
+.lbody{display:grid;grid-template-columns:148px minmax(0,1fr) 232px;gap:30px;align-items:center}
+
+/* the ring: an arc per kind, fanned out from twelve o'clock; the kind you point at lifts, the rest step back */
+.donut{position:relative;width:148px;height:148px}
+.donut svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+.donut circle{fill:none;stroke-width:15}
+.donut .trk{stroke:var(--bg);transition:stroke .3s}
+.donut:not(.has) .trk{stroke:var(--grey)}
+.dseg{stroke:var(--c);cursor:pointer;transition:stroke-dasharray .9s var(--spring-soft),stroke-dashoffset .9s var(--spring-soft),stroke-width .45s var(--spring),opacity .25s}
+.donut.hl .dseg{opacity:.25}
+.donut.hl .dseg.on{opacity:1;stroke-width:21}
+.dmid{position:absolute;inset:24px;display:grid;place-content:center;justify-items:center;text-align:center;pointer-events:none}
+.dmid b{font-size:24px;font-weight:800;letter-spacing:-1px}
+.dmid small{display:block;max-width:88px;margin-top:5px;font-size:12.5px;font-weight:700;color:var(--muted);line-height:1.1;text-wrap:balance}
+.dmid small.swap{animation:swap .3s var(--enter)}
+@keyframes swap{from{opacity:0;transform:translateY(4px)}}
+
+/* a row per kind: icon, name with its apps, time, and a meter against the biggest kind */
+.lrows{display:grid;align-content:center;min-width:0;min-height:118px}
+.lrow{display:grid;grid-template-columns:32px minmax(0,1fr) auto 14px;grid-template-areas:"ic name time chev" "ic meter meter chev";column-gap:12px;row-gap:7px;align-items:center;
+  justify-self:stretch;margin:0 -10px;padding:8px 10px;border:0;border-radius:12px;background:none;color:inherit;text-align:left;cursor:default;transition:background .2s}
+button.lrow{cursor:pointer}
+.lrow.on,.lrow:focus-visible{background:var(--bg)}
+.lrow:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+.lic{grid-area:ic;width:32px;height:32px;border-radius:10px;background:var(--c);border:1.5px solid var(--ink);box-shadow:2px 2px 0 var(--ink);display:grid;place-items:center;transition:transform .45s var(--spring)}
+.lic svg{width:18px;height:18px;stroke:#111;fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.lrow.on .lic{transform:rotate(-7deg) scale(1.07)}
+.lname{grid-area:name;display:flex;align-items:baseline;gap:8px;min-width:0;white-space:nowrap}
+.lname b{font-size:15px;font-weight:800}
+.lname small{min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:13px;font-weight:600;color:var(--muted);transition:opacity .2s}
+.lrow[aria-expanded=true] .lname small{opacity:0}  /* open, its apps are listed right below */
+.ltime{grid-area:time;font:700 13.5px var(--mono)}
+.lchev{grid-area:chev;width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .45s var(--spring)}
+.lrow[aria-expanded=true] .lchev{transform:rotate(90deg)}
+.lmeter{grid-area:meter;height:8px;border:1.5px solid var(--ink);border-radius:99px;background:var(--bg);overflow:hidden}
+.lmeter i{display:block;height:100%;width:calc(var(--w) * 100%);background:var(--c);border-radius:99px;transform-origin:left}
+.lrows.fresh .lrow{animation:lrise .55s var(--spring-soft) both;animation-delay:calc(var(--i) * 45ms)}
+.lrows.fresh .lmeter i{animation:grow .8s var(--spring-soft) both;animation-delay:calc(140ms + var(--i) * 45ms)}
+@keyframes lrise{from{opacity:0;transform:translateY(8px)}}
+/* its apps, opened in place: each with its time and a small meter against the biggest one */
+.lmore{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s var(--spring-soft)}
+.lmore>div{overflow:hidden;padding:0 26px 0 44px}
+.lmore.open{grid-template-rows:1fr}
+.lsrc{display:grid;grid-template-columns:minmax(0,1fr) 64px 56px;gap:12px;align-items:center;padding:4px 0;font-size:13.5px;font-weight:700;opacity:0;transform:translateY(-4px);transition:opacity .15s,transform .35s var(--spring)}
+.lsrc:first-child{margin-top:2px}.lsrc:last-child{margin-bottom:8px}
+.lmore.open .lsrc{opacity:1;transform:none;transition-delay:calc(60ms + var(--i) * 35ms)}
+.lsrc span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lsrc b{font:600 12.5px var(--mono);color:var(--muted);text-align:right}
+.lsrc i{height:5px;border-radius:99px;background:var(--bg);overflow:hidden}
+.lsrc i::after{content:"";display:block;height:100%;width:calc(var(--w) * 100%);border-radius:99px;background:var(--c)}
+.lempty b{display:block;font-size:20px;font-weight:800;letter-spacing:-.5px}
+.lempty span{display:block;margin-top:4px;color:var(--muted);font-weight:600;font-size:14px;max-width:46ch}
+.lsk{display:grid;gap:12px}
+.lsk i{height:32px;border-radius:10px;background:linear-gradient(90deg,var(--bg) 25%,var(--grey) 40%,var(--bg) 60%);background-size:400% 100%;animation:shimmer 1.4s ease infinite}
+.lsk i:nth-child(2){width:78%}.lsk i:nth-child(3){width:56%}
+
+/* the week around it: a stacked bar a day, the daily average dashed across, the day you're on in ink */
+.lweek{padding-left:26px;border-left:1.5px dashed var(--grey)}
+.lwhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.lwhead b{font:600 12px var(--mono);color:var(--muted)}
+.lwbars{position:relative;display:grid;grid-template-columns:repeat(7,1fr);height:108px}
+.lwd{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:8px;padding:0;border:0;background:none;color:inherit;cursor:pointer}
+.lwd:disabled{cursor:default}
+.lwbar{width:16px;height:calc(var(--h,0) * 78px);display:flex;flex-direction:column-reverse;border:1.5px solid var(--ink);border-radius:6px;overflow:hidden;background:var(--paper);filter:grayscale(1);opacity:.38;
+  transition:height .8s var(--spring-soft),opacity .25s,filter .35s;transition-delay:calc(var(--k) * 35ms),0s,0s}
+.lwbar i{flex:1 1 0;min-height:0}
+.lwd:not(:disabled):hover .lwbar{opacity:.7;filter:grayscale(.3)}
+.lwd.on .lwbar{opacity:1;filter:none}
+.lwd.off .lwbar{opacity:0}
+.lwl{position:relative;z-index:1;width:22px;height:18px;display:grid;place-items:center;font:800 11px var(--display);letter-spacing:.5px;color:var(--muted);transition:color .3s}
+.lwd.on .lwl{color:var(--bg)}
+.lwd.off .lwl{opacity:.4}
+.lwthumb{position:absolute;bottom:0;left:calc((var(--k,0) + .5) * 100% / 7);width:22px;height:18px;margin-left:-11px;border-radius:99px;background:var(--ink);transition:left var(--t-spring) var(--spring)}
+.lwavg{position:absolute;left:-6px;right:-6px;bottom:calc(var(--a,0) * 78px + 26px);border-top:1.5px dashed var(--ink);opacity:.45;pointer-events:none;transition:bottom .8s var(--spring-soft),opacity .3s}
+.lwavg.none{opacity:0}
+@media (max-width:900px){.lbody{grid-template-columns:148px minmax(0,1fr)}.lweek{grid-column:1/-1;padding:14px 0 0;border-left:0;border-top:1.5px dashed var(--grey)}}
+@media (max-width:540px){.lbody{grid-template-columns:1fr;gap:18px}.donut{justify-self:center}.lname small{display:none}}
 .mline{margin:-4px 0 16px}
 .mline .capture{background:var(--paper)}
 .hint2{font:600 12.5px var(--mono);color:var(--muted);white-space:nowrap}
@@ -447,7 +521,17 @@ html.still *,html.still *::before,html.still *::after{transition:none!important;
       <div class="hours" id="hours"></div>
     </section>
 
-    <section class="card life" id="life" style="--d:4"></section>
+    <section class="card life" id="life" style="--d:4">
+      <div class="lhead"><div class="label">off the <em>clock</em></div>
+        <span class="lcmp near" id="lcmp"><svg viewBox="0 0 24 24"><path d="M12 5v14M6.5 13.5L12 19l5.5-5.5"/></svg><span></span></span></div>
+      <div class="lbody">
+        <div class="donut" id="donut"><svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="50"/></svg>
+          <div class="dmid"><b class="roll" id="dtot"></b><small id="dlab"></small></div></div>
+        <div class="lrows" id="lrows"><div class="lsk"><i></i><i></i><i></i></div></div>
+        <div class="lweek"><div class="lwhead"><span class="kick" id="lwk">this week</span><b id="lavg"></b></div>
+          <div class="lwbars" id="lweek"></div></div>
+      </div>
+    </section>
 
     <div class="bar" style="--d:4">
       <h2 id="receiptsTitle">today's <em>receipts</em></h2>
@@ -523,7 +607,7 @@ function roll(el, text){  // Apple's numeric text: every digit is a column that 
     el.dataset.shape = shape;
     el.innerHTML = chars.map(c => /\d/.test(c)
       ? `<span class="dg" aria-hidden="true"><span>${[...'0123456789'].map(d => `<i>${d}</i>`).join('')}</span></span>`
-      : `<span aria-hidden="true">${esc(c)}</span>`).join('');
+      : `<span aria-hidden="true">${c === ' ' ? '&nbsp;' : esc(c)}</span>`).join('');  // a flex row would drop a bare space
     void el.offsetWidth;  // new columns start at 0 and roll up into place
   }
   const cols = [...el.querySelectorAll('.dg>span')], digits = chars.filter(c => /\d/.test(c));
@@ -768,9 +852,12 @@ function review(){ transition('cards', () => { S.filter='pending'; renderCards()
 function shiftDay(n){
   const i = S.days.indexOf(S.day), j = Math.min(S.days.length-1, Math.max(0, i+n));
   if (i<0||j===i) return snack(n<0?'no older receipts':'that\'s the latest day');
-  const next = S.days[j];
-  if (S.week[next]) transition(n < 0 ? 'back' : 'fwd', () => { S.day = next; S.focus = 0; render(); });
-  else { S.day = next; load(); }
+  goDay(S.days[j]);
+}
+function goDay(day){
+  if (day === S.day || !S.days.includes(day)) return;
+  if (S.week[day]) transition(day < S.day ? 'back' : 'fwd', () => { S.day = day; S.focus = 0; render(); });
+  else { S.day = day; load(); }
 }
 
 /* ---------- intentions: one at a time, held to gently ---------- */
@@ -969,18 +1056,128 @@ function bill(from = $('#openBill')){
 /* ---------- off the clock ---------- */
 const LIFE = {'watching': '#A78BFA', 'gaming': '#F59E0B', 'social': '#38BDF8', 'messaging': '#34D399', 'music': '#F472B6',
               'shopping & food': '#FB923C', 'reading & learning': '#22D3EE', 'browsing': '#94A3B8', 'other': '#CBD5E1'};
+const LIFE_ICON = {
+  'watching': '<rect x="3" y="4.5" width="18" height="12.5" rx="3"/><path d="M10.5 8.4v4.9l4.2-2.45z"/><path d="M9 20.5h6"/>',
+  'gaming': '<path d="M6.5 8h11a4 4 0 0 1 3.9 4.8l-.6 3a2.3 2.3 0 0 1-3.9 1.1L15 15H9l-1.9 1.9a2.3 2.3 0 0 1-3.9-1.1l-.6-3A4 4 0 0 1 6.5 8z"/><path d="M8 10.3v3.4M6.3 12h3.4"/><path d="M15.6 11h.01M17.4 13h.01" stroke-width="3"/>',
+  'social': '<path d="M12 19.5s-7.5-4.6-7.5-10.1A4.1 4.1 0 0 1 12 7.2a4.1 4.1 0 0 1 7.5 2.2c0 5.5-7.5 10.1-7.5 10.1z"/>',
+  'messaging': '<path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3.5V16A2.5 2.5 0 0 1 4 13.5z"/>',
+  'music': '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',
+  'shopping & food': '<path d="M5 8.5h14l-1.2 11.5H6.2z"/><path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"/>',
+  'reading & learning': '<path d="M12 7C10 5.6 7 5 4 5.5v13c3-.5 6 .1 8 1.5 2-1.4 5-2 8-1.5v-13C17 5 14 5.6 12 7z"/><path d="M12 7v13"/>',
+  'browsing': '<circle cx="12" cy="12" r="8.5"/><path d="M15.2 8.8l-1.9 4.5-4.5 1.9 1.9-4.5z"/>',
+  'other': '<path d="M6.5 12h.01M12 12h.01M17.5 12h.01" stroke-width="3.4"/>'};
+const lc = name => LIFE[name] || LIFE.other;
+const L = {day: null, sig: '', d: null, hl: -1, t: 0, open: new Set()};
+const dayWord = () => S.day === iso(new Date()) ? 'today' : new Date(S.day + 'T00:00').toLocaleDateString([], {weekday: 'long'}).toLowerCase();
+function swapText(el, text){ if (el.textContent === text) return; el.textContent = text; el.classList.remove('swap'); void el.offsetWidth; el.classList.add('swap'); }
+
 async function renderLife(){
   const day = S.day, d = await (await fetch(`/api/life?day=${day}`)).json();
   if (day !== S.day) return;  // you moved on to another day meanwhile
-  const box = $('#life');
-  if (!d.total_s) return box.innerHTML = `<div class="top"><div class="label">off the <em>clock</em></div><span class="sub">nothing personal on this day</span></div>`;
-  box.innerHTML = `<div class="top"><div class="label">off the <em>clock</em></div><span class="sub">${fmtH(d.total_s)} · no judgement</span></div>
-    <div class="lbar">${d.cats.map((c, k) => `<div style="--i:${k};width:${c.s / d.total_s * 100}%;background:${LIFE[c.name] || LIFE.other}" data-k="${k}"></div>`).join('')}</div>
-    <div class="lcats">${d.cats.map(c => `<div class="lcat" style="--c:${LIFE[c.name] || LIFE.other}"><i></i>${esc(c.name)} <b>${fmtH(c.s)}</b>
-      <small>${esc(c.sources.map(x => x.name).join(', '))}</small></div>`).join('')}</div>`;
-  box.querySelectorAll('.lbar div').forEach(b => { const c = d.cats[+b.dataset.k];
-    b.onmouseenter = () => showTip(b, `<b>${esc(c.name)}</b><span>${fmtH(c.s)}</span><div>${c.sources.map(x => `${esc(x.name)} ${fmtH(x.s)}`).join(' · ')}</div>`);
-    b.onmouseleave = hideTip; });
+  const sig = JSON.stringify(d), fresh = day !== L.day;
+  if (!fresh && sig === L.sig) return;  // nothing new: leave it be, open rows and all
+  L.day = day; L.sig = sig; L.d = d; L.hl = -1;
+  lifeRing(d); lifeRows(d, fresh); lifeWeek(d);
+  $('#donut').classList.remove('hl');
+  roll($('#dtot'), fmtH(d.total_s)); swapText($('#dlab'), dayWord());
+}
+
+function lifeRing(d){  // arcs keyed by kind: on another day they glide to their new share; a new kind fans out from the top
+  const svg = $('#donut svg'), gap = d.cats.length > 1 ? 1.4 : 0, keep = new Set();
+  $('#donut').classList.toggle('has', d.total_s > 0);
+  $('#donut').setAttribute('aria-label', d.total_s ? `${fmtH(d.total_s)} off the clock: ` + d.cats.map(c => `${c.name} ${fmtH(c.s)}`).join(', ') : 'nothing off the clock');
+  let at = 0;
+  d.cats.forEach((c, k) => {
+    let el = [...svg.querySelectorAll('.dseg')].find(e => e.dataset.n === c.name);
+    if (!el) {
+      el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      for (const [a, v] of Object.entries({cx: 60, cy: 60, r: 50, pathLength: 100, class: 'dseg'})) el.setAttribute(a, v);
+      el.dataset.n = c.name; el.style.cssText = `--c:${lc(c.name)};stroke-dasharray:0 100;stroke-dashoffset:0`;
+      el.onmouseenter = () => lifeHl(+el.dataset.k); el.onmouseleave = () => lifeHl(-1);
+      el.onclick = () => document.querySelector(`#lrows button.lrow[data-k="${el.dataset.k}"]`)?.click();
+      svg.appendChild(el); el.getBoundingClientRect();
+    }
+    const len = c.s / d.total_s * 100;
+    el.dataset.k = k; keep.add(el);
+    el.style.strokeDasharray = `${Math.max(.01, len - gap)} 100`;
+    el.style.strokeDashoffset = -(at + gap / 2);
+    at += len;
+  });
+  svg.querySelectorAll('.dseg').forEach(el => { if (keep.has(el)) return;  // a kind this day doesn't have: it closes up, then goes
+    el.dataset.k = -1; el.style.strokeDasharray = '0 100';
+    setTimeout(() => el.dataset.k === '-1' && el.remove(), 950); });
+}
+
+function lifeRows(d, fresh){
+  const box = $('#lrows'), top = d.cats[0]?.s || 1;
+  box.classList.remove('fresh');
+  if (!d.total_s) return box.innerHTML = `<div class="lempty"><b>all work ${dayWord() === 'today' ? 'today' : 'on ' + dayWord()}</b>
+    <span>anything the model calls personal lands here, by kind and by app: watching, gaming, messaging…</span></div>`;
+  box.innerHTML = d.cats.map((c, k) => {
+    const many = c.sources.length > 1, open = many && L.open.has(c.name), tag = many ? 'button' : 'div';
+    return `<${tag} class="lrow" data-k="${k}" style="--c:${lc(c.name)};--i:${k}"${many ? ` aria-expanded="${open}"` : ''}>
+      <span class="lic"><svg viewBox="0 0 24 24">${LIFE_ICON[c.name] || LIFE_ICON.other}</svg></span>
+      <span class="lname"><b>${esc(c.name)}</b><small>${esc(c.sources.map(x => x.name).join(', '))}</small></span>
+      <span class="ltime">${fmtH(c.s)}</span>${many ? '<svg class="lchev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>' : ''}
+      <span class="lmeter"><i style="--w:${c.s / top}"></i></span></${tag}>` + (many ? `<div class="lmore${open ? ' open' : ''}" style="--c:${lc(c.name)}"><div>` +
+      c.sources.map((x, j) => `<div class="lsrc" style="--i:${j}"><span>${esc(x.name)}</span><i style="--w:${x.s / c.sources[0].s}"></i><b>${fmtH(x.s)}</b></div>`).join('') + '</div></div>' : '');
+  }).join('');
+  if (fresh && !REDUCED) { void box.offsetWidth; box.classList.add('fresh'); }
+  box.querySelectorAll('.lrow').forEach(r => { const k = +r.dataset.k, name = d.cats[k].name;
+    r.onmouseenter = r.onfocus = () => lifeHl(k); r.onmouseleave = r.onblur = () => lifeHl(-1);
+    if (r.tagName === 'BUTTON') r.onclick = () => { const m = r.nextElementSibling, open = !m.classList.contains('open');
+      m.classList.toggle('open', open); r.setAttribute('aria-expanded', open); L.open[open ? 'add' : 'delete'](name); }; });
+}
+
+function lifeHl(k){  // point at a kind (its row or its arc): the arc lifts, the centre says what it is. Leaving waits a beat,
+  clearTimeout(L.t);  // so sliding from one row to the next never flashes the total in between
+  if (k < 0) return L.t = setTimeout(() => lifeShow(-1), 90);
+  lifeShow(k);
+}
+function lifeShow(k){
+  const d = L.d, c = d?.cats[k];
+  if (!d || L.hl === k) return;
+  L.hl = k;
+  $('#donut').classList.toggle('hl', !!c);
+  document.querySelectorAll('#donut .dseg').forEach(e => e.classList.toggle('on', +e.dataset.k === k));
+  document.querySelectorAll('#lrows .lrow').forEach(e => e.classList.toggle('on', +e.dataset.k === k));
+  roll($('#dtot'), fmtH(c ? c.s : d.total_s)); swapText($('#dlab'), c ? c.name : dayWord());
+}
+
+function lifeWeek(d){  // seven columns that stay put while you move through the week: bars regrow, the ink thumb slides
+  const wk = $('#lweek'), today = iso(new Date()), w = d.week;
+  if (wk.dataset.mon !== w[0].day) {
+    wk.dataset.mon = w[0].day;
+    wk.innerHTML = `<i class="lwavg none"></i><i class="lwthumb" style="--k:${w.findIndex(x => x.day === S.day)}"></i>` + w.map((x, k) =>  // the thumb starts on your day
+      `<button class="lwd" style="--k:${k}"><span class="lwbar"></span><span class="lwl">${'MTWTFSS'[k]}</span></button>`).join('');
+    void wk.offsetWidth;  // bars start flat and grow in
+  }
+  $('#lwk').textContent = w.some(x => x.day === today) ? 'this week'
+    : 'week of ' + new Date(w[0].day + 'T00:00').toLocaleDateString([], {day: 'numeric', month: 'short'}).toLowerCase();
+  const done = w.filter(x => x.has && x.day !== today), avg = done.length >= 2 ? done.reduce((a, x) => a + x.s, 0) / done.length : null;
+  const max = Math.max(1, avg || 0, ...w.map(x => x.s));
+  wk.querySelectorAll('.lwd').forEach((b, k) => { const x = w[k], name = new Date(x.day + 'T00:00').toLocaleDateString([], {weekday: 'long'}).toLowerCase();
+    b.disabled = !S.days.includes(x.day); b.classList.toggle('on', x.day === S.day); b.classList.toggle('off', !x.has);
+    b.setAttribute('aria-label', `${name}: ${x.has ? fmtH(x.s) + ' off the clock' : 'not tracked'}`);
+    b.firstElementChild.style.setProperty('--h', x.s / max);
+    b.firstElementChild.innerHTML = x.cats.map(c => `<i style="flex-grow:${c.s};background:${lc(c.name)}"></i>`).join('');
+    b.onmouseenter = () => x.has && showTip(b, `<b>${x.day === today ? 'today' : name}</b><span>${fmtH(x.s)}</span>` +
+      (x.cats.length ? `<div>${x.cats.slice(0, 3).map(c => `${esc(c.name)} ${fmtH(c.s)}`).join(' · ')}</div>` : ''));
+    b.onmouseleave = hideTip;
+    b.onclick = () => { hideTip(); goDay(x.day); }; });
+  wk.querySelector('.lwthumb').style.setProperty('--k', w.findIndex(x => x.day === S.day));
+  const line = wk.querySelector('.lwavg');
+  line.classList.toggle('none', avg == null); if (avg != null) line.style.setProperty('--a', avg / max);
+  $('#lavg').textContent = avg == null ? '' : `avg ${fmtH(avg)}`;
+  // against your other days, never a score. One finished day so far? Then against that day, by name
+  const one = !avg && done.length === 1 && done[0].day !== S.day && done[0];
+  const base = avg ?? (one ? one.s : null), cmp = $('#lcmp'), so = S.day === today ? ' so far' : '';
+  if (base == null) { cmp.classList.add('near'); return cmp.lastElementChild.textContent = ''; }
+  const prev = new Date(S.day + 'T00:00'); prev.setDate(prev.getDate() - 1);
+  const ref = avg ? 'your daily average' : one.day === iso(prev) ? 'yesterday' : new Date(one.day + 'T00:00').toLocaleDateString([], {weekday: 'long'}).toLowerCase();
+  const diff = d.total_s - base, near = Math.abs(diff) < Math.max(120, base * .1);
+  cmp.classList.toggle('near', near); cmp.classList.toggle('up', diff > 0);
+  swapText(cmp.lastElementChild, near ? `about the same as ${ref}${so}` : `${fmtH(Math.abs(diff))} ${diff > 0 ? 'more' : 'less'} than ${ref}${so}`);
 }
 
 /* ---------- receipts you add yourself ---------- */

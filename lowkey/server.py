@@ -11,7 +11,7 @@ from urllib.parse import parse_qs, urlparse
 
 from . import focus
 from .config import CONFIG, DATA, DEMO, LIVE, MODEL, PERSONAL, PORT, load, lock, save, save_config, update_settings
-from .labeler import WAKE, add_manual, day_sessions, delete_manual, life, model_ok, rename_client
+from .labeler import WAKE, add_manual, day_sessions, delete_manual, life, life_week, model_ok, rename_client
 
 WEB = Path(__file__).parent / "web"
 STATUSES = ("pending", "billed", "nah")
@@ -118,7 +118,8 @@ class Handler(SimpleHTTPRequestHandler):
         if url.path == "/api/island":  # where the island sits on screen, so the dashboard can send things home to it
             return self.send_json({"island": LIVE.get("island"), "settings": LIVE["settings"]})
         if url.path == "/api/life":  # off the clock: personal time by kind and by source
-            return self.send_json(life(datetime.fromisoformat(q["day"]).strftime("%Y-%m-%d")))
+            day = datetime.fromisoformat(q["day"]).strftime("%Y-%m-%d")
+            return self.send_json({**life(day), "week": life_week(day)})
         if url.path == "/api/intents":  # now, what's next (with the reason), what got done today
             return self.send_json(focus.listing())
         if url.path == "/api/range":

@@ -11,7 +11,7 @@ import threading
 import time
 import urllib.request
 from collections import defaultdict
-from datetime import datetime
+from datetime import datetime, timedelta
 
 from .config import CONFIG, DATA, LIVE, MODEL, OLLAMA, PERSONAL, SLOT_S, color, load, lock, rate, save
 
@@ -246,17 +246,18 @@ LIFE_HINTS = {  # the obvious ones are settled by plain code; the model only see
     "shopping & food": ["amazon", "flipkart", "myntra", "swiggy", "zomato", "blinkit", "zepto", "ajio", "meesho", "bigbasket"],
     "reading & learning": ["wikipedia", "medium", "kindle", "coursera", "udemy", "duolingo", "substack"]}
 BROWSERS = ("chrome", "msedge", "firefox", "brave", "opera", "vivaldi", "safari", "arc")
-BROWSER_NAMES = ("google chrome", "microsoft edge", "mozilla firefox", "brave", "opera", "vivaldi", "safari", "personal", "profile")
+BROWSER_NAMES = ("google chrome", "microsoft edge", "mozilla firefox", "brave", "opera", "vivaldi", "safari", "personal", "profile", "new tab")
 
 
 def source(app, title):
-    """Where the time went, the way you'd say it: the site for a browser tab ("YouTube"), otherwise the app."""
+    """Where the time went, the way you'd say it: the site for a browser tab ("YouTube"), otherwise the app.
+    A browser with no site in its title (a new tab) is nowhere: None."""
     a = re.sub(r"\.(exe|app)$", "", app.strip(), flags=re.I)
     if any(b in a.lower() for b in BROWSERS):
-        parts = [re.sub(r"^\(\d+\)\s*", "", p.strip()) for p in re.split(r"\s[-|–—·]\s", title)]  # "· GitHub" too
+        parts = [re.sub(r"^\(\d+\)\s*|\s*\([^)]*\)$", "", p.strip()) for p in re.split(r"\s[-|–—·]\s", title)]  # "· GitHub" too
         parts = [p for p in parts if p and not any(b in p.lower() for b in BROWSER_NAMES)]
         known = next((p for p in parts if any(h in p.lower() for hs in LIFE_HINTS.values() for h in hs)), None)
-        return (known or (parts[-1] if parts else a))[:40]  # a site we know wins wherever it sits in the title
+        return (known or parts[-1])[:40] if parts else None  # a site we know wins wherever it sits in the title
     return a[:1].upper() + a[1:40]
 
 
@@ -280,19 +281,24 @@ def category(src, titles, cache, use_model):
 
 def life(day):
     """The day's off-the-clock time: by kind (watching, gaming, social...) and by source (Netflix, Valorant...).
-    It reads the same labelled slots as the timesheet; only slots the model called personal count."""
+    It reads the same labelled slots as the timesheet, with your edits: what you moved to a client stops counting."""
     slots, cache, use_model = labeled(day)
+    edits = load("edits.json", {})
+    mine = {t for s in merge(slots, day) if edits.get(s["id"], {}).get("client", s["client"]) == PERSONAL
+            for t in slots if s["start"] <= t < s["end"]}
     secs, titles = defaultdict(float), defaultdict(list)
     work = [h.lower() for c in CONFIG["clients"] for h in [c["name"], *c["hints"]]]
-    for windows, lab in slots.values():
-        if lab["client"] == PERSONAL:
-            for (app, title), s in windows.items():
-                if any(h in f"{app} {title}".lower() for h in work) or "lowkey — bills your hours" in title.lower():
-                    continue  # a client's window (or lowkey's own dashboard) inside a personal slot isn't leisure
-                src = source(app, title)
-                secs[src] += s
-                if len(titles[src]) < 3 and title not in titles[src]:
-                    titles[src].append(title[:80])
+    for t in mine:
+        for (app, title), s in slots[t][0].items():
+            if any(h in f"{app} {title}".lower() for h in work) or "lowkey — bills your hours" in title.lower():
+                continue  # a client's window (or lowkey's own dashboard) inside a personal slot isn't leisure
+            src = source(app, title)
+            if not src:
+                continue
+            secs[src] += s
+            if len(titles[src]) < 3 and title not in titles[src]:
+                titles[src].append(title[:80])
+    secs = {k: v for k, v in secs.items() if v >= 30}  # a few seconds in the Snipping Tool isn't time anyone spent
     with lock:
         before = len(cache)
         kinds = {src: category(src, titles[src], cache, use_model) for src in secs}
@@ -304,6 +310,18 @@ def life(day):
         out[kinds[src]]["sources"].append({"name": src, "s": round(s)})
     cats = [{"name": k, "s": round(v["s"]), "sources": v["sources"][:5]} for k, v in out.items()]
     return {"total_s": round(sum(secs.values())), "cats": sorted(cats, key=lambda c: -c["s"])}
+
+
+def life_week(day):
+    """Monday to Sunday around the day: each day's total and kinds, for the week strip. Days still ahead stay empty."""
+    d0 = datetime.fromisoformat(day)
+    out = []
+    for d in (d0 + timedelta(days=k - d0.weekday()) for k in range(7)):
+        k = d.strftime("%Y-%m-%d")
+        has = d.date() <= datetime.now().date() and (DATA / f"activity-{k}.jsonl").exists()
+        x = life(k) if has else {"total_s": 0, "cats": []}
+        out.append({"day": k, "s": x["total_s"], "has": has, "cats": [{"name": c["name"], "s": c["s"]} for c in x["cats"]]})
+    return out
 
 
 # ---------- live feed for the island ----------

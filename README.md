@@ -147,7 +147,7 @@ Say what you're about to do, in one line: *"acme login fix by 5, about an hour"*
 | **why?** | dashboard card | Unfolds the exact windows behind the line: your receipts. |
 | **+ add** | dashboard, receipts | Log time lowkey couldn't see, in one line: *"1h call with acme at 3pm"*. Chips show the client, length and start; `Enter` adds it to the day you're looking at. Added cards say "added by you" and can be removed (with undo). |
 | 👥 **your clients** | dashboard header | Add, rename, recolour and re-rate clients, edit their hints, and set your name, email, currency and daily goal. Saves as you go; renaming a client carries its history (labels, edits, receipts, intentions) to the new name. |
-| **off the clock** | dashboard | Your personal time by kind (watching, gaming, social, messaging, music…) and by source (YouTube, Valorant, WhatsApp…). Hover the bar for the breakdown. |
+| **off the clock** | dashboard | Your personal time by kind (watching, gaming, social, messaging, music…) and by app (YouTube, Valorant, WhatsApp…). Point at a kind to lift its arc in the ring; click a row for its apps; click a day in the week strip to go there. |
 | **all · to review · billed · side quests** | dashboard | Filters, with counts. The cards re-flow on springs. |
 | **vibe check queue** | dashboard | Click to start reviewing: it filters to what's waiting and focuses the first one. Hover it for the keyboard shortcuts. |
 | **‹ day ›** | dashboard header | Change day. The page slides the way you went. |
@@ -167,7 +167,7 @@ Your day as colour blocks, one card per work session, each with an invoice line 
 - **Keyboard:** `J`/`K` move · `Y` bill · `N` nah · `E` edit · `←`/`→` change day · `B` bill · `W` wrapped · `S` settings · `Ctrl+Z` undo.
 - **why?** unfolds the exact windows behind every line. If a client ever asks what they paid for, you have receipts.
 - **"% backed"** is computed by plain code, not by the model: the share of the session's time whose window titles match that client. A low score shows up as *"check me"*.
-- **Off the clock.** The time the model called personal, broken down the way Screen Time would: watching, gaming, social, messaging, music, shopping & food, reading & learning. Each source (Netflix, YouTube, Valorant, Swiggy…) is categorized once, by plain hints where they're obvious and by the local model where they aren't, and remembered. A client's window inside a personal slot still counts as work. No scores, no scolding.
+- **Off the clock.** The time the model called personal, broken down the way Screen Time would: watching, gaming, social, messaging, music, shopping & food, reading & learning. Each source (Netflix, YouTube, Valorant, Swiggy…) is categorized once, by plain hints where they're obvious and by the local model where they aren't, and remembered. A client's window inside a personal slot still counts as work, and a session you move to a client stops counting here. Beside it, the week: a bar a day, your daily average dashed across, and one plain line on how the day compares (*"11m less than your daily average"*). No scores, no scolding.
 - **Add what it couldn't see.** A phone call, an offline meeting, work on paper: *"+ add"* and one line like *"1h call with acme at 3pm"*. It's billed like any other session.
 - **Your clients, in the dashboard.** No more editing JSON: name, rate, colour and hints, saved as you go.
 
