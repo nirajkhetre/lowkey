@@ -257,7 +257,7 @@ Daily use is on Windows 11. The macOS and Linux trackers are covered by tests wi
 | Label latency, RTX 4050 Laptop (6 GB), thinking off | ~0.3–0.6 s | instant |
 | Same call with Gemma 4's thinking on | ~9.5 s | — |
 
-Shorter slots give the model less to go on per label (it picks the slot's main client 95.7% of the time at 5 minutes, 98.1% at 15), but they sweep far less of your time into the wrong client, so more of the money lands right. That's why 5 minutes is the default: about 0.4 s of GPU per label, 12 labels an hour.
+Shorter slots give the model less to go on per label (it picks the slot's main client 95.7% of the time at 5 minutes, 98.1% at 15), but they sweep far less of your time into the wrong client, so more of the money lands right. That's why 5 minutes is the default: under half a second of GPU per label, 12 slots an hour.
 
 The synthetic week is deliberately easy for keywords, since its window titles contain client names. The model earns its place on real days, where titles don't name the client, and in writing invoice lines, which rules can't do.
 

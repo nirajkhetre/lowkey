@@ -31,7 +31,7 @@ lock = threading.Lock()
 SETTINGS = ROOT / "settings.json"
 # On Windows the island floats over a same-edge taskbar by default (true notch look); macOS can't cover its menu bar.
 # "slot": how many minutes of windows the model reads per label. 5 measured best on the demo week (94.6% of minutes
-# billed to the right client, vs 91.7% at 15), for about 0.4 s of GPU per label.
+# billed to the right client, vs 91.7% at 15), for under half a second of GPU per label.
 DEFAULTS = {"edge": "top", "taskbar": "over" if sys.platform == "win32" else "below", "rest": "lip", "slot": "5"}
 CHOICES = {"edge": ("top", "bottom", "left", "right"), "taskbar": ("below", "over"), "rest": ("lip", "pill"),
            "slot": ("5", "10", "15")}

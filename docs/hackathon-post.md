@@ -1,65 +1,48 @@
 ---
-title: I gave my laptop a Dynamic Island that writes my timesheet, and my screen never leaves my laptop
+title: "lowkey: Gemma reads my window titles every 5 minutes and writes my timesheet, without them leaving my laptop"
 published: false
-tags: devchallenge, hf26challenge, opensource, ai
+tags: devchallenge, hf26challenge, gemma, opensource
 ---
 
 *This is a submission for the [Hacktoberfest Open-Source AI Challenge Week 2: Side Hustle](https://dev.to/challenges/hacktoberfest-week2-2026-10-12)*
 
-<!-- TODO (you): replace this opening with YOUR real moment. Example shape, only if true:
-"Last month I invoiced a client for 6 hours. My git log said 9. I'd just... forgotten." -->
-
-If you bill by the hour, your timesheet is a lie. Not on purpose. You forget to start the timer, you switch between three clients before lunch, and on the last Friday of the month you reconstruct your week from browser history and vibes.
-
-The tools that fix this want one of two things: your money, or your screen.
-
-- **Your money:** in 2026, Harvest customers opened renewal bills that had jumped after the Bending Spoons acquisition. One UK consultant's monthly bill reportedly went from **$130 to $2,110** ([Silicon UK](https://www.silicon.co.uk/e-enterprise/merger-acquisition/harvest-price-shock-631249)).
-- **Your screen:** automatic trackers work by watching what you do and sending it to their cloud. Your screen is your client's code, your DMs, your bank tab. When Microsoft tried a local version of "watch everything" with Recall, people hated it so much that Signal and Brave shipped features to block it.
-
-So I built **lowkey**: it bills your hours, lowkey. It's a Dynamic Island for Windows and macOS that watches what you work on and lets an **open-weight model running on my own GPU** turn it into invoice lines. Nothing about my screen ever leaves my laptop.
-
 ## What I Built
 
-**lowkey** has three parts:
+If you bill by the hour, your timesheet is a reconstruction. You forget to start the timer, you switch between three clients before lunch, and at the end of the month you rebuild the week from your browser history.
 
-**🏝️ The island.** Like a MacBook notch, it hides in the top edge of the screen as a thin lip glowing in my current client's colour:
+The tools that fix this want your money or your screen. In August, Harvest customers opened renewal bills after its sale to Bending Spoons: one user's price went from $12 a month to about $116, and a UK consultancy's monthly bill went from $130 to $2,110 ([Silicon UK](https://www.silicon.co.uk/e-enterprise/merger-acquisition/harvest-price-shock-631249)). The automatic trackers work by watching everything you do, and people don't like being watched, even locally: when Microsoft brought back Recall, [Signal](https://signal.org/blog/signal-doesnt-recall/) and [Brave](https://brave.com/privacy-updates/35-block-recall/) both shipped ways to block it by default.
 
-- Hover, and it springs down into a pill: your client's creature, a tiny live squiggle, the session timer and ₹ earned.
-- Keep hovering, and it opens into a card showing what the AI thinks I'm doing (typed in live) and a flow wave of my last hour.
-- Double-click pins it open.
-- **go dark** pauses tracking (for when you're doing something nobody needs a log of).
-- **not work** marks the current session personal.
-- When I switch to another client's work, it pops out: *"switched to Nimbus Labs"*.
+**lowkey** is a timesheet that writes itself on your own laptop. Every 5 seconds it notes which window is in front: the app's name and the window's title, nothing else. No screenshots, no URLs, no keystrokes. Every 5 minutes, Gemma 4 E2B, running on my laptop's GPU through Ollama, reads that slot of window titles and decides which client it was for and what got done. You review the lines like a feed, **bill it** or **nah**, and send a PDF invoice.
 
-<!-- TODO: GIF of the island collapsed → hover → switch toast -->
+It's for freelancers and small studios who bill hourly, and especially the ones under NDA, who can't paste client work into a cloud AI at all.
 
-**🧾 The dashboard** at `localhost:7777`:
+![The island tucked away, as a pill on hover, and fully open](https://raw.githubusercontent.com/nirajkhetre/lowkey/main/docs/images/island-states.png)
 
-- My day as colour blocks, one per client.
-- One card per work session, with an AI-written invoice line like *"Developed auth logic, edited login.tsx, fixed OAuth redirect for acme-website."*
-- I review cards like a feed: **bill it ✅ / nah 🙅**, or `Y`/`N` with `J`/`K` to move.
-- Every card has a **🧾 why?** button that shows the exact windows behind that line. If a client ever asks "what did I pay for?", I have receipts.
+There are two faces:
 
-**💸 Send the bill.** A receipt-style invoice per client, saved as PDF or copied as CSV.
+- **The island**, a notch that hides in the edge of the screen as a thin line in your current client's colour. Hover and it opens: your client as a little blob creature, the session timer, what you've earned today, and your last hour drawn as a wave. It says *"switched to Nimbus Labs"* when your work changes clients, and on Windows it steps aside when a video or game goes fullscreen.
+- **The dashboard** at `127.0.0.1:7777`: your day in colour blocks, one card per work session with its invoice line, a **why?** on every card that shows the windows behind it, and the invoice.
 
-**✨ Wrapped.** My week as a shareable card: main character client, longest flow state, hours lost to side quests.
+![The dashboard: the day in blocks, then one card per session](https://raw.githubusercontent.com/nirajkhetre/lowkey/main/docs/images/dashboard.png)
 
-<!-- TODO: screenshot of dashboard + wrapped card -->
+**Who would pay for it?** People already pay for time tracking, and the Harvest story shows what happens when the price is someone else's decision. lowkey is MIT-licensed and free to run; what I'd charge for is the boring part: a one-click installer, a signed Mac build and invoice templates.
 
-**Who pays for this?** Freelancers and small agencies who bill hourly. They already pay for time tracking ($9–14 per user per month on Harvest's list prices alone), and the ones under NDA can't paste client work into a cloud AI at all. lowkey is MIT-licensed and free to run. A paid version would be the boring stuff: a one-click installer, a Mac build and invoice templates. <!-- TODO: replace with what your first user said they'd pay -->
+<!-- ✏️ FILL IN (first user, part 1): one sentence on what your first user said they'd pay, in their words. Delete this comment if nobody tried it. -->
 
 ## Demo
 
-<!-- TODO: 60–90s video. Suggested shots:
-1. The island collapsed, working in VS Code
-2. Switch to a different client's repo, the "switched to" pop
-3. Hover, expanded view, "go dark"
-4. Open the dashboard, Y Y N through cards, "why?" on one card
-5. Send the bill, the receipt invoice
-6. Wrapped
-7. Task Manager / airplane mode showing it still works offline -->
+You can run the bundled demo week without tracking anything:
 
-Try the bundled demo week without tracking anything: `python -m lowkey --demo`.
+```bash
+ollama pull gemma4:e2b
+git clone https://github.com/nirajkhetre/lowkey && cd lowkey
+pip install -r requirements.txt
+python -m lowkey --demo
+```
+
+![A nudge when you drift, one-tap progress when you move on, and what's next with its reason](https://raw.githubusercontent.com/nirajkhetre/lowkey/main/docs/images/island-focus.png)
+
+![Click a gap in your day, say what it was](https://raw.githubusercontent.com/nirajkhetre/lowkey/main/docs/images/log-time.png)
 
 ## Code
 
@@ -67,73 +50,110 @@ Try the bundled demo week without tracking anything: `python -m lowkey --demo`.
 
 ## How I Built It
 
-The whole thing is about 1,350 lines: Python (standard library plus PySide6 for the island) and one HTML file. No Electron, no framework, no cloud account.
+```
+foreground window, every 5 s → a JSONL file on disk you can read
+                                (idle 5 min+, "go dark", never_track apps: nothing is written)
+     → 5-minute slots → the top 8 windows by time
+     → Gemma 4 E2B on Ollama: {client, task, billable}, client constrained to an enum of your clients
+     → same-client slots merge into a session → a second pass writes one invoice line
+     → plain code: how much of the session your client hints actually back up
+     → you: bill it / nah / move it to another client → lowkey learns a hint
+     → invoice, PDF or CSV
+```
 
-**1. The tracker (stdlib `ctypes`, no dependencies).**
-- Every 5 seconds it reads the foreground window title and process name, and how long since the last keypress.
-- If I've been idle for more than 5 minutes, if I hit **go dark**, or if the window matches a `never_track` entry (password managers, private browsing), nothing is written.
-- Everything else goes to a JSONL file on disk that I can open and read.
+Python's standard library does the tracking (`ctypes` on Windows), PySide6 paints the island, and the dashboard is one HTML file. The server binds to `127.0.0.1` and refuses pages from anywhere else. The model is called through Ollama with a JSON schema, temperature 0 and Gemma's thinking turned off.
 
-**2. The labeller: Gemma 4 E2B on Ollama.**
-- Every 15-minute slot of activity goes to `gemma4:e2b`, running on my RTX 4050 laptop GPU (6 GB VRAM).
-- It gets my client list plus "hints" (repo names, domains) and returns `{client, task, billable}`.
-- The output is constrained by a JSON schema, and the client field is an enum of my real clients. The model literally cannot invent a client.
+### A small model is a confident witness
 
-**3. The second pass.**
-- Consecutive slots for the same client merge into one session.
-- Gemma then rewrites that session's notes into one invoice line, past tense, specific (files, PR numbers), max 90 characters.
+I asked Gemma for a confidence score with every label. On the 155 slots of my demo week, it said **1.0 on 152 of them**. So the number on each card isn't the model's: it's computed by plain code, as the share of the session's time whose window titles contain that client's hints (repo names, domains, project names). Under 60%, the card says *"check me"*. The model writes the line; code decides how much to trust it.
 
-**4. The honesty number: "backed by your windows".**
-- The model's self-reported confidence was useless: it said 100% on everything.
-- So the confidence on each card is computed by plain code instead: the share of that session's time whose window titles actually match the chosen client.
-- Low share means the card says *"🤔 check me"*. The model writes the line; code decides how much to trust it.
+Thinking was the other surprise. Gemma 4 thinks out loud by default, and my first labelling call took **9.5 s**. With thinking off and a schema, a label takes under half a second on an RTX 4050 laptop GPU.
 
-**5. The UI.**
-- Neo-brutalist, deliberately loud: thick outlines, hard shadows, client colours.
-- It uses Windows' own Bahnschrift font, so the page makes **zero** external requests. No Google Fonts, no CDN.
-- The island started in tkinter and looked pixelated: tkinter can't anti-alias or do per-pixel transparency on Windows. I rewrote it in **PySide6 with hand-painted QPainter**: anti-aliased notch shape with concave "ears" where it meets the screen edge, a spring simulation for the bouncy open/close, staggered row entrances, and a window that never takes keyboard focus.
+### How long should a slot be?
 
-### What went wrong (and what I changed)
+I started with 15-minute slots, because that's how I'd fill in a timesheet by hand. A slot gets one client, though, so if you spend 9 minutes on Acme and 6 on Nimbus, all 15 go to Acme. Shorter slots fix that and give the model less to read. So I measured both, on the synthetic demo week, where every window's true client is known from its title:
 
-- **My taskbar is at the top of the screen.** The first island pinned itself to pixel row 0, and the Windows taskbar, which is *also* "always on top", sometimes drew over its header. Whichever topmost window was raised last wins. So there are now two modes, chosen in settings:
-  - **sit on the screen edge:** lowkey re-raises the island above the taskbar (`SetWindowPos(HWND_TOPMOST)`) every 0.4 s.
-  - **hang below it:** the island attaches to the *work area* (`availableGeometry()`), so the taskbar pushes it down instead of covering it.
-  The same work-area logic keeps it under the macOS menu bar, and bottom-taskbar users never notice any of this.
-- **Not everyone wants a notch on top.** The island can live on any edge. The notch shape is built once as if it hung from the top, then mirrored or rotated onto the real edge with a `QTransform`, so the concave "ears" always hug the screen edge. The settings page shows every option as a card with a mini screen of *your* taskbar layout, and hovering a card plays the island's spring animation in miniature.
-- **Gemma 4 thinks out loud by default.** My first labelling call took **9.5 s** because the model produced a whole "Thinking Process" before answering. With thinking off and a JSON schema, the same call takes **~0.3 s**. For 15-minute slots, 30× faster is the difference between "live" and "eventually".
-- **"100% sure" on every card.** See the honesty number above. A judge model grading itself is not a metric.
-- **Repetitive invoice lines.** Merging slots first gave me lines like *"Modified product card code for theme; Modified product card for chaico theme; …"*. The second Gemma pass fixed it: *"Modified product card code/theme, previewed Masala Chai 250g, reviewed liquid file, accessed Shopify orders."*
+| Slot | Slots | Gemma picks the slot's main client | Minutes billed to the right client | Same, keyword rules | Gemma per label |
+|---|---|---|---|---|---|
+| 15 min | 155 | 98.1% | 91.7% | 91.3% | 487 ms |
+| 10 min | 228 | 95.2% | 91.7% | 91.7% | 459 ms |
+| **5 min** | 440 | 95.7% | **94.6%** | 94.1% | 460 ms |
 
-### Numbers
+At 5 minutes Gemma has less context and gets a few more slots wrong, but far less time gets swept into the wrong client, so more of the money lands in the right place. That's the default now, and **reads every** in the settings changes it. A day keeps the length it was first labelled with, because your approvals point at sessions by their start time; changing it mid-day waits for tomorrow if you've already reviewed something. Anyone can re-run the table: `python -m lowkey.eval`.
 
-| Test | Gemma 4 E2B (local) | Keyword rules |
-|---|---|---|
-| Right client per 15-min slot, synthetic demo week (155 slots) | 152 / 155 (98.1%) | 150 / 155 (96.8%) |
-| Right client per slot, **my real day** | <!-- TODO --> | <!-- TODO --> |
-| Invoice line usable without edits, real day | <!-- TODO: n/N --> | n/a (rules can't write) |
-| Label latency, RTX 4050 6 GB | ~0.3–0.6 s | instant |
+On my own days I can't score clients yet (more on that below), but I can measure the same effect with no model at all. Over the first 298 active minutes lowkey recorded on my laptop, with 15-minute slots **37%** of my time fell in slots that were mostly about a different app; with 5-minute slots, **28.6%**. I switch apps a lot.
 
-The synthetic week is easy for keywords on purpose, since its window titles contain client names. All 3 of Gemma's misses there were slots split almost 50/50 between work and personal. The real-day rows are the ones that matter. <!-- TODO: fill after labelling one real day by hand -->
+At 15 minutes, Gemma's three misses on the demo week were all slots split almost exactly in half between work and personal: 50/50, 47/53 and 49/51. And look at the rules column: plain keyword matching on your hints is nearly as good at every length, because the synthetic titles contain client names. The demo week is easy on purpose. The model earns its place on real titles that don't name the client, and in the writing, which rules can't do.
+
+### Teaching it to write a day
+
+Above the numbers, the dashboard shows the day in a sentence, written by Gemma from the day's invoice lines, never from raw window titles. My first prompt showed it the lines with their times and asked for "how the day went, like a friend who just read it". It reported instead:
+
+> the most time went to nimbus labs with 130 minutes spent modifying handlers.py and documenting the v2 spec.
+
+A sharper second version asked it to lead with the day's most concrete win, and for one day Gemma handed a line straight back:
+
+> 11:15, 147 min, Acme Studio: Fixed OAuth redirect in acme-website PR; modified auth.ts & login.tsx.
+
+The third dropped the times from what it sees and says "your own words: never copy a line". It works, mostly:
+
+> you nailed the oauth redirect and auth logic for acme-website. then you spent time previewing chai and working on nimbus-api tasks.
+
+All five demo days now open with "you nailed", and one of them comes out broken: *"you nailed the login.tsx development for acme studio was a solid win"*. The session lines have the same kind of slip: I ask for no client names, and one summary still says *"modified card for Chai & Co theme"*.
+
+### Learning from a fix, carefully
+
+When you move a session to the right client, Gemma picks one word from that session's windows that should have told it. In my tests, given `masala-landing - Figma` filed under Chai & Co, it picked `masala-landing`; given `invoice-gen - main.py - Visual Studio Code` under Nimbus Labs, `invoice-gen`. Then plain code checks the word before it's learned: it must appear in those windows, not be generic (`chrome`, `figma`, `untitled`…) and not already be another client's hint. It needs the check. Given a slot of Reddit, a lofi stream on YouTube and a WhatsApp chat titled "Mom", filed under Chai & Co, Gemma answered `Chai & Co`, which appears in none of those titles. When it suggests nothing usable, lowkey learns nothing rather than guess. When it does learn, it says *"learned: masala-landing means Chai & Co from now on"*, with undo.
+
+### Making the model visible
+
+Using my own build for a day, it felt like a normal app: the model's lines looked exactly like anything I'd typed. So now a small sparkle marks everything Gemma wrote and nothing else. A pill in the header says what it's doing while it does it (*"reading 5 min of your windows…"*) and then how long it took, and the island's edge lights up in the same colours. New lines write themselves into the page. Edit one and its card says *your words* instead.
+
+### Bugs worth telling
+
+- **My taskbar is at the top.** The first island sat on pixel row 0, under a taskbar that is also "always on top". It now hangs from the work area, or optionally re-raises itself above the taskbar.
+- **YouTube fullscreen.** The island is supposed to step aside over fullscreen video. It didn't, because my check skipped maximized windows, and Chrome still reports a window as maximized after it goes fullscreen. The difference turned out to be geometry: maximized, Chrome's window was `[-9, 31, 1929, 1089]` on a `1920×1080` screen, hanging over the edges by its invisible borders; fullscreen, it's exactly `[0, 0, 1920, 1080]`. Now a window counts as fullscreen when it fits the screen exactly.
+
+### What the checks can't see
+
+- **"% backed" only knows your hints.** A Zoom call or an untitled Notepad window can't back anything, so honest work there shows up as *"check me"*.
+- **Half-and-half slots** are a coin flip, for Gemma and for me.
+- **The day sentence isn't checked by code.** It's written from your invoice lines, never the raw windows, but nothing checks it against them, so a wrong word reaches the screen. It wears the sparkle so you know whose words they are.
+- **lowkey never records URLs**, so a browser tab is only as specific as its title.
+- **Daily use is on Windows 11.** The macOS and Linux trackers pass tests against recorded command output, but haven't run on real hardware yet.
+
+### My real days
+
+<!-- ✏️ FILL IN (real-day numbers). Set your real clients first (dashboard → C), work as usual, then review every card.
+Your reviews are the ground truth: a session you move to another client is a miss, a line you rewrite is an edit.
+Fill this in with what really happened, e.g.:
+
+| My real days | Gemma 4 E2B |
+|---|---|
+| Work sessions reviewed | N over D days |
+| Sessions I had to move to another client | M (so N−M right) |
+| Invoice lines I rewrote | K of N |
+
+Then one or two sentences: the most interesting thing it got wrong, quoted. If you didn't get to this, delete the section. -->
 
 ## Why Does Open Innovation Matter?
 
-For this project it isn't a nice-to-have. lowkey couldn't exist on a closed API.
+For lowkey it isn't a preference. It couldn't be built on a closed API.
 
-1. **The data is the most private thing on my computer.** Window titles are client names, repo names, DM previews and the name of the doctor I booked. Sending that to a cloud model every 15 minutes, all day, is not a privacy policy question; it's a hard no. An open-weight model on my GPU means the data has nowhere to go. You don't have to trust my privacy policy: the code is open and the server binds to `127.0.0.1`.
-2. **Always-on is expensive, unless it's free.** A tracker labels ~30–40 slots a day, every day, forever. On my own GPU that costs nothing per label. Pay-per-token pricing is exactly how a time tracker turns into a $2,110 bill.
-3. **I can see and constrain the model.** With Ollama I can force a JSON schema, pin the client to an enum, turn off "thinking" when it wastes 9 seconds, and swap Gemma for Qwen with one environment variable.
-4. **Nobody can reprice it on me.** No acquisition can turn this into a usage-based bill. The weights are on my disk.
+1. **The data is the most private thing on the computer.** Window titles are client names, repo names, DM previews and the name of the clinic you booked. Sending them to a cloud model every few minutes, all day, isn't a privacy-policy question. With an open-weight model on my GPU they have nowhere to go, and you don't have to trust me: the code is open and the server only listens on `127.0.0.1`.
+2. **Always-on has to be free.** At 5-minute slots that's 12 slots an hour, and the slot still filling up is re-read every minute, so up to about 60 model calls an hour, every working hour, for as long as you work. On my own GPU each one costs under half a second and nothing else.
+3. **I can see and steer every step.** Ollama lets me force a JSON schema, make the client an enum so the model can't invent one, turn thinking off when it costs 9 seconds, and swap the model with one environment variable (`LOWKEY_MODEL=qwen3:4b`).
+4. **Nobody can reprice it.** The weights are on my disk. No acquisition turns this into a usage-based bill.
 
-## My Agent Session
-
-<!-- TODO: embed the DevRelay session (judges like it). Remove anything private first. -->
+Where a closed model would be better: the writing. A frontier model would write a livelier day sentence without opening every day with "you nailed", and it would need fewer guards. It would also need my window titles, a key, a server and a bill.
 
 ## My First User
 
-<!-- TODO: ONLY write what really happened. Who (a freelancer you know), how long they ran it,
-how many hours it caught that they would have forgotten, what it got wrong, whether they'd pay (ask a concrete price,
-e.g. "₹299 once?"), and what they asked for next. If nobody tried it, delete this section; don't invent one. -->
+<!-- ✏️ FILL IN (first user, part 2). ONLY what really happened:
+who (a freelancer you know, no surname needed), how long they ran it, what it caught that they'd have forgotten,
+what it got wrong, whether they'd pay and how much (ask a concrete price), and what they asked for next.
+If nobody tried it, delete this whole section; don't invent one. -->
 
 ## Prize Categories
 
-- **Best Use of Gemma**: Gemma 4 E2B does all the labelling and the invoice-line writing, locally via Ollama, with a JSON schema and thinking turned off.
+- **Best Use of Gemma**: Gemma 4 E2B labels every 5-minute slot, writes each invoice line and the day's sentence, sorts personal time, guesses the client for time you log by hand, and picks what to learn from your fixes, all locally through Ollama with a JSON schema, a client enum and thinking turned off.
