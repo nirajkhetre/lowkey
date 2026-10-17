@@ -157,6 +157,14 @@ def test_intentions_parse_order_and_watch():
         assert b["state"] == "now" and focus.W["prompt"] is None
         focus.act(b["id"], "done", now=t + 60)
         assert b["state"] == "done" and focus.listing(t + 60)["done"][0]["id"] == b["id"]
+        focus.act(a["id"], "start", now=t)
+        focus.act(a["id"], "drop", now=t)                                                      # delete what's on now...
+        assert focus.current() is None and a["id"] not in [x["id"] for x in focus.listing(t)["next"]]
+        focus.act(a["id"], "restore", now=t)                                                   # ...and undo it, time and all
+        assert focus.current() is a and a["spent_s"] == 60 and "was" not in a
+        focus.act(c["id"], "drop", now=t)
+        focus.act(a["id"], "drop", now=t)                                                      # only the latest drop is kept
+        assert [x["id"] for x in focus._xs if x["state"] == "dropped"] == [a["id"]]
     finally:
         config.DATA, focus._xs = real, None
         focus.W.clear()

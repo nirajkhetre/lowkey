@@ -48,6 +48,7 @@ kbd{font-family:var(--mono);font-size:.75em;border:1.5px solid var(--ink);border
 /* icon buttons: no labels, a tooltip explains them after a short hover (the same intent delay as the island) */
 .ib{width:36px;height:36px;border:0;border-radius:999px;background:transparent;display:grid;place-items:center;cursor:pointer;flex:none;transition:background .15s,transform .4s var(--spring)}
 .ib:hover{background:var(--bg)}
+.ib.bin .lid{transform-origin:100% 100%}.ib.bin:hover .lid{transform:rotate(14deg) translateY(-1px)}  /* the lid lifts: a hint, not a warning */
 .ib:active{transform:scale(.88);transition-duration:.06s}
 .ib svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;overflow:visible;transition:transform .4s var(--spring)}
 .ib svg *{transition:transform .45s var(--spring);transform-box:fill-box;transform-origin:center}
@@ -969,9 +970,9 @@ function renderFocus(){
       <div class="factions">${F.aside
         ? `<div class="seg" id="howfar"><span class="thumb"></span><button data-p="10">just started</button><button data-p="50">halfway</button><button data-p="80">almost</button></div>
            <button class="btn quiet" id="faCancel">cancel</button>`
-        : `<button class="btn quiet" id="fAside" title="put it back in line, and say how far you got">set aside</button><button class="btn lime" id="fDone">done</button>`}</div>`;
+        : `<button class="ib bin" id="fDrop" data-tip="delete it (you can undo)" aria-label="delete it"><svg viewBox="0 0 24 24"><path class="lid" d="M4 6.5h16M9.5 6.5V4.5h5v2"/><path d="M6.5 6.5l.9 12.2a1.5 1.5 0 0 0 1.5 1.3h6.2a1.5 1.5 0 0 0 1.5-1.3l.9-12.2M10.2 10.5v6M13.8 10.5v6"/></svg></button><button class="btn quiet" id="fAside" title="put it back in line, and say how far you got">set aside</button><button class="btn lime" id="fDone">done</button>`}</div>`;
     if (F.aside) { $('#howfar').querySelectorAll('button').forEach(b => b.onclick = () => setAside(n, +b.dataset.p, b)); $('#faCancel').onclick = () => { F.aside = false; renderFocus(); }; }
-    else { $('#fAside').onclick = () => { F.aside = true; renderFocus(); }; $('#fDone').onclick = e => finish(n, e.currentTarget); }
+    else { $('#fAside').onclick = () => { F.aside = true; renderFocus(); }; $('#fDone').onclick = e => finish(n, e.currentTarget); $('#fDrop').onclick = e => drop(n, e.currentTarget); }
   } else $('#fnow').innerHTML = '';
   askHint();
   const shown = F.all ? d.next : d.next.slice(0, 3), more = d.next.length - shown.length;
@@ -1018,7 +1019,7 @@ async function setAside(n, p, el){
 async function drop(x, el){
   await call('/api/intents/act', {id: x.id, action: 'drop'});
   await loadFocus('focus');
-  snack(`dropped · ${x.text}`, async () => { await call('/api/intents', {text: x.text, start: false}); loadFocus('focus'); });
+  snack(`deleted · ${x.text}`, async () => { await call('/api/intents/act', {id: x.id, action: 'restore'}); loadFocus('focus'); });  // back exactly as it was
 }
 /* saying it: the headline asks (idle), or "then…" lines up what's after (busy). Chips show what lowkey understood */
 const EXAMPLES = ["acme login fix by 5, about an hour", "nimbus invoice tomorrow, 30m", "chai banner by friday, 2h", "reply to client emails ~20 min"];

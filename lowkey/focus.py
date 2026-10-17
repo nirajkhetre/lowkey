@@ -285,7 +285,7 @@ def add(text, start=None, now=None):
 
 
 def act(iid, action, value=None, now=None):
-    """start · progress (10/50/80/100) · done · drop · edit {text, client, due, est_min}"""
+    """start · progress (10/50/80/100) · done · drop · restore (undo a drop) · edit {text, client, due, est_min}"""
     now = now or time.time()
     with _lock:
         xs = _items()
@@ -314,10 +314,19 @@ def act(iid, action, value=None, now=None):
                 W["prompt"] = ({"kind": "next", "id": nxt[0]["id"], "at": now, "done": it["text"] if p == 100 else None,
                                 "spent": it.get("spent_s", 0)} if nxt else
                                {"kind": "done", "id": iid, "at": now, "spent": it.get("spent_s", 0)} if p == 100 else None)
-        elif action == "drop":
-            xs.remove(it)
+        elif action == "drop":  # kept (hidden) until the next drop, so undo brings it back exactly as it was
+            xs[:] = [x for x in xs if x["state"] != "dropped"]
+            it.update(was=it["state"], state="dropped")
             if was_now:
                 W["prompt"] = None
+        elif action == "restore":
+            if it["state"] != "dropped":
+                raise ValueError("not dropped")
+            if it.get("was") == "now":
+                for x in xs:
+                    if x["state"] == "now":
+                        x["state"] = "next"
+            it["state"] = it.pop("was", "next")
         elif action == "edit":
             v = value if isinstance(value, dict) else {}
             if "text" in v and str(v["text"]).strip():
