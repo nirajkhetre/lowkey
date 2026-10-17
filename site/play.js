@@ -87,6 +87,159 @@
     return {cancel() { if (!live) return; live = false; el.animate([{opacity: 1}, {opacity: 0}], {duration: 160}).onfinish = () => el.remove(); }};
   }
 
+  /* ================= 3. log what it couldn't see ================= */
+  // Your day as blocks; the hatched gaps are time lowkey didn't see. Click one (or drag across part of it), say what it
+  // was, and it's billed like any other session. Plain keyword matching stands in for the app's parser here.
+  const DAY0 = 9 * 60, DAY1 = 16 * 60, SPAN = DAY1 - DAY0;
+  const RATES = {'Acme Studio': 1200, 'Chai & Co': 900, 'Nimbus Labs': 1500};
+  const HUES = {'Acme Studio': '#B8FF3B', 'Chai & Co': '#FF7AD9', 'Nimbus Labs': '#7AA2FF', 'side quest': '#d9d4c7'};
+  const HINTS = [[/nimbus|api|postman|invoice/i, 'Nimbus Labs'], [/acme|login|oauth|figma/i, 'Acme Studio'], [/chai|shopify|banner|masala/i, 'Chai & Co']];
+  const hm = m => `${((Math.floor(m / 60) + 11) % 12) + 1}:${String(m % 60).padStart(2, '0')}${m < 720 ? 'a' : 'p'}`;
+  const money = n => '₹' + Math.round(n).toLocaleString('en-IN');
+  const logPic = $('#log-pic');
+  if (logPic) {
+    const seen = [[555, 645, 'Chai & Co'], [675, 780, 'Acme Studio'], [825, 930, 'Nimbus Labs']];  // 9:15–10:45, 11:15–1:00, 1:45–3:30
+    let logged = [], total = 5390, sel = null, pending = null, undoT;
+    logPic.innerHTML = `<div class="lg">
+      <div class="lg-top"><span class="lg-k">friday · your day</span><span class="lg-total">today <b>₹5,390</b></span></div>
+      <div class="lg-bar" role="group" aria-label="your day, with gaps you can log"></div>
+      <div class="lg-axis">${[9, 10, 11, 12, 13, 14, 15, 16].map(h => `<span style="left:${(h * 60 - DAY0) / SPAN * 100}%">${h > 12 ? h - 12 : h}${h < 12 ? 'a' : 'p'}</span>`).join('')}</div>
+      <div class="lg-pop" hidden><div class="lg-span"></div>
+        <input class="lg-in" type="text" maxlength="60" placeholder="what was it?" aria-label="what was it?">
+        <div class="lg-sug"><button type="button">call with nimbus</button><button type="button">acme standup</button><button type="button">sketching the chai banner</button></div>
+        <div class="lg-row"><span class="lg-who"></span><span class="lg-worth"></span><button type="button" class="lg-go">log it</button></div></div>
+      <p class="lg-hint" aria-live="polite">click a gap · or drag across part of one</p></div>`;
+    const bar = $('.lg-bar', logPic), pop = $('.lg-pop', logPic), inp = $('.lg-in', logPic), hint = $('.lg-hint', logPic), totalEl = $('.lg-total b', logPic);
+    const pct = m => (m - DAY0) / SPAN * 100;
+    const gaps = () => {  // free time between what was seen and what you've logged, 5 minutes or more
+      const taken = [...seen, ...logged].map(x => [x[0], x[1]]).sort((a, b) => a[0] - b[0]), out = [];
+      let t = DAY0;
+      taken.forEach(([a, b]) => { if (a - t >= 5) out.push([t, a]); t = Math.max(t, b); });
+      if (DAY1 - t >= 5) out.push([t, DAY1]);
+      return out;
+    };
+    function draw(fresh) {
+      bar.innerHTML = seen.map(([a, b, c]) => `<i class="lg-blk" style="left:${pct(a)}%;width:${pct(b) - pct(a)}%;background:${HUES[c]}"></i>`).join('') +
+        logged.map((x, i) => `<button type="button" class="lg-blk lg-mine${x === fresh ? ' fresh' : ''}" data-i="${i}" style="left:${pct(x[0])}%;width:${pct(x[1]) - pct(x[0])}%;--h:${HUES[x[2]]}" aria-label="${x[3]}, ${hm(x[0])} to ${hm(x[1])}, added by you · remove"></button>`).join('') +
+        gaps().map(([a, b]) => `<button type="button" class="lg-gap" data-a="${a}" data-b="${b}" style="left:${pct(a)}%;width:${pct(b) - pct(a)}%" aria-label="${b - a} minutes nobody saw, ${hm(a)} to ${hm(b)}: log it"><span>+${b - a}m</span></button>`).join('') +
+        '<i class="lg-sel"></i>';
+      if (!gaps().length) hint.innerHTML = 'every minute accounted for · <button type="button" class="lg-reset">start over</button>';
+    }
+    const roll = to => {  // the total counts up (or down) to its new value
+      const from = total, t0 = performance.now();
+      total = to;
+      const step = now => { const t = Math.min(1, (now - t0) / 700); totalEl.textContent = money(from + (to - from) * ease(t)); if (t < 1) requestAnimationFrame(step); };
+      REDUCED ? totalEl.textContent = money(to) : requestAnimationFrame(step);
+      if (!REDUCED) totalEl.animate([{transform: 'scale(1)'}, {transform: 'scale(1.12)'}, {transform: 'scale(1)'}], {duration: 500, easing: 'cubic-bezier(.2,0,0,1)'});
+    };
+    const showSel = () => {
+      const s = $('.lg-sel', bar);
+      s.style.left = pct(sel[0]) + '%'; s.style.width = (pct(sel[1]) - pct(sel[0])) + '%';
+      s.classList.add('on');
+    };
+    const guess = text => { for (const [re, c] of HINTS) if (re.test(text)) return c; return null; };
+    function preview() {
+      const c = guess(inp.value), mins = sel[1] - sel[0];
+      $('.lg-span', pop).textContent = `${hm(sel[0])} – ${hm(sel[1])} · ${mins}m`;
+      $('.lg-who', pop).innerHTML = c ? `<i style="background:${HUES[c]}"></i>${c}` : (inp.value.trim() ? '<i></i>side quest' : '<i></i>say what it was');
+      $('.lg-worth', pop).textContent = c ? money(mins / 60 * RATES[c]) : inp.value.trim() ? 'off the invoice' : '';
+      $('.lg-go', pop).disabled = !inp.value.trim();
+    }
+    function openPop() {
+      showSel();
+      pop.hidden = false;
+      const r = bar.getBoundingClientRect(), w = Math.min(320, logPic.clientWidth - 16), mid = r.left + r.width * (pct((sel[0] + sel[1]) / 2) / 100) - logPic.getBoundingClientRect().left;
+      pop.style.width = w + 'px';
+      pop.style.left = Math.max(8, Math.min(logPic.clientWidth - w - 8, mid - w / 2)) + 'px';
+      pop.style.setProperty('--tail', (mid - parseFloat(pop.style.left)) + 'px');
+      if (!REDUCED) pop.animate([{opacity: 0, transform: 'translateY(-6px) scale(.95)'}, {opacity: 1, transform: 'none'}], {duration: 320, easing: 'cubic-bezier(.2,0,0,1)'});
+      inp.value = ''; preview();
+      inp.focus({preventScroll: true});
+    }
+    const closePop = () => { pop.hidden = true; sel = null; $('.lg-sel', bar)?.classList.remove('on'); };
+    function commit() {
+      const text = inp.value.trim();
+      if (!text || !sel) return;
+      const c = guess(text) || 'side quest', entry = [sel[0], sel[1], c, text];
+      logged.push(entry);
+      const worth = c in RATES ? (sel[1] - sel[0]) / 60 * RATES[c] : 0, from = $('.lg-sel', bar).getBoundingClientRect();
+      closePop();
+      draw(entry);
+      if (worth) roll(total + worth);
+      capsule(from, worth ? `+${money(worth)}` : 'side quest', HUES[c]);
+      clearTimeout(undoT);
+      hint.innerHTML = `logged · ${text} <button type="button" class="lg-undo">undo</button>`;
+      pending = entry;
+      undoT = setTimeout(() => { pending = null; if (gaps().length) hint.textContent = 'logged blocks are dotted · click one to remove it'; }, 5000);
+    }
+    function remove(entry) {
+      logged = logged.filter(x => x !== entry);
+      if (entry[2] in RATES) roll(total - (entry[1] - entry[0]) / 60 * RATES[entry[2]]);
+      draw();
+      hint.textContent = 'removed · click a gap · or drag across part of one';
+    }
+    function capsule(rect, text, color) {  // what you logged flies home to the island, like changes do in the app
+      if (REDUCED || !window.lowkeyGuide) return window.lowkeyGuide?.catch?.(color);
+      const el = document.createElement('div');
+      el.className = 'cap-fly';
+      el.textContent = text;
+      el.style.background = color;
+      document.body.append(el);
+      const from = {x: rect.left + rect.width / 2, y: rect.top + rect.height / 2}, t0 = performance.now(), dur = 900;
+      const step = now => {
+        const to = window.lowkeyGuide.point(), t = Math.min(1, (now - t0) / dur), e = ease(t), u = 1 - e, c = {x: (from.x + to.x) / 2, y: Math.min(from.y, to.y) - 160};
+        const x = u * u * from.x + 2 * u * e * c.x + e * e * to.x, y = u * u * from.y + 2 * u * e * c.y + e * e * to.y;
+        el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -50%) scale(${1 - e * .55})`;
+        el.style.opacity = t > .85 ? String((1 - t) / .15) : '1';
+        if (t < 1) return requestAnimationFrame(step);
+        el.remove();
+        window.lowkeyGuide.catch?.(color);
+      };
+      requestAnimationFrame(step);
+    }
+
+    // pick: click a gap for all of it, or drag across part of it (5-minute steps, never past the gap)
+    let drag = null;
+    const at = (e, g) => { const r = bar.getBoundingClientRect(), m = DAY0 + (e.clientX - r.left) / r.width * SPAN; return Math.max(g[0], Math.min(g[1], Math.round(m / 5) * 5)); };
+    bar.addEventListener('pointerdown', e => {
+      const g = e.target.closest('.lg-gap');
+      if (!g) return;
+      e.preventDefault();
+      const gap = [+g.dataset.a, +g.dataset.b];
+      drag = {gap, start: at(e, gap), moved: false};
+      bar.setPointerCapture(e.pointerId);
+    });
+    bar.addEventListener('pointermove', e => {
+      if (!drag) return;
+      const m = at(e, drag.gap);
+      if (Math.abs(m - drag.start) >= 5) { drag.moved = true; sel = [Math.min(m, drag.start), Math.max(m, drag.start)]; showSel(); }
+    });
+    bar.addEventListener('pointerup', () => {
+      if (!drag) return;
+      if (!drag.moved || !sel || sel[1] - sel[0] < 5) sel = [...drag.gap];
+      drag = null;
+      openPop();
+    });
+    bar.addEventListener('click', e => {
+      const mine = e.target.closest('.lg-mine');
+      if (mine) remove(logged[+mine.dataset.i]);
+    });
+    bar.addEventListener('keydown', e => {  // keyboard: Enter on a gap takes all of it
+      const g = e.target.closest('.lg-gap');
+      if (g && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); sel = [+g.dataset.a, +g.dataset.b]; openPop(); }
+    });
+    inp.addEventListener('input', preview);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') { e.stopPropagation(); closePop(); } });
+    $('.lg-sug', pop).addEventListener('click', e => { const b = e.target.closest('button'); if (b) { inp.value = b.textContent; preview(); inp.focus(); } });
+    $('.lg-go', pop).addEventListener('click', commit);
+    logPic.addEventListener('click', e => {
+      if (e.target.closest('.lg-undo') && pending) { clearTimeout(undoT); const p = pending; pending = null; remove(p); hint.textContent = 'undone · click a gap · or drag across part of one'; }
+      if (e.target.closest('.lg-reset')) { logged = []; roll(5390); draw(); hint.textContent = 'click a gap · or drag across part of one'; }
+    });
+    document.addEventListener('pointerdown', e => { if (!pop.hidden && !e.target.closest('.lg-pop, .lg-bar')) closePop(); });
+    draw();
+  }
+
   /* ================= 2. windows with a live island ================= */
   const CLIENTS = {
     'Acme Studio': {c: ['#f2ffd0', '#B8FF3B', '#86c414'], money: '₹5,220', task: 'Fixed OAuth redirect bug on the login page, reviewed PR #42', glow: '184,255,59'},
@@ -231,73 +384,187 @@
     return () => { isl.destroy(); [t1, t2, t3].forEach(clearTimeout); };
   }
 
-  // ---- window 2: the nudge story ----
+  // ---- window 2: a little desktop. Open apps from the Dock; the island reacts the way the app's would ----
+  const ICON_D = {"youtube": "M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z", "postman": "M13.527.099C6.955-.744.942 3.9.099 10.473c-.843 6.572 3.8 12.584 10.373 13.428 6.573.843 12.587-3.801 13.428-10.374C24.744 6.955 20.101.943 13.527.099zm2.471 7.485a.855.855 0 0 0-.593.25l-4.453 4.453-.307-.307-.643-.643c4.389-4.376 5.18-4.418 5.996-3.753zm-4.863 4.861l4.44-4.44a.62.62 0 1 1 .847.903l-4.699 4.125-.588-.588zm.33.694l-1.1.238a.06.06 0 0 1-.067-.032.06.06 0 0 1 .01-.073l.645-.645.512.512zm-2.803-.459l1.172-1.172.879.878-1.979.426a.074.074 0 0 1-.085-.039.072.072 0 0 1 .013-.093zm-3.646 6.058a.076.076 0 0 1-.069-.083.077.077 0 0 1 .022-.046h.002l.946-.946 1.222 1.222-2.123-.147zm2.425-1.256a.228.228 0 0 0-.117.256l.203.865a.125.125 0 0 1-.211.117h-.003l-.934-.934-.294-.295 3.762-3.758 1.82-.393.874.874c-1.255 1.102-2.971 2.201-5.1 3.268zm5.279-3.428h-.002l-.839-.839 4.699-4.125a.952.952 0 0 0 .119-.127c-.148 1.345-2.029 3.245-3.977 5.091zm3.657-6.46l-.003-.002a1.822 1.822 0 0 1 2.459-2.684l-1.61 1.613a.119.119 0 0 0 0 .169l1.247 1.247a1.817 1.817 0 0 1-2.093-.343zm2.578 0a1.714 1.714 0 0 1-.271.218h-.001l-1.207-1.207 1.533-1.533c.661.72.637 1.832-.054 2.522zM18.855 6.05a.143.143 0 0 0-.053.157.416.416 0 0 1-.053.45.14.14 0 0 0 .023.197.141.141 0 0 0 .084.03.14.14 0 0 0 .106-.05.691.691 0 0 0 .087-.751.138.138 0 0 0-.194-.033z", "figma": "M15.852 8.981h-4.588V0h4.588c2.476 0 4.49 2.014 4.49 4.49s-2.014 4.491-4.49 4.491zM12.735 7.51h3.117c1.665 0 3.019-1.355 3.019-3.019s-1.355-3.019-3.019-3.019h-3.117V7.51zm0 1.471H8.148c-2.476 0-4.49-2.014-4.49-4.49S5.672 0 8.148 0h4.588v8.981zm-4.587-7.51c-1.665 0-3.019 1.355-3.019 3.019s1.354 3.02 3.019 3.02h3.117V1.471H8.148zm4.587 15.019H8.148c-2.476 0-4.49-2.014-4.49-4.49s2.014-4.49 4.49-4.49h4.588v8.98zM8.148 8.981c-1.665 0-3.019 1.355-3.019 3.019s1.355 3.019 3.019 3.019h3.117V8.981H8.148zM8.172 24c-2.489 0-4.515-2.014-4.515-4.49s2.014-4.49 4.49-4.49h4.588v4.441c0 2.503-2.047 4.539-4.563 4.539zm-.024-7.51a3.023 3.023 0 0 0-3.019 3.019c0 1.665 1.365 3.019 3.044 3.019 1.705 0 3.093-1.376 3.093-3.068v-2.97H8.148zm7.704 0h-.098c-2.476 0-4.49-2.014-4.49-4.49s2.014-4.49 4.49-4.49h.098c2.476 0 4.49 2.014 4.49 4.49s-2.014 4.49-4.49 4.49zm-.097-7.509c-1.665 0-3.019 1.355-3.019 3.019s1.355 3.019 3.019 3.019h.098c1.665 0 3.019-1.355 3.019-3.019s-1.355-3.019-3.019-3.019h-.098z", "whatsapp": "M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413Z", "spotify": "M12 0C5.4 0 0 5.4 0 12s5.4 12 12 12 12-5.4 12-12S18.66 0 12 0zm5.521 17.34c-.24.359-.66.48-1.021.24-2.82-1.74-6.36-2.101-10.561-1.141-.418.122-.779-.179-.899-.539-.12-.421.18-.78.54-.9 4.56-1.021 8.52-.6 11.64 1.32.42.18.479.659.301 1.02zm1.44-3.3c-.301.42-.841.6-1.262.3-3.239-1.98-8.159-2.58-11.939-1.38-.479.12-1.02-.12-1.14-.6-.12-.48.12-1.021.6-1.141C9.6 9.9 15 10.561 18.72 12.84c.361.181.54.78.241 1.2zm.12-3.36C15.24 8.4 8.82 8.16 5.16 9.301c-.6.179-1.2-.181-1.38-.721-.18-.601.18-1.2.72-1.381 4.26-1.26 11.28-1.02 15.721 1.621.539.3.719 1.02.419 1.56-.299.421-1.02.599-1.559.3z"};  // Simple Icons (CC0): brand marks, drawn white on their brand colour
+  const glyph = (d, fill = '#fff') => `<svg viewBox="0 0 24 24"><path d="${d}" fill="${fill}"/></svg>`;
+  const APPS = {
+    code: {name: 'VS Code', title: 'login.tsx — acme-website', bg: 'linear-gradient(160deg,#3ea6ff,#0065a9)', kind: 'client', client: 'Acme Studio',
+      icon: '<svg viewBox="0 0 24 24"><path d="M17 3l4 2v14l-4 2-9-8.2L4 16l-2-1V9l2-1 4 3.2zm0 5.2L12.2 12 17 15.8z" fill="#fff"/></svg>'},
+    figma: {name: 'Figma', title: 'Acme landing v3', bg: '#1e1e1e', kind: 'client', client: 'Acme Studio', icon: glyph(ICON_D.figma, '#fff')},
+    postman: {name: 'Postman', title: 'POST /v2/invoices · nimbus-api', bg: '#FF6C37', kind: 'client', client: 'Nimbus Labs', icon: glyph(ICON_D.postman)},
+    youtube: {name: 'YouTube', title: 'lofi hip hop radio · YouTube', bg: '#fff', kind: 'distraction', icon: glyph(ICON_D.youtube, '#FF0033')},
+    whatsapp: {name: 'WhatsApp', title: 'WhatsApp · Mom', bg: '#25D366', kind: 'personal', icon: glyph(ICON_D.whatsapp)},
+    spotify: {name: 'Spotify', title: 'Discover Weekly · Spotify', bg: '#121212', kind: 'music', icon: glyph(ICON_D.spotify, '#1ED760')},
+  };
+  const WIN = {  // what each app window shows
+    code: `${'<i></i>'.repeat(8)}`,
+    figma: `<div class="fg"><span style="--x:8%;--y:16%;--w:38%;--h:52%;background:#B8FF3B"></span><span style="--x:52%;--y:16%;--w:40%;--h:24%;background:#7AA2FF"></span><span style="--x:52%;--y:46%;--w:40%;--h:22%;background:#FF7AD9"></span><span style="--x:8%;--y:74%;--w:84%;--h:14%;background:#FFD23F"></span></div>`,
+    postman: `<p><span class="verb">POST</span> /v2/invoices</p>${'<i></i>'.repeat(4)}`,
+    youtube: `<div class="vid"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="56" fill="rgba(255,255,255,.18)"/><path d="M48 38 L86 60 L48 82 Z" fill="#fff"/></svg></div>`,
+    whatsapp: `<div class="wa"><b>Mom</b><span class="in">did you eat?</span><span class="out">yes ma</span><span class="in">ok call later</span></div>`,
+    spotify: `<div class="sp"><div class="art"></div><div><b>Discover Weekly</b><span>made for you</span><i></i><i></i><i></i></div></div>`,
+  };
+  const QUEUE0 = [{t: 'acme login redirect fix', c: 'Acme Studio', why: '₹1,200/h · due today'},
+    {t: 'nimbus api docs', c: 'Nimbus Labs', why: '₹1,500/h · better paid'},
+    {t: 'chai shopify banner', c: 'Chai & Co', why: '₹900/h · waiting longest'}];
+
   function nudgeDemo(body) {
-    body.innerHTML = `<div class="dsk"><div class="dsk-wall"></div>
-        <div class="dsk-win code" style="left:4%;top:20%;width:58%;height:66%"><div class="dsk-bar"><b></b><b></b><b></b><span>login.tsx — acme-website</span></div>${'<i></i>'.repeat(7)}</div>
-        <div class="dsk-win yt" style="left:28%;top:24%;width:60%;height:66%"><div class="dsk-bar"><b></b><b></b><b></b><span>YouTube · lofi hip hop radio</span></div><div class="vid"><svg viewBox="0 0 120 120"><circle cx="60" cy="60" r="56" fill="rgba(255,255,255,.18)"/><path d="M48 38 L86 60 L48 82 Z" fill="#fff"/></svg></div></div>
-        <div class="dsk-win pm" style="left:22%;top:26%;width:66%;height:64%"><div class="dsk-bar"><b></b><b></b><b></b><span>POST /v2/invoices · nimbus-api · Postman</span></div><p><span class="verb">POST</span> /v2/invoices</p>${'<i></i>'.repeat(4)}</div>
-        <div class="dsk-now"><span>now</span><b>acme login redirect fix</b><em>24 of 60 min</em></div>
+    const QUEUE = QUEUE0.map(q => ({...q})), order = Object.keys(APPS);  // a fresh story every time the window opens
+    body.innerHTML = `<div class="mac">
+        <div class="mac-bar"><b class="mac-app">VS Code</b><span>File</span><span>Edit</span><span>View</span><span class="mac-r"><button type="button" class="mac-reset">↺ start over</button><span class="mac-clock">Fri 10:24</span></span></div>
+        <div class="dsk"><div class="dsk-wall"></div>
+          ${order.map((k, i) => `<div class="dsk-win app-${k}" data-app="${k}" style="--i:${i}"><div class="dsk-bar"><button type="button" class="tl" data-close="${k}" aria-label="close ${APPS[k].name}"></button><b></b><b></b><span>${APPS[k].title}</span></div>${WIN[k]}</div>`).join('')}
+          <div class="dsk-now"><span>now</span><b></b><em></em></div>
+          <div class="ff" aria-hidden="true"><svg viewBox="0 0 28 16"><path d="M1 1l11 7-11 7zM14 1l11 7-11 7z" fill="currentColor"/></svg><span>8 minutes later</span></div>
+          <div class="dsk-cap"><b></b><span></span></div>
+          <div class="dock-hint">open an app ↓</div>
+          <div class="dock" role="toolbar" aria-label="Dock">${order.map(k => `<button type="button" class="dk" data-app="${k}" aria-label="open ${APPS[k].name}" style="background:${APPS[k].bg}"><span class="dk-tip">${APPS[k].name}</span>${APPS[k].icon}<i class="dk-run"></i></button>`).join('')}
+            <span class="dk-sep"></span><button type="button" class="dk me" data-me aria-label="lowkey"><span class="dk-tip">lowkey</span>${creature()}</button></div>
+        </div>
         ${islandHTML()}
-        <div class="dsk-cap"><b>you're on it</b><span>lowkey watches the window titles, not your screen</span></div></div>
-      <div class="pw-ctl"><span class="pw-k">play it</span><button type="button" class="chip-s" data-s="drift">drift to YouTube</button><button type="button" class="chip-s" data-s="move">move on to Nimbus</button><button type="button" class="chip-s ghost" data-s="reset">start over</button>
-        <span class="pw-tip">a simulation of the app's island · nothing here watches you</span></div>`;
-    const isl = Island(body), dsk = $('.dsk', body), cap = $('.dsk-cap', body);
-    let busy = [];
-    const later = (f, ms) => busy.push(setTimeout(f, ms));
+      </div>
+      <p class="pw-note">a simulation of the app's island on a made-up Mac · nothing here watches you</p>`;
+    const mac = $('.mac', body), dsk = $('.dsk', body), cap = $('.dsk-cap', body), dock = $('.dock', body);
+    const isl = Island(mac), timers = [];
+    let now = 0, front = null, z = 10, minutes = 10 * 60 + 24, waiting = null, open = new Set();
+    const later = (f, ms) => timers.push(setTimeout(f, ms));
     const caption = (b, s) => { $('b', cap).textContent = b; $('span', cap).textContent = s; };
-    const win = (cls, on) => $(`.dsk-win.${cls}`, body).classList.toggle('in', on);
-    const reset = () => {
-      busy.forEach(clearTimeout); busy = [];
-      win('yt', false); win('pm', false);
-      $('.dsk-now b', body).textContent = 'acme login redirect fix'; $('.dsk-now em', body).textContent = '24 of 60 min';
-      dsk.classList.remove('done');
-      if (isl.client !== 'Acme Studio') { isl.switchTo('Acme Studio'); }
-      isl.set('pill');
-      caption('you\'re on it', 'lowkey watches the window titles, not your screen');
-    };
-    const next = () => {
-      caption('then, what\'s next', 'with the reason: due soon, better paid, waiting longest');
-      isl.prompt('next up: nimbus api docs', '₹1,500/h · nice, that took 52m', [
-        {label: 'later', on: () => { isl.toast('it keeps its place in line'); caption('later is fine', 'what\'s next waits for you'); }},
-        {label: 'start it', kind: 'blue', on: () => {
-          win('pm', true); isl.switchTo('Nimbus Labs'); dsk.classList.remove('done');
-          $('.dsk-now b', body).textContent = 'nimbus api docs'; $('.dsk-now em', body).textContent = '0 of 120 min';
-          caption('on it', 'the timer starts, in Nimbus blue');
-          later(() => isl.set('pill'), 2700);
-        }}], 'switched');
-    };
-    const ask = (sub) => {
-      caption('moved on? one tap', 'how far you got, in your words, not a guess');
-      isl.prompt('how far did you get?', sub, ['just started', 'halfway', 'almost', 'done'].map((l, i) => ({label: l, kind: i === 3 ? 'go' : '', on: () => {
-        dsk.classList.toggle('done', i === 3);
-        isl.toast(i === 3 ? 'done · nice, that took 52m' : `saved · ${l}`, {ms: 1700, then: next});
-        if (i === 3) $('[data-f=toast] .mb', isl.el).dataset.mood = 'milestone'; else $('[data-f=toast] .mb', isl.el).dataset.mood = 'working';
-      }})), 'switched');
-    };
-    $('.pw-ctl', body).addEventListener('click', e => {
-      const s = e.target.closest('[data-s]')?.dataset.s;
-      if (!s) return;
-      if (s === 'reset') return reset();
-      reset();
-      if (s === 'drift') {
-        later(() => { win('yt', true); caption('8 minutes later…', 'only real distractions count, never while you\'re away'); }, 250);
+    const clock = () => { $('.mac-clock', body).textContent = `Fri ${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`; };
+    const intent = () => { const it = QUEUE[now]; $('.dsk-now b', body).textContent = it ? it.t : 'all clear'; $('.dsk-now em', body).textContent = it ? it.c : 'nothing lined up'; };
+
+    function bring(k, fromDock) {  // open (zoom out of the Dock icon) or bring to front
+      const w = $(`.dsk-win[data-app=${k}]`, body), icon = $(`.dk[data-app=${k}]`, body);
+      w.style.zIndex = ++z;
+      $('.mac-app', body).textContent = APPS[k].name;
+      if (!open.has(k)) {
+        open.add(k);
+        icon.classList.add('running');
+        w.classList.add('in');
+        if (!REDUCED && fromDock) {
+          const a = icon.getBoundingClientRect(), b = w.getBoundingClientRect();
+          w.animate([{transform: `translate(${a.left + a.width / 2 - (b.left + b.width / 2)}px, ${a.top - b.top}px) scale(.08)`, opacity: .4},
+            {transform: 'none', opacity: 1}], {duration: 520, easing: SOFT});
+        }
+      }
+      if (front !== k) { front = k; react(k); }
+    }
+    function quit(k) {
+      const w = $(`.dsk-win[data-app=${k}]`, body);
+      open.delete(k);
+      $(`.dk[data-app=${k}]`, body).classList.remove('running');
+      w.classList.remove('in');
+      if (front === k) {
+        front = null;
+        const next = [...open].sort((a, b) => +$(`.dsk-win[data-app=${b}]`, body).style.zIndex - +$(`.dsk-win[data-app=${a}]`, body).style.zIndex)[0];
+        if (next) bring(next); else $('.mac-app', body).textContent = 'Finder';
+      }
+    }
+
+    // what lowkey makes of the window in front (the app reads window titles; here the apps stand in for them)
+    function react(k) {
+      timers.splice(0).forEach(clearTimeout);
+      $('.ff', body).classList.remove('go');
+      const app = APPS[k], it = QUEUE[now];
+      if (app.kind === 'client' && it && app.client === it.c) {
+        if (waiting || isl.state === 'prompt') { waiting = null; $('[data-f=toast] .mb', isl.el).dataset.mood = 'goal'; isl.toast(`back on ${it.t}`); caption('back on it', 'the nudge is gone the moment you are'); }
+        else { if (isl.client !== app.client) isl.switchTo(app.client); else isl.set('pill'); caption(`${app.name} · ${it.c}`, `"${app.title}" matches ${it.c}'s hints: you're on it`); }
+        return;
+      }
+      if (app.kind === 'client') {  // another client's window: you've moved on
+        waiting = 'ask';
+        caption(`you opened ${app.name}`, `that's ${app.client}, not ${it ? it.c : 'what you said'}`);
+        later(() => ask(app.client), 900);
+        return;
+      }
+      if (app.kind === 'distraction') {
+        caption('YouTube, for a minute…', 'research is fine · only real distractions count');
+        later(() => { $('.ff', body).classList.add('go'); minutes += 8; clock(); }, 700);
         later(() => {
+          $('.ff', body).classList.remove('go');
+          if (!it) return;
+          waiting = 'nudge';
           caption('drifted? a nudge', 'at most three an hour, never over a fullscreen movie');
-          isl.prompt('8 min on YouTube', 'back to acme login redirect fix?', [
-            {label: 'switch', on: () => { win('yt', false); ask('acme login redirect fix · it keeps its place in line'); }},
-            {label: 'later', on: () => { isl.toast('ok · I won\'t nag'); caption('later counts too', 'an ignored nudge just means later'); }},
-            {label: 'back on it', kind: 'go', on: () => { win('yt', false); $('[data-f=toast] .mb', isl.el).dataset.mood = 'goal'; isl.toast('back on acme login redirect fix'); caption('back on it', 'one tap, and the nudge is gone'); }},
+          isl.prompt('8 min on YouTube', `back to ${it.t}?`, [
+            {label: 'switch', on: () => ask(null)},
+            {label: 'later', on: () => { waiting = null; isl.toast('ok · I won\'t nag'); caption('later counts too', 'an ignored nudge just means later'); }},
+            {label: 'back on it', kind: 'go', on: () => { const back = order.find(x => APPS[x].client === it.c); bring(back, true); }},
           ], 'unsure');
-        }, 1400);
+        }, 2300);
+        return;
       }
-      if (s === 'move') {
-        later(() => { win('pm', true); caption('you open Postman…', 'Nimbus Labs\' hints are in the window title'); }, 250);
-        later(() => ask('acme login redirect fix · you\'ve moved on to Nimbus Labs'), 1500);
-      }
+      if (app.kind === 'personal') { isl.toast('side quest · stays off the invoice'); caption('a side quest', 'personal time never reaches an invoice · no scolding'); return; }
+      isl.toast('music doesn\'t count against you'); caption('Spotify in the background', 'neutral: it doesn\'t change who you\'re working for');
+    }
+    function ask(movedTo) {
+      const it = QUEUE[now];
+      if (!it) return;
+      waiting = 'ask';
+      caption('moved on? one tap', 'how far you got, in your words, not a guess');
+      isl.prompt('how far did you get?', movedTo ? `${it.t} · you've moved on to ${movedTo}` : `${it.t} · it keeps its place in line`,
+        ['just started', 'halfway', 'almost', 'done'].map((l, i) => ({label: l, kind: i === 3 ? 'go' : '', on: () => {
+          const finished = i === 3;
+          if (finished) QUEUE.push(QUEUE.splice(now, 1)[0]); else QUEUE.push(QUEUE.splice(now, 1)[0]);  // back in line either way; done goes last
+          if (finished) QUEUE.at(-1).done = true;
+          now = 0;
+          $('[data-f=toast] .mb', isl.el).dataset.mood = finished ? 'milestone' : 'working';
+          isl.toast(finished ? `done · nice, that took ${24 + 28}m` : `saved · ${l}`, {ms: 1600, then: () => next(movedTo)});
+        }})), 'switched');
+    }
+    function next(movedTo) {
+      const pick = QUEUE.findIndex(q => !q.done && (!movedTo || q.c === movedTo));
+      const n = pick >= 0 ? pick : QUEUE.findIndex(q => !q.done);
+      if (n < 0) { waiting = null; isl.toast('all clear · nothing lined up'); return; }
+      const it = QUEUE[n];
+      caption('then, what\'s next', 'with the reason: due soon, better paid, waiting longest');
+      isl.prompt(`next up: ${it.t}`, it.why, [
+        {label: 'later', on: () => { waiting = null; isl.toast('it keeps its place in line'); }},
+        {label: 'start it', kind: 'blue', on: () => {
+          QUEUE.unshift(QUEUE.splice(n, 1)[0]); now = 0; waiting = null; intent();
+          isl.switchTo(it.c);
+          caption('on it', `the timer starts, in ${it.c}'s colour`);
+          const app = order.find(x => APPS[x].client === it.c);
+          if (app && front !== app) later(() => bring(app, true), 900);
+        }}], 'switched');
+    }
+
+    // the Dock: magnifies under the pointer, bounces on launch
+    const dks = $$('.dk', dock);
+    dock.addEventListener('pointermove', e => {
+      if (REDUCED || e.pointerType !== 'mouse') return;
+      dks.forEach(d => { const r = d.getBoundingClientRect(), dist = Math.abs(e.clientX - (r.left + r.width / 2)), k = Math.max(0, 1 - dist / 120);
+        d.style.setProperty('--m', (1 + k * .5).toFixed(3)); });
     });
+    dock.addEventListener('pointerleave', () => dks.forEach(d => d.style.setProperty('--m', 1)));
+    dock.addEventListener('click', e => {
+      const d = e.target.closest('.dk');
+      if (!d) return;
+      $('.dock-hint', body).classList.add('gone');
+      if (!REDUCED) d.animate([{translate: '0 0'}, {translate: '0 -16px'}, {translate: '0 0'}, {translate: '0 -8px'}, {translate: '0 0'}], {duration: 700, easing: 'ease-out'});
+      if (d.hasAttribute('data-me')) { $('[data-f=toast] .mb', isl.el).dataset.mood = 'goal'; isl.toast('that\'s me · I live in the notch'); return; }
+      bring(d.dataset.app, true);
+    });
+    body.addEventListener('click', e => {
+      const c = e.target.closest('[data-close]');
+      if (c) { e.stopPropagation(); quit(c.dataset.close); return; }
+      const w = e.target.closest('.dsk-win.in');
+      if (w && !e.target.closest('.mi')) bring(w.dataset.app);
+    });
+    $('.mac-reset', body).addEventListener('click', () => {
+      timers.splice(0).forEach(clearTimeout);
+      QUEUE.forEach(q => delete q.done);
+      QUEUE.sort((a, b) => ['acme login redirect fix', 'nimbus api docs', 'chai shopify banner'].indexOf(a.t) - ['acme login redirect fix', 'nimbus api docs', 'chai shopify banner'].indexOf(b.t));
+      now = 0; waiting = null; minutes = 10 * 60 + 24; clock(); intent();
+      [...open].forEach(k => quit(k));
+      front = null;
+      isl.switchTo('Acme Studio');
+      later(() => bring('code', true), 500);
+      $('.dock-hint', body).classList.remove('gone');
+    });
+    clock(); intent();
+    bring('code');
     isl.set('pill');
-    return () => { busy.forEach(clearTimeout); isl.destroy(); };
+    caption('you\'re on it', 'open an app from the Dock and watch the island');
+    return () => { timers.forEach(clearTimeout); isl.destroy(); };
   }
 
   /* ---- the window itself: grows out of the card's picture, and goes back into it ---- */

@@ -88,14 +88,18 @@
         {duration: 320, easing: 'cubic-bezier(.2,0,0,1)'});
     };
   };
-  const seen = new IntersectionObserver(es => {
-    const vis = es.filter(e => e.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
-    if (!vis) return;
-    current = vis.target.id;
+  let whereRaf = 0;
+  const where = () => {  // the section under the reading line (40% down the screen), however tall it is
+    whereRaf = 0;
+    const y = innerHeight * .4, id = IDS.find(i => { const r = sec(i)?.getBoundingClientRect(); return r && r.top <= y && r.bottom > y; });
+    if (!id || id === current) return;
+    current = id;
     if (state === 'rest' && !at) roll(isl.querySelector('.g-now'), `you're at · ${SAY[current].name}`);
-  }, {threshold: [.25, .5, .75], rootMargin: '-20% 0px -30% 0px'});
-  IDS.forEach(id => sec(id) && seen.observe(sec(id)));
-  const progress = () => isl.style.setProperty('--p', (scrollY / Math.max(1, document.documentElement.scrollHeight - innerHeight)).toFixed(4));
+  };
+  const progress = () => {
+    isl.style.setProperty('--p', (scrollY / Math.max(1, document.documentElement.scrollHeight - innerHeight)).toFixed(4));
+    if (!whereRaf) whereRaf = requestAnimationFrame(where);
+  };
   addEventListener('scroll', progress, {passive: true});
   progress();
 
@@ -325,7 +329,7 @@
 
   /* ---------- summon: double-click (or double-tap) a section ---------- */
   // A single click never summons the guide: clicks are for reading, links and buttons.
-  const SKIP = 'a, button, iframe, input, textarea, pre, code, #gbubble, #gisl, nav, .video, [data-play], .moods';
+  const SKIP = 'a, button, iframe, input, textarea, pre, code, #gbubble, #gisl, nav, .video, [data-play], .moods, .lg';
   const SECTIONS = IDS.map(i => '#' + i).join(',');
   const sectionOf = node => {
     const el = node?.nodeType === 1 ? node : node?.parentElement, s = el?.closest(SECTIONS);
@@ -376,6 +380,11 @@
       if (r.bottom > 0 && r.top < innerHeight && r.width > 4) return {x: r.left + r.width / 2, y: r.top + r.height / 2};
       const i = isl.getBoundingClientRect();
       return {x: i.left + i.width / 2, y: i.top + i.height / 2};
+    },
+    catch(color) {  // something you did flew home: the creature gulps it and the island flashes its colour
+      if (REDUCED) return;
+      body.animate([{transform: 'scale(1)'}, {transform: 'scale(1.25, .78)'}, {transform: 'scale(.94, 1.08)'}, {transform: 'scale(1)'}], {duration: 520, easing: 'cubic-bezier(.2,0,0,1)', composite: 'add'});
+      isl.animate([{boxShadow: `0 0 0 0 ${color}00`}, {boxShadow: `0 0 0 5px ${color}, 0 10px 40px ${color}`}, {boxShadow: `0 0 0 0 ${color}00`}], {duration: 800, easing: 'ease-out'});
     },
     mood(m) {  // squash, shut the eyes, change while they're shut, open, bounce
       if (!MOODS[m]) return;
