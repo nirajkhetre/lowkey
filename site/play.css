@@ -169,14 +169,15 @@ html.pw-lock{overflow:hidden}
 /* ---------- the little Mac ---------- */
 .mac{position:relative;border:2.5px solid var(--ink);border-radius:16px;overflow:hidden}
 .mac .dsk{border:0;border-radius:0;height:clamp(400px,62vh,540px)}
-.mac-bar{position:absolute;left:0;right:0;top:0;z-index:4;height:26px;display:flex;align-items:center;gap:16px;padding:0 12px;
+.mac-bar{position:absolute;left:0;right:0;top:0;z-index:9;height:26px;display:flex;align-items:center;gap:16px;padding:0 14px 0 20px;
   background:rgba(255,255,255,.28);backdrop-filter:blur(14px) saturate(1.3);-webkit-backdrop-filter:blur(14px) saturate(1.3);color:#fff;font:600 12.5px var(--display)}
 .mac-bar span{opacity:.92}.mac-app{font-weight:800}
 .mac-r{margin-left:auto;display:flex;align-items:center;gap:12px}
 .mac-reset{border:0;background:rgba(255,255,255,.22);color:#fff;font:700 11.5px var(--display);padding:3px 9px;border-radius:999px;cursor:pointer}
 .mac-reset:hover{background:rgba(255,255,255,.38)}
 .mac-clock{font-variant-numeric:tabular-nums}
-.mac>.mi{top:0;z-index:8}
+.wins{position:absolute;inset:0;z-index:1;isolation:isolate}  /* windows stack among themselves, always under the island, Dock and captions */
+.mac>.mi{top:26px;z-index:8}  /* on a Mac, lowkey hangs below the menu bar */
 .mac .dsk-win{opacity:0;transform:scale(.94);pointer-events:none;top:var(--t);left:var(--l);width:var(--w);height:var(--h)}
 .mac .dsk-win.in{opacity:1;transform:none;pointer-events:auto}
 .app-code{--l:5%;--t:12%;--w:56%;--h:60%;background:rgba(24,24,32,.97)!important}

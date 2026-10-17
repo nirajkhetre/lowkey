@@ -413,7 +413,7 @@
     body.innerHTML = `<div class="mac">
         <div class="mac-bar"><b class="mac-app">VS Code</b><span>File</span><span>Edit</span><span>View</span><span class="mac-r"><button type="button" class="mac-reset">↺ start over</button><span class="mac-clock">Fri 10:24</span></span></div>
         <div class="dsk"><div class="dsk-wall"></div>
-          ${order.map((k, i) => `<div class="dsk-win app-${k}" data-app="${k}" style="--i:${i}"><div class="dsk-bar"><button type="button" class="tl" data-close="${k}" aria-label="close ${APPS[k].name}"></button><b></b><b></b><span>${APPS[k].title}</span></div>${WIN[k]}</div>`).join('')}
+          <div class="wins">${order.map((k, i) => `<div class="dsk-win app-${k}" data-app="${k}" style="--i:${i}"><div class="dsk-bar"><button type="button" class="tl" data-close="${k}" aria-label="close ${APPS[k].name}"></button><b></b><b></b><span>${APPS[k].title}</span></div>${WIN[k]}</div>`).join('')}</div>
           <div class="dsk-now"><span>now</span><b></b><em></em></div>
           <div class="ff" aria-hidden="true"><svg viewBox="0 0 28 16"><path d="M1 1l11 7-11 7zM14 1l11 7-11 7z" fill="currentColor"/></svg><span>8 minutes later</span></div>
           <div class="dsk-cap"><b></b><span></span></div>
