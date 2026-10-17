@@ -25,7 +25,7 @@ Everything else is appended as one JSON line to `data/activity-YYYY-MM-DD.jsonl`
 
 ## 2. Labeler: `lowkey/labeler.py`
 
-**Slots.** `slots_for(day)` cuts the day into 15-minute slots, splitting any sample that straddles a boundary. Each slot becomes a map of `(app, title) → seconds`.
+**Slots.** `slots_for(day)` cuts the day into slots of `slot_len(day)` seconds (the **reads every** setting: 5, 10 or 15 minutes, 5 by default), splitting any sample that straddles a boundary. A day keeps the length it was first labelled with (`data/slots.json`), because your reviews point at sessions by their start time: a new length applies today only if nothing today is reviewed yet, otherwise from tomorrow. Days from before the setting existed are 15-minute days. Each slot becomes a map of `(app, title) → seconds`.
 
 **Labels.** `describe()` turns a slot into the top 8 windows by time. `label()` sends that, plus your client list and hints, to the local model:
 

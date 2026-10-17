@@ -16,10 +16,36 @@ from datetime import datetime, timedelta
 from .config import CONFIG, DATA, DEMO, LIVE, MODEL, OLLAMA, PERSONAL, SLOT_S, color, load, lock, rate, save, save_config
 
 
+def reviewed(day):
+    """Has anything of this day been billed, left off or moved? Those edits point at its sessions by start time."""
+    return any(k.startswith(f"{day}-") for k in load("edits.json", {}))
+
+
+def slot_len(day):
+    """Seconds of windows per label for a day. A day keeps the length it was first labelled with, so your reviews
+    keep pointing at the same sessions: a new "reads every" applies today only if nothing today is reviewed yet,
+    otherwise from tomorrow. Days from before the setting existed were 15-minute days."""
+    today = datetime.now().strftime("%Y-%m-%d")
+    fixed = load("slots.json", {})
+    if day != today:
+        return fixed.get(day, SLOT_S)
+    want = int(LIVE["settings"].get("slot", "5")) * 60
+    if DEMO:
+        return want
+    if fixed.get(today) != want and (today not in fixed or not reviewed(today)):
+        with lock:
+            fixed = load("slots.json", {})
+            # first sight of a day you already reviewed (the update that brought this setting): it was a 15-minute day
+            fixed[today] = SLOT_S if today not in fixed and reviewed(today) else want
+            save("slots.json", fixed)
+    return fixed[today]
+
+
 def slots_for(day):
-    """Split the day's events into 15-min slots: {slot_start_ts: {(app, title): seconds}}."""
+    """Split the day's events into slots: {slot_start_ts: {(app, title): seconds}}."""
     path = DATA / f"activity-{day}.jsonl"
     slots = defaultdict(lambda: defaultdict(float))
+    slot = slot_len(day)
     if not path.exists():
         return slots
     for line in path.read_text(encoding="utf-8").splitlines():
@@ -28,8 +54,8 @@ def slots_for(day):
         ev = json.loads(line)
         t, end = ev["ts"], ev["ts"] + ev["dur"]
         while t < end:  # events can straddle slot boundaries
-            start = t - t % SLOT_S
-            cut = min(end, start + SLOT_S)
+            start = t - t % slot
+            cut = min(end, start + slot)
             slots[start][(ev["app"], ev["title"])] += cut - t
             t = cut
     return slots
@@ -91,7 +117,7 @@ def label(windows, use_model=True):
         try:
             out = chat([{"role": "system", "content": SYSTEM},
                         {"role": "user", "content": f"Clients and hints:\n{hints}\n\nActivity:\n{describe(windows)}"}], schema,
-                       what="reading 15 minutes of your windows")
+                       what=f"reading {max(1, round(sum(windows.values()) / 60))} min of your windows")
             out["by"] = MODEL
             out["billable"] = out["billable"] and out["client"] != PERSONAL
             return out
@@ -143,21 +169,21 @@ def model_ok():
 
 def merge(slots, day):
     """Consecutive labelled slots for the same client become one session."""
-    sessions = []
+    sessions, slot = [], slot_len(day)
     for start in sorted(slots):
         windows, lab = slots[start]
         active = sum(windows.values())
         prev = sessions[-1] if sessions else None
-        if prev and prev["client"] == lab["client"] and start - prev["_last"] <= SLOT_S:
+        if prev and prev["client"] == lab["client"] and start - prev["_last"] <= slot:
             prev["active_s"] += active
-            prev["end"] = start + SLOT_S
+            prev["end"] = start + slot
             prev["_last"] = start
             if lab["task"] not in prev["tasks"]:
                 prev["tasks"].append(lab["task"])
             for k, s in windows.items():
                 prev["_w"][k] += s
         else:
-            sessions.append({"id": f"{day}-{start}", "start": start, "end": start + SLOT_S, "_last": start,
+            sessions.append({"id": f"{day}-{start}", "start": start, "end": start + slot, "_last": start,
                              "active_s": active, "client": lab["client"], "tasks": [lab["task"]],
                              "billable": lab["billable"], "by": lab["by"],
                              "_w": defaultdict(float, windows), "status": "pending"})
@@ -420,7 +446,10 @@ def refresh():
     # ponytail: relabels the still-growing current slot every minute; labels.json keeps those partial entries
     while True:
         try:
-            sess = day_sessions(datetime.now().strftime("%Y-%m-%d"))
+            today = datetime.now().strftime("%Y-%m-%d")
+            sess = day_sessions(today)
+            LIVE["slot_today"] = str(slot_len(today) // 60)  # what today really uses (a change may wait for tomorrow)
+            LIVE["slot_locked"] = reviewed(today)
             bill = [s for s in sess if s["billable"] and s["client"] != PERSONAL and s["status"] != "nah"]
             LIVE.update(today_s=sum(s["active_s"] for s in bill),
                         money=sum(s["active_s"] / 3600 * rate(s["client"]) for s in bill),

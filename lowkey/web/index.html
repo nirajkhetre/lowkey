@@ -490,7 +490,8 @@ button.lrow{cursor:pointer}
 .stage{max-width:440px;margin:4px auto 0}
 .says{min-height:20px;text-align:center;font-weight:700;color:var(--muted);margin:12px 0 18px}
 .srow{display:flex;align-items:center;gap:12px;margin:0 0 10px}
-.slabel{width:76px;flex:none;font-weight:700;color:var(--muted);font-size:14px}
+.slabel{width:88px;flex:none;white-space:nowrap;font-weight:700;color:var(--muted);font-size:14px}
+@media (max-width:520px){.srow{flex-direction:column;align-items:stretch;gap:6px}.slabel{width:auto}}  /* phones: the label sits above its control */
 .srow .seg{flex:1}
 .scr{aspect-ratio:16/10;border:2.5px solid #111;border-radius:12px;position:relative;overflow:hidden;background:linear-gradient(135deg,#2b5876,#7b4397 65%,#dc6a49)}
 .scr::before{content:"";position:absolute;left:20%;top:30%;width:44%;height:42%;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:6px}
@@ -939,13 +940,13 @@ function renderCards(){
 
 /* ---------- the mind: what the local model is doing, said while it happens ---------- */
 const MIND = {idle: '', rev: null};
-const PAST = {'reading 15 minutes of your windows': 'read your last 15 minutes', 'writing the invoice line': 'wrote an invoice line',
+const PAST = {'writing the invoice line': 'wrote an invoice line',
               'writing your day': 'wrote your day', 'working out whose it is': 'worked out whose it is', 'learning from your fix': 'looked for something to learn'};
 const secs = ms => ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
 function mind(p){  // a 0.3 s thought still shows long enough to see, then says what it did and how fast
   const pill = $('#modelPill'), t = p.thought, ago = t ? Date.now() / 1000 - t.at : 99;
   const busy = p.thinking || ago < 1.2, txt = busy ? `${p.thinking || t.what}…`
-    : ago < 4 ? `${PAST[t.what] || t.what.replace(/^sorting/, 'sorted')} · ${secs(t.ms)}` : MIND.idle;
+    : ago < 4 ? `${PAST[t.what] || t.what.replace(/^sorting/, 'sorted').replace(/^reading (\d+) min of/, 'read $1 min of')} · ${secs(t.ms)}` : MIND.idle;
   pill.classList.toggle('thinking', !!busy);
   const el = $('#mindTxt');
   if (el.textContent !== txt) swapText(el, txt);
@@ -1678,13 +1679,16 @@ async function clients_(from = $('#openClients')){
   ['#meName', '#meEmail', '#meCur', '#meGoal'].forEach(k => $(k).oninput = save);
 }
 
-/* ---------- settings: the same three rows as the island's own settings, with one live preview ---------- */
+/* ---------- settings: the same four rows as the island's own settings, with one live preview ---------- */
 const SAYS = {
   edge: {top:['top','hangs from the top edge, like a MacBook notch'], bottom:['bottom','sits on the bottom edge, by your taskbar'],
          left:['left','peeks out from the left side of your screen'], right:['right','peeks out from the right side of your screen']},
   taskbar: {below:['below it','hangs below the taskbar, never covers it'], over:['over it','sits over the taskbar: the true notch look']},
-  rest: {lip:['tucked','just a glowing lip until you hover'], pill:['pill','client, timer and money always in view']}};
-const ROWS = [['edge','lives on'], ['taskbar','taskbar'], ['rest','at rest']];
+  rest: {lip:['tucked','just a glowing lip until you hover'], pill:['pill','client, timer and money always in view']},
+  slot: {5:['5 min','the model reads 5 minutes of windows at a time: the sharpest, the default'],
+         10:['10 min','reads 10 minutes at a time: fewer, broader labels'],
+         15:['15 min','reads 15 minutes at a time: quick switches blur into one block']}};
+const ROWS = [['edge','lives on'], ['taskbar','taskbar'], ['rest','at rest'], ['slot','reads every']];
 const thick = tb => tb==='top'||tb==='bottom' ? 9 : 6.5;
 const offOf = l => l.tb===l.edge && !l.over ? thick(l.tb) : 0;   // "below" pushes the island inward by the taskbar's size
 async function settings(from = $('#openSettings')){
@@ -1715,7 +1719,9 @@ async function settings(from = $('#openSettings')){
   };
   const say = t => { if (says.textContent === t) return; says.textContent = t;
     if (!REDUCED) says.animate([{opacity:0, transform:'translateY(4px)'}, {opacity:1, transform:'none'}], {duration:220, easing:'cubic-bezier(.2,0,0,1)'}); };
+  const later = v => r.slot_locked && String(r.slot_today) !== v;  // today is reviewed: a new length starts tomorrow
   const caption = (k, v, b) => b.disabled ? 'macOS keeps its menu bar on top, so it hangs below'
+    : k==='slot' && later(v) ? `today is already reviewed, so it stays at ${r.slot_today} min. this starts tomorrow`
     : k==='taskbar' && r.taskbar !== st.edge ? (tb==='none' ? 'your taskbar is hidden, so this changes nothing' : `only matters on the ${r.taskbar} edge, where your taskbar is`)
     : SAYS[k][v][1];
   $('#setCard').querySelectorAll('.seg').forEach(seg => {
@@ -1726,7 +1732,7 @@ async function settings(from = $('#openSettings')){
         if (b.disabled || st[k]===b.dataset.v) return;
         st[k] = b.dataset.v; seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x===b)); placeThumb(seg);
         await fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({[k]: b.dataset.v})});
-        say(`saved · ${SAYS[k][b.dataset.v][0]}`);
+        say(k==='slot' && later(b.dataset.v) ? `saved · ${b.dataset.v} min from tomorrow. today's reviews stay put` : `saved · ${SAYS[k][b.dataset.v][0]}`);
       };
     });
     seg.onmouseleave = () => { clearTimeout(intent); intent = setTimeout(() => { show(look()); say(hint); }, 120); };

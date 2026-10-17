@@ -232,6 +232,29 @@ def test_merge_joins_consecutive_same_client_slots():
     assert s[0]["active_s"] == 600 and s[0]["end"] == t + 2 * SLOT_S
 
 
+def test_a_new_slot_length_never_orphans_reviews():
+    from datetime import datetime
+    from lowkey import config
+    real, demo, slot = config.DATA, labeler.DEMO, LIVE["settings"].get("slot")
+    config.DATA, labeler.DEMO = Path(tempfile.mkdtemp()), False
+    today = datetime.now().strftime("%Y-%m-%d")
+    try:
+        assert labeler.slot_len("2026-01-05") == SLOT_S                        # days from before the setting: 15 min
+        LIVE["settings"]["slot"] = "5"
+        assert labeler.slot_len(today) == 300
+        LIVE["settings"]["slot"] = "10"
+        assert labeler.slot_len(today) == 600                                   # nothing reviewed yet: switches now
+        config.save("edits.json", {f"{today}-1792130000": {"status": "billed"}})
+        LIVE["settings"]["slot"] = "15"
+        assert labeler.slot_len(today) == 600                                   # reviewed: today keeps its sessions
+        assert config.load("slots.json", {}) == {today: 600}                    # and tomorrow starts at 15
+        config.save("slots.json", {})                                           # updating lowkey mid-day, reviews made
+        assert labeler.slot_len(today) == SLOT_S                                # on 15-min slots: today stays 15
+    finally:
+        config.DATA, labeler.DEMO = real, demo
+        LIVE["settings"]["slot"] = slot
+
+
 if __name__ == "__main__":
     for name, fn in list(globals().items()):
         if name.startswith("test_"):

@@ -19,6 +19,7 @@ from PySide6.QtWidgets import QApplication, QWidget
 from . import jelly
 from . import focus
 from .config import PERSONAL, update_settings
+from .labeler import WAKE, reviewed
 from .mascot import Mascot
 
 TXT, DIM, FAINT = QColor(245, 245, 245), QColor(150, 150, 150), QColor(255, 255, 255, 16)
@@ -44,7 +45,7 @@ def lerp_rect(a, b, u):
     return QRectF(*(x + (y - x) * u for x, y in zip(a.getRect(), b.getRect())))
 
 
-SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 214), "settings": (440, 230), "prompt": (440, 126)}
+SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 214), "settings": (440, 276), "prompt": (440, 126)}
 FONTS = Path(__file__).parent / "web" / "fonts"  # Bricolage Grotesque, Instrument Serif, Geist Mono (all OFL)
 EAR, PAD = 10, 24  # concave ears where the notch meets the screen edge; room for the soft shadow
 UNDO_S = 5.0  # how long "not work" can be undone
@@ -58,7 +59,13 @@ SETTINGS_UI = (
     ("taskbar", "taskbar", (("below", "below it", "below the taskbar", "hangs below the taskbar, never covers it"),
                             ("over", "over it", "over the taskbar", "sits over the taskbar: the true notch look"))),
     ("rest", "at rest", (("lip", "tucked", "tucked away", "just a glowing lip until you hover"),
-                         ("pill", "pill", "always a pill", "client, timer and money always in view"))))
+                         ("pill", "pill", "always a pill", "client, timer and money always in view"))),
+    ("slot", "reads every", (("5", "5 min", "every 5 minutes", "the model reads 5 minutes of windows at a time: the sharpest, the default"),
+                             ("10", "10 min", "every 10 minutes", "reads 10 minutes at a time: fewer, broader labels"),
+                             ("15", "15 min", "every 15 minutes", "reads 15 minutes at a time: quick switches blur into one block"))))
+# the "reads every" preview: an illustrative hour of switching between clients (minutes, colour), always the same
+HOUR = ((9, "#B8FF3B"), (3, "#7AA2FF"), (9, "#B8FF3B"), (4, None), (12, "#B8FF3B"), (6, "#FF7AD9"), (5, "#B8FF3B"),
+        (7, "#7AA2FF"), (5, None))
 OPTION = {(k, o[0]): o for k, _, opts in SETTINGS_UI for o in opts}
 PEEK_W, PEEK_H, PEEK_M, NUB = 212, 160, 18, 7  # preview card, margin for its shadow, the arrow pointing at the option
 MINI = {"lip": (0.2, 0.03), "pill": (0.42, 0.085), "open": (0.5, 0.3)}  # island sizes on the tiny screen
@@ -1218,8 +1225,8 @@ class Island(QWidget):
 
     # ---------- settings, inside the island ----------
     def draw_settings(self, p, b, now):
-        """Same 400 px column as the open card: header 18-46, info 54-72, then three rows of segmented
-        controls at 86, 132 and 178. The content slides in from the right, like a page being pushed."""
+        """Same 400 px column as the open card: header 18-46, info 54-72, then four rows of segmented
+        controls at 86, 132, 178 and 224. The content slides in from the right, like a page being pushed."""
         col = self.color()
         a = max(0.0, min(1.0, self.fade["settings"].x))
         x, y0, W = b.left() + 20 + (0 if self.calm else (1 - a) * 16), b.top(), b.width() - 40
@@ -1447,6 +1454,8 @@ class Island(QWidget):
         """Act the option out on a tiny screen, like a short looping clip: a new edge tucks into the old one and
         blooms out of the new; the taskbar choice glides it over or under; the resting choice shows a cursor
         coming by. A dashed outline marks exactly where it will end up. Holds still under reduced motion."""
+        if k == "slot":
+            return self.mini_slots(p, S, int(v), now)
         st, col = self.live["settings"], self.color()
         col = col if col.lightness() > 60 else QColor("#7AA2FF")
         edge, over, rest, tb = self.edge, st.get("taskbar") == "over", st.get("rest", "lip"), self.live.get("taskbar")
@@ -1511,6 +1520,85 @@ class Island(QWidget):
                 self.mini_island(p, lerp_rect(home, big, iu), edge, hover if iu > 0.5 else v, col, 1.0, now)
                 start = QPointF(S.left() + S.width() * 0.62, S.top() + S.height() * 0.66)
                 self.mini_cursor(p, start + (big.center() - start) * cu, min(1.0, T / 0.3, (3.6 - T) / 0.3))
+        p.restore()
+        p.setPen(QPen(QColor(255, 255, 255, 30), 1))
+        p.setBrush(Qt.NoBrush)
+        p.drawRoundedRect(S.adjusted(0.5, 0.5, -0.5, -0.5), 9, 9)
+
+    def mini_slots(self, p, S, m, now):
+        """Act out "reads every m minutes" on one illustrative hour: what you did, then the hour cut into m-minute
+        slots, each read and filled with its main client as a scan passes. Below, how much of the hour lands right."""
+        mins = [c for n, c in HOUR for _ in range(n)]
+        cuts = [mins[i:i + m] for i in range(0, 60, m)]
+        main = [max(dict.fromkeys(c), key=c.count) for c in cuts]  # ties go to whatever came first
+        right = sum(c.count(w) for c, w in zip(cuts, main))
+        p.save()
+        clip = QPainterPath()
+        clip.addRoundedRect(S, 9, 9)
+        p.setClipPath(clip, Qt.IntersectClip)
+        p.setPen(Qt.NoPen)
+        p.setBrush(QColor(22, 22, 26))
+        p.drawRect(S)
+        x0, w = S.left() + 14, S.width() - 28
+        cw = w / 60
+
+        def fill(r, c):
+            if c:
+                p.setBrush(QColor(c))
+                p.drawRect(r)
+            else:  # a side quest: grey stripes, like the dashboard's timeline
+                p.setBrush(QColor(70, 70, 78))
+                p.drawRect(r)
+
+        def strip(y, colours, gap):
+            p.save()
+            path = QPainterPath()
+            path.addRoundedRect(QRectF(x0, y, w, 18), 5, 5)
+            p.setClipPath(path, Qt.IntersectClip)
+            at = 0
+            for n, c in colours:  # whole runs, so no hairlines between minutes
+                fill(QRectF(x0 + at * cw, y, n * cw, 18), c)
+                at += n
+            p.restore()
+
+        def label(y, text):
+            p.setPen(QColor(150, 150, 160))
+            p.setFont(font(9, QFont.DemiBold))
+            p.drawText(QRectF(x0, y, w, 12), Qt.AlignLeft | Qt.AlignVCenter, text)
+            p.setPen(Qt.NoPen)
+
+        label(S.top() + 12, "your hour")
+        strip(S.top() + 26, HOUR, 0)
+        label(S.top() + 54, f"what gets billed, read every {m} min")
+        T = 1.0 if self.calm else min(1.0, ((now - self.peek_t0) % 3.4) / 1.8)  # the scan reads the hour, then holds
+        y = S.top() + 68
+        p.save()
+        path = QPainterPath()
+        path.addRoundedRect(QRectF(x0, y, w, 18), 5, 5)
+        p.setClipPath(path, Qt.IntersectClip)
+        p.setBrush(QColor(40, 40, 46))
+        p.drawRect(QRectF(x0, y, w, 18))
+        for j, c in enumerate(main):
+            r = QRectF(x0 + j * m * cw, y, m * cw, 18)
+            if r.left() < x0 + w * T:  # read: filled with its main client
+                fill(r.intersected(QRectF(x0, y, w * T, 18)), c)
+        p.restore()
+        p.setBrush(QColor(22, 22, 26))
+        for j in range(1, len(main)):  # where the slots are cut
+            p.drawRect(QRectF(x0 + j * m * cw - 0.75, y - 2, 1.5, 22))
+        if T < 1:  # the scan head, in the model's colours
+            g = QLinearGradient(0, y - 3, 0, y + 21)
+            for pos, c in zip((0, 0.5, 1), MIND):
+                g.setColorAt(pos, c)
+            p.setBrush(g)
+            p.drawRoundedRect(QRectF(x0 + w * T - 1.2, y - 3, 2.4, 24), 1.2, 1.2)
+        p.setPen(TXT)
+        p.setFont(font(15, QFont.ExtraBold, NUM))
+        p.drawText(QRectF(x0, S.top() + 98, w, 22), Qt.AlignLeft | Qt.AlignVCenter, f"{right} of 60 min")
+        p.setPen(QColor(170, 170, 180))
+        p.setFont(font(10, QFont.Medium))
+        p.drawText(QRectF(x0, S.top() + 120, w, 28), Qt.AlignLeft | Qt.TextWordWrap,
+                   f"land on the right client in this hour · {60 // m} labels")
         p.restore()
         p.setPen(QPen(QColor(255, 255, 255, 30), 1))
         p.setBrush(Qt.NoBrush)
@@ -1605,6 +1693,8 @@ class Island(QWidget):
             if k == "taskbar" and tb != self.edge:
                 return ("your taskbar is hidden, so this changes nothing" if tb not in EDGES
                         else f"only matters on the {tb} edge, where your taskbar is")
+            if k == "slot" and L.get("slot_locked") and L.get("slot_today") not in (None, v):
+                return f"today is already reviewed, so it stays at {L['slot_today']} min. this starts tomorrow"
             return OPTION[k, v][3]
         if key == "dark":
             return "resume tracking from right now" if L.get("paused") else "pause tracking. nothing is saved until you resume"
@@ -1697,6 +1787,12 @@ class Island(QWidget):
                 if self.live["settings"].get(k) != v:
                     update_settings({k: v})
                     self.notice, self.notice_until = f"saved · {OPTION[k, v][2]}", time.time() + 2.6
+                    if k == "slot":
+                        today = time.strftime("%Y-%m-%d")
+                        self.live["slot_locked"] = reviewed(today)
+                        if self.live["slot_locked"] and self.live.get("slot_today") != v:
+                            self.notice, self.notice_until = f"saved · {v} min from tomorrow. today's reviews stay put", time.time() + 4
+                        WAKE.set()  # relabel now, at the new length
                     self.hold_until = time.time() + 3.5
                 self.peek_t0 = time.time()
             elif key == "mascot":

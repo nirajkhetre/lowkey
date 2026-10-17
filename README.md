@@ -122,9 +122,9 @@ When nothing's on, the top of the dashboard just asks: **what are you working on
 
 The model runs on your laptop, so you should be able to tell when it's working, what it wrote and why. One mark, a little sparkle in lime, blue and pink, sits on everything the model wrote and on nothing else.
 
-- **A live mind, not a status badge.** The header pill says what the model is doing while it does it (*"reading 15 minutes of your windows…"*), then what it did and how long that took on your GPU. The island's edge lights up in the same colours for as long as it thinks.
+- **A live mind, not a status badge.** The header pill says what the model is doing while it does it (*"reading 5 min of your windows…"*), then what it did and how long that took on your GPU. The island's edge lights up in the same colours for as long as it thinks.
 - **The day, in its own words.** Above the numbers, the model writes how your day went in a sentence or two, from your receipts: *"you nailed the auth logic and fixed the oauth redirect for acme-website. then you spent time on chai & co…"*. It's rewritten only when the day changes, and when the model is off there's no sentence at all, never a canned one.
-- **New lines write themselves in.** When a new 15 minutes gets labelled, the card appears on the page on its own and its line writes in, left to right. Nothing you typed ever animates like that, so you can always tell whose words are whose: a card says *gemma* until you rewrite it, then *your words*.
+- **New lines write themselves in.** When a new slot of your time gets labelled, the card appears on the page on its own and its line writes in, left to right. Nothing you typed ever animates like that, so you can always tell whose words are whose: a card says *gemma* until you rewrite it, then *your words*.
 - **Reasons, with receipts.** *why?* now starts with the reason (*"gemma read these windows and filed them under Chai & Co. 92% of the time mentions your hints: shopify, chaico"*), and the matching words are marked in the windows below.
 - **It learns from your fixes.** Move a session to the right client and the model picks the word that should have told it (*"masala-landing"*). Plain code checks that word is really in those windows, isn't generic, and isn't already someone else's hint, then lowkey says *"learned: masala-landing means Chai & Co from now on"*, with undo. When nothing qualifies, it learns nothing rather than guess.
 
@@ -142,7 +142,7 @@ The model runs on your laptop, so you should be able to tell when it's working, 
 | ••• **more** | island, open card | Slides the buttons over to the rarer actions below. Turns into ✕ to slide back. |
 | 🎮 **not work** | island, behind ••• | Marks the current session as a side quest (personal), so it stays off the invoice. Undo stays on offer for 5 s; the shrinking underline is the countdown. Dimmed when there's nothing to move (already personal, or gone dark); hover it to see why. |
 | 📌 **pin** | island, behind ••• | Keeps the pill out instead of tucking it away. Click again to unpin. |
-| ⚙️ **settings** | island, behind ••• | Which edge it lives on, below or over the taskbar, tucked or a pill at rest. Hover an option for an animated preview of exactly where it goes; click to apply. The ‹ goes back. |
+| ⚙️ **settings** | island, behind ••• | Which edge it lives on, below or over the taskbar, tucked or a pill at rest, and how many minutes the model reads at a time (**reads every** 5, 10 or 15 min; 5 by default). A new length applies today if nothing today is reviewed yet, otherwise from tomorrow, so your approvals never lose their sessions. Hover an option for an animated preview of exactly where it goes; click to apply. The ‹ goes back. |
 | **quit lowkey** | island settings | Stops tracking and closes the island (it tucks away first). `Ctrl+C` in the terminal works too. Only one lowkey runs at a time: a second copy says so and exits. |
 | ◔ **today** | island, open card | Billable time today. The ring fills up towards your daily goal (`daily_goal_h`). Click to open the dashboard. |
 | ₹ **earned today** | island, open card | Earned today at your client rates; it glows when it ticks up. Click to make the invoice. |
@@ -220,7 +220,7 @@ Pick the **edge** (top, bottom, left, right), what happens when the island **sha
 <p align="center"><img src="docs/images/architecture.svg" alt="lowkey architecture" width="100%"></p>
 
 1. **Tracker:** every 5 seconds, the foreground app and window title are appended to `data/activity-YYYY-MM-DD.jsonl`. Nothing is written when you're idle, when you've hit *go dark*, or for apps in `never_track`.
-2. **Labeler:** activity is cut into 15-minute slots. Each slot goes to **Gemma 4 E2B** through Ollama, which returns `{client, task, billable}`.
+2. **Labeler:** activity is cut into slots, 5 minutes by default (**reads every** in settings: 5, 10 or 15). Each slot goes to **Gemma 4 E2B** through Ollama, which returns `{client, task, billable}`.
    - The output is constrained by a JSON schema, and `client` is an enum of *your* clients, so the model can't invent one.
    - Consecutive slots for the same client merge into a session, and a second pass writes one clean invoice line.
 3. **Code check:** plain code scores how well window titles back each session. You review, and only approved sessions reach an invoice.
@@ -253,8 +253,11 @@ Daily use is on Windows 11. The macOS and Linux trackers are covered by tests wi
 | Test | Gemma 4 E2B (local) | Keyword rules |
 |---|:---:|:---:|
 | Right client per 15-min slot, **synthetic** demo week (155 slots) | 152 / 155 (98.1%) | 150 / 155 (96.8%) |
+| Minutes billed to the right client, same week, by slot length | 5 min: **94.6%** · 10 min: 91.7% · 15 min: 91.7% | — |
 | Label latency, RTX 4050 Laptop (6 GB), thinking off | ~0.3–0.6 s | instant |
 | Same call with Gemma 4's thinking on | ~9.5 s | — |
+
+Shorter slots give the model less to go on per label (it picks the slot's main client 95.7% of the time at 5 minutes, 98.1% at 15), but they sweep far less of your time into the wrong client, so more of the money lands right. That's why 5 minutes is the default: about 0.4 s of GPU per label, 12 labels an hour.
 
 The synthetic week is deliberately easy for keywords, since its window titles contain client names. The model earns its place on real days, where titles don't name the client, and in writing invoice lines, which rules can't do.
 
@@ -267,7 +270,7 @@ No screenshots, no keystrokes, no audio. Only the foreground app name and window
 
 <details><summary><b>Do I need a GPU?</b></summary>
 
-No. Without one, Gemma 4 E2B runs on CPU via Ollama, just slower. Labels are cached, so each 15-minute slot is labelled once. Any Ollama model with structured outputs works: `LOWKEY_MODEL=qwen3:4b python -m lowkey`.
+No. Without one, Gemma 4 E2B runs on CPU via Ollama, just slower. Labels are cached, so each slot is labelled once. Any Ollama model with structured outputs works: `LOWKEY_MODEL=qwen3:4b python -m lowkey`.
 </details>
 
 <details><summary><b>What if the model gets a session wrong?</b></summary>

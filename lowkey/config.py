@@ -24,14 +24,17 @@ except ValueError as e:
 MODEL = os.environ.get("LOWKEY_MODEL", "gemma4:e2b")
 OLLAMA = os.environ.get("OLLAMA_HOST", "http://127.0.0.1:11434")
 PORT = int(os.environ.get("LOWKEY_PORT", "7777"))
-SAMPLE_S, AFK_S, SLOT_S = 5, 300, 15 * 60  # sample every 5s, idle after 5 min, label 15-min slots
+SAMPLE_S, AFK_S, SLOT_S = 5, 300, 15 * 60  # sample every 5s, idle after 5 min; SLOT_S: days from before "reads every" (15 min)
 PERSONAL = "Personal"
 lock = threading.Lock()
 
 SETTINGS = ROOT / "settings.json"
 # On Windows the island floats over a same-edge taskbar by default (true notch look); macOS can't cover its menu bar.
-DEFAULTS = {"edge": "top", "taskbar": "over" if sys.platform == "win32" else "below", "rest": "lip"}
-CHOICES = {"edge": ("top", "bottom", "left", "right"), "taskbar": ("below", "over"), "rest": ("lip", "pill")}
+# "slot": how many minutes of windows the model reads per label. 5 measured best on the demo week (94.6% of minutes
+# billed to the right client, vs 91.7% at 15), for about 0.4 s of GPU per label.
+DEFAULTS = {"edge": "top", "taskbar": "over" if sys.platform == "win32" else "below", "rest": "lip", "slot": "5"}
+CHOICES = {"edge": ("top", "bottom", "left", "right"), "taskbar": ("below", "over"), "rest": ("lip", "pill"),
+           "slot": ("5", "10", "15")}
 
 
 def write_atomic(path, text):

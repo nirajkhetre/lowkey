@@ -12,7 +12,7 @@ from urllib.parse import parse_qs, urlparse
 from . import focus
 from .config import CONFIG, DATA, DEMO, LIVE, MODEL, PERSONAL, PORT, load, lock, save, save_config, update_settings
 from .labeler import (WAKE, add_manual, brief, day_sessions, delete_manual, life, life_week, model_ok, rename_client,
-                      suggest_hint, teach)
+                      reviewed, suggest_hint, teach)
 
 WEB = Path(__file__).parent / "web"
 STATUSES = ("pending", "billed", "nah")
@@ -119,7 +119,9 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json({"config": CONFIG, "model": MODEL, "model_ok": model_ok(), "demo": DEMO, "days": days})
         if url.path == "/api/settings":
             return self.send_json({"settings": LIVE["settings"], "taskbar": LIVE.get("taskbar"),
-                                   "platform": sys.platform, "island": not DEMO})
+                                   "platform": sys.platform, "island": not DEMO,
+                                   "slot_today": LIVE.get("slot_today", LIVE["settings"].get("slot")),
+                                   "slot_locked": not DEMO and reviewed(datetime.now().strftime("%Y-%m-%d"))})
         if url.path == "/api/pulse":  # cheap and polled: is the model working right now, and is there anything new
             return self.send_json({"thinking": LIVE.get("thinking"), "thought": LIVE.get("thought"), "rev": LIVE.get("labels_rev", 0)})
         if url.path == "/api/brief":
@@ -178,7 +180,11 @@ class Handler(SimpleHTTPRequestHandler):
             LIVE["catches"] = (LIVE.get("catches", []) + [c])[-6:]
             return self.send_json({"ok": True})
         if self.path == "/api/settings":
-            return self.send_json({"ok": True, "settings": update_settings(self.body())})
+            e = self.body()
+            out = update_settings(e)
+            if "slot" in e:
+                WAKE.set()  # relabel today at the new length now (if nothing today is reviewed yet)
+            return self.send_json({"ok": True, "settings": out})
         if self.path == "/api/teach":  # you moved a session: what should lowkey remember from it?
             e = self.body()
             day = datetime.fromisoformat(e["day"]).strftime("%Y-%m-%d")

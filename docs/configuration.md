@@ -62,13 +62,14 @@ Any app or window whose name or title contains one of these strings (case-insens
 
 ## Island settings (`settings.json`)
 
-Change these in the dashboard. Every option has a live preview.
+Change these in the island (••• → ⚙️) or the dashboard (⚙️ or `S`). Every option has a live preview.
 
 | Key | Values | Default |
 |---|---|---|
 | `edge` | `top` · `bottom` · `left` · `right` | `top` |
 | `taskbar` | `over`: sits on the physical screen edge, raised above a taskbar on the same edge · `below`: hangs from the usable screen area, so the taskbar pushes it inward | `over` on Windows, `below` on macOS (the menu bar can't be covered) |
 | `rest` | `lip`: tucked away until you hover · `pill`: always shows client, timer and money | `lip` |
+| `slot` | `5` · `10` · `15`: how many minutes of windows the model reads per label ("reads every"). A new value applies today if nothing today is reviewed yet, otherwise from tomorrow | `5` (94.6% of minutes billed to the right client on the demo week, vs 91.7% at 15) |
 
 ## Environment variables
 
@@ -98,6 +99,7 @@ data/
 ├── activity-2026-10-16.jsonl   one line per 5-second sample: {"ts", "dur", "app", "title"}
 ├── labels.json                 cached model labels, so each slot is labelled once
 ├── edits.json                  your approvals, rejections and edits
+├── slots.json                  the slot length each day was labelled with, so your edits keep their sessions
 ├── intents.json                your intentions: what you said, time on each, how far you got
 └── manual.json                 receipts you added yourself ("1h call with acme at 3pm")
 ```
