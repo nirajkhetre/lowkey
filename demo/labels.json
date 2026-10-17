@@ -1111,5 +1111,11 @@
  "sum:be603e057cedb539": "Browsed Reddit; used WhatsApp for personal communication.",
  "sum:8ccb504f7b0e43cd": "Developed auth logic, edited login.tsx, fixed OAuth redirect for acme-website.",
  "sum:5e0d51d5ff4c8a3a": "Personal comms via WhatsApp, watched lofi hip hop on YouTube, ordered food via Swiggy.",
- "sum:d4d68f87436abec3": "Coded handlers.py, posted invoice via Postman, ran tests, documented Nimbus API v2."
+ "sum:d4d68f87436abec3": "Coded handlers.py, posted invoice via Postman, ran tests, documented Nimbus API v2.",
+ "life:whatsapp": "messaging",
+ "life:swiggy": "shopping & food",
+ "life:instagram": "social",
+ "life:reddit": "social",
+ "life:youtube": "watching",
+ "life:spotify": "music"
 }

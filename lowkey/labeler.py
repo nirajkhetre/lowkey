@@ -6,6 +6,7 @@ activity -> 15-minute slots -> model labels each slot {client, task, billable}
 """
 import hashlib
 import json
+import re
 import threading
 import time
 import urllib.request
@@ -151,7 +152,8 @@ def merge(slots, day):
     return sessions
 
 
-def day_sessions(day):
+def labeled(day):
+    """The day's 15-minute slots with their labels (cached, so each slot is labelled once): {start: (windows, label)}."""
     slots = slots_for(day)
     with lock:
         cache = load("labels.json", {})
@@ -162,6 +164,11 @@ def day_sessions(day):
                 cache[key] = label(windows, use_model)
                 save("labels.json", cache)
             slots[start] = (windows, cache[key])
+    return slots, cache, use_model
+
+
+def day_sessions(day):
+    slots, cache, use_model = labeled(day)
     edits = load("edits.json", {})
     sessions = merge(slots, day)
     for s in sessions:
@@ -171,8 +178,132 @@ def day_sessions(day):
         s["evidence"] = [{"app": a, "title": t, "s": round(v)} for (a, t), v in
                          sorted(s.pop("_w").items(), key=lambda kv: -kv[1])[:6]]
         s.pop("_last")
+    sessions += [m for m in load("manual.json", []) if m.get("day") == day]  # time you logged yourself
+    for s in sessions:
         s.update(edits.get(s["id"], {}))
-    return sessions
+    return sorted(sessions, key=lambda s: s["start"])
+
+
+# ---------- receipts you add yourself ----------
+def add_manual(text, day):
+    """'1h call with acme at 3pm': a session lowkey couldn't see (a call, a meeting, work on paper). With no start
+    time it goes right after the day's last session, or ends now if that would be in the future."""
+    from .focus import entry
+    e = entry(text, day)
+    if not e["text"]:
+        raise ValueError("what was it?")
+    dur = e["dur_min"] * 60
+    start = e["start"]
+    if start is None:
+        ends = [s["end"] for s in day_sessions(day)]
+        start = max(ends) if ends else datetime.fromisoformat(day).replace(hour=9).timestamp()
+        start = min(start, time.time() - dur)
+    client = e["client"] or PERSONAL
+    m = {"id": f"m-{day}-{int(start)}-{int(time.time() * 1000) % 100000}", "day": day, "start": start, "end": start + dur,
+         "active_s": dur, "client": client, "task": e["text"][0].upper() + e["text"][1:], "billable": client != PERSONAL,
+         "by": "you", "confidence": 1.0, "evidence": [], "status": "pending", "manual": True}
+    with lock:
+        save("manual.json", load("manual.json", []) + [m])
+    return m
+
+
+def delete_manual(mid):
+    with lock:
+        rows = load("manual.json", [])
+        if not any(m["id"] == mid for m in rows):
+            raise KeyError(mid)
+        save("manual.json", [m for m in rows if m["id"] != mid])
+        edits = load("edits.json", {})
+        if edits.pop(mid, None) is not None:
+            save("edits.json", edits)
+
+
+def rename_client(old, new):
+    """Renaming a client keeps its history: cached labels, your edits, your receipts and intentions follow it."""
+    from . import focus
+    with lock:
+        for name in ("labels.json", "edits.json"):
+            data, changed = load(name, {}), False
+            for v in data.values():
+                if isinstance(v, dict) and v.get("client") == old:
+                    v["client"], changed = new, True
+            if changed:
+                save(name, data)
+        rows = load("manual.json", [])
+        if any(m.get("client") == old for m in rows):
+            save("manual.json", [{**m, "client": new} if m.get("client") == old else m for m in rows])
+    focus.rename(old, new)
+
+
+# ---------- off the clock ----------
+LIFE = ("watching", "gaming", "social", "messaging", "music", "shopping & food", "reading & learning", "browsing", "other")
+LIFE_HINTS = {  # the obvious ones are settled by plain code; the model only sees what these don't cover
+    "watching": ["netflix", "youtube", "prime video", "hotstar", "jiocinema", "disney+", "twitch", "vlc", "crunchyroll", "mx player"],
+    "gaming": ["steam", "epic games", "valorant", "riot client", "minecraft", "roblox", "battle.net", "xbox", "genshin", "bgmi"],
+    "social": ["instagram", "twitter", "x.com", "facebook", "reddit", "tiktok", "snapchat", "pinterest", "threads"],
+    "messaging": ["whatsapp", "telegram", "discord", "signal", "messenger"],
+    "music": ["spotify", "apple music", "youtube music", "soundcloud", "gaana", "jiosaavn"],
+    "shopping & food": ["amazon", "flipkart", "myntra", "swiggy", "zomato", "blinkit", "zepto", "ajio", "meesho", "bigbasket"],
+    "reading & learning": ["wikipedia", "medium", "kindle", "coursera", "udemy", "duolingo", "substack"]}
+BROWSERS = ("chrome", "msedge", "firefox", "brave", "opera", "vivaldi", "safari", "arc")
+BROWSER_NAMES = ("google chrome", "microsoft edge", "mozilla firefox", "brave", "opera", "vivaldi", "safari", "personal", "profile")
+
+
+def source(app, title):
+    """Where the time went, the way you'd say it: the site for a browser tab ("YouTube"), otherwise the app."""
+    a = re.sub(r"\.(exe|app)$", "", app.strip(), flags=re.I)
+    if any(b in a.lower() for b in BROWSERS):
+        parts = [re.sub(r"^\(\d+\)\s*", "", p.strip()) for p in re.split(r"\s[-|–—·]\s", title)]  # "· GitHub" too
+        parts = [p for p in parts if p and not any(b in p.lower() for b in BROWSER_NAMES)]
+        known = next((p for p in parts if any(h in p.lower() for hs in LIFE_HINTS.values() for h in hs)), None)
+        return (known or (parts[-1] if parts else a))[:40]  # a site we know wins wherever it sits in the title
+    return a[:1].upper() + a[1:40]
+
+
+def category(src, titles, cache, use_model):
+    """watching, gaming, social...: plain hints first, then the local model (constrained to the list), cached for good."""
+    key = "life:" + src.lower()
+    if key in cache:
+        return cache[key]
+    low = (src + " " + " ".join(titles)).lower()
+    cat = next((c for c, hs in LIFE_HINTS.items() if any(h in low for h in hs)), None)
+    if cat is None and use_model:
+        try:
+            cat = chat([{"role": "user", "content": f"Someone spent personal (non-work) time in: {src}\nExample window titles: "
+                                                    f"{'; '.join(titles[:3])}\nWhich kind of time was it?"}],
+                       {"type": "object", "required": ["kind"], "properties": {"kind": {"type": "string", "enum": list(LIFE)}}}, 20)["kind"]
+        except Exception:
+            cat = None
+    cache[key] = cat or "other"
+    return cache[key]
+
+
+def life(day):
+    """The day's off-the-clock time: by kind (watching, gaming, social...) and by source (Netflix, Valorant...).
+    It reads the same labelled slots as the timesheet; only slots the model called personal count."""
+    slots, cache, use_model = labeled(day)
+    secs, titles = defaultdict(float), defaultdict(list)
+    work = [h.lower() for c in CONFIG["clients"] for h in [c["name"], *c["hints"]]]
+    for windows, lab in slots.values():
+        if lab["client"] == PERSONAL:
+            for (app, title), s in windows.items():
+                if any(h in f"{app} {title}".lower() for h in work) or "lowkey — bills your hours" in title.lower():
+                    continue  # a client's window (or lowkey's own dashboard) inside a personal slot isn't leisure
+                src = source(app, title)
+                secs[src] += s
+                if len(titles[src]) < 3 and title not in titles[src]:
+                    titles[src].append(title[:80])
+    with lock:
+        before = len(cache)
+        kinds = {src: category(src, titles[src], cache, use_model) for src in secs}
+        if len(cache) != before:
+            save("labels.json", cache)
+    out = defaultdict(lambda: {"s": 0.0, "sources": []})
+    for src, s in sorted(secs.items(), key=lambda kv: -kv[1]):
+        out[kinds[src]]["s"] += s
+        out[kinds[src]]["sources"].append({"name": src, "s": round(s)})
+    cats = [{"name": k, "s": round(v["s"]), "sources": v["sources"][:5]} for k, v in out.items()]
+    return {"total_s": round(sum(secs.values())), "cats": sorted(cats, key=lambda c: -c["s"])}
 
 
 # ---------- live feed for the island ----------

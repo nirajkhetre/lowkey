@@ -66,6 +66,13 @@ LIVE = {"paused": False, "idle": 0,  # shared between the tracker, the labeler a
         "settings": {**DEFAULTS, **{k: v for k, v in (saved.items() if isinstance(saved, dict) else ()) if v in CHOICES.get(k, ())}}}
 
 
+def save_config(me, clients):
+    """Your profile and clients, replaced in place (so every module sees them at once) and saved atomically."""
+    CONFIG["me"].update(me)
+    CONFIG["clients"][:] = clients
+    write_atomic(CLIENTS, json.dumps(CONFIG, indent=2, ensure_ascii=False))
+
+
 def load(name, default):
     return read_json(DATA / name, default)
 

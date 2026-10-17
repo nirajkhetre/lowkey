@@ -54,11 +54,15 @@ kbd{font-family:var(--mono);font-size:.75em;border:1.5px solid var(--ink);border
 #prev:hover svg{transform:translateX(-2px)} #next:hover svg{transform:translateX(2px)}
 #openWrapped:hover .star{transform:scale(1.18) rotate(-12deg)}
 #openSettings:hover .k1{transform:translateX(-4px)} #openSettings:hover .k2{transform:translateX(4px)}
+#openClients:hover .k1{transform:translateY(-1.5px)} #openClients:hover .k2{transform:translateY(-1.5px) translateX(1px)}
 #theme .half{transform-box:view-box;transform-origin:12px 12px}
 #theme:hover .half{transform:rotate(180deg)}
 [data-tip]{position:relative}
 [data-tip]::after{content:attr(data-tip);position:absolute;top:calc(100% + 10px);left:50%;transform:translate(-50%,-4px) scale(.94);transform-origin:50% 0;background:var(--ink);color:var(--bg);font:700 12.5px/1 var(--display);padding:7px 10px;border-radius:9px;white-space:pre;opacity:0;pointer-events:none;transition:opacity .12s,transform .35s var(--spring);z-index:10}
 [data-tip]:hover::after,[data-tip]:focus-visible::after{opacity:1;transform:translate(-50%,0) scale(1);transition-delay:.35s}
+#theme::after{left:auto;right:-4px;transform:translateY(-4px) scale(.94);transform-origin:100% 0}  /* the last icon: its tip opens leftward */
+#theme:hover::after,#theme:focus-visible::after{transform:none}
+html{overflow-x:clip}  /* a hidden tooltip near the edge must never add a sideways scrollbar */
 .tip{position:fixed;z-index:15;max-width:300px;background:var(--ink);color:var(--bg);border-radius:12px;padding:9px 12px;font-size:13px;font-weight:600;line-height:1.3;pointer-events:none;
   opacity:0;transform:translate(-50%,calc(-100% - 6px)) scale(.94);transform-origin:50% 100%;transition:opacity .12s,transform .35s var(--spring)}
 .tip.show{opacity:1;transform:translate(-50%,calc(-100% - 12px)) scale(1)}
@@ -217,7 +221,7 @@ html.vt-focus .vtf{view-transition-name:var(--vt)}
 
 /* first load: sections rise in on a stagger, the day's blocks grow out of the timeline */
 body.intro .focus,body.intro main>:not(.hero),body.intro .hero>*,body.intro #grid>*{animation:rise .8s var(--spring-soft) both;animation-delay:calc(var(--d,0) * 55ms)}
-body.intro .block,body.intro .split>div{animation:grow .9s var(--spring-soft) both;animation-delay:calc(260ms + var(--i,0) * 45ms)}
+body.intro .block,body.intro .split>div,body.intro .lbar>div{animation:grow .9s var(--spring-soft) both;animation-delay:calc(260ms + var(--i,0) * 45ms)}
 @keyframes rise{from{opacity:0;transform:translateY(16px)}}
 @keyframes grow{from{transform:scaleX(0)}}
 
@@ -268,6 +272,36 @@ body.sheeted .wrap{transform:scale(.975);filter:saturate(.85)}
 
 /* settings: one live preview screen, acted out by whatever option you hover */
 #setModal .card{max-width:560px}
+/* clients: one row each, saved as you go */
+#cliModal .card{max-width:720px}
+.crow{display:grid;grid-template-columns:34px 1.3fr .8fr 1.7fr 36px;gap:8px;align-items:center;margin-bottom:8px;animation:pop .35s var(--spring) both}
+.crow input,.me input,.me select{border:var(--line);border-radius:10px;padding:8px 10px;background:var(--paper);font-weight:700;min-width:0;width:100%;color:var(--ink)}
+.crow input:disabled,.me input:disabled,.me select:disabled{opacity:.6}
+.swatch{width:32px;height:32px;border-radius:50%;background:var(--c);border:var(--line);position:relative;overflow:hidden;cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
+.swatch input,.swatch input:disabled{position:absolute;inset:-8px;opacity:0;cursor:pointer;width:auto;padding:0;border:0}
+.crate:has(input:disabled),.swatch:has(input:disabled){opacity:.6}
+.crate input:disabled{opacity:1}
+.crate{display:flex;align-items:center;border:var(--line);border-radius:10px;background:var(--paper);padding-left:10px;font-weight:700;color:var(--muted)}
+.crate input{border:0;padding-left:4px}
+.chead{display:grid;grid-template-columns:34px 1.3fr .8fr 1.7fr 36px;gap:8px;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.me{display:grid;grid-template-columns:1.2fr 1.4fr .6fr .7fr;gap:8px}
+.me label{font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:grid;gap:4px}
+@media (max-width:640px){.crow,.chead{grid-template-columns:34px 1fr 36px}.crow .crate,.crow .chints,.chead span:nth-child(3),.chead span:nth-child(4){grid-column:2/3}.me{grid-template-columns:1fr 1fr}}
+/* off the clock: personal time by kind and source. Neutral, like a screen-time summary: no scores, no scolding */
+.life{padding:14px 16px 12px;margin-bottom:26px}
+.life .top{display:flex;align-items:baseline;gap:10px;margin-bottom:8px}
+.life .top .sub{margin-left:auto;font-family:var(--mono);font-size:12.5px}
+.lbar{display:flex;height:14px;border:var(--line);border-radius:999px;overflow:hidden;background:var(--bg)}
+.lbar div{height:100%;transform-origin:left;transition:filter .15s}
+.lbar div:hover{filter:brightness(1.08)}
+.lcats{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:6px 14px;margin-top:10px}
+.lcat{display:flex;align-items:baseline;gap:7px;font-weight:700;font-size:14px;min-width:0}
+.lcat i{width:10px;height:10px;border-radius:50%;background:var(--c);border:1.5px solid var(--ink);flex:none;align-self:center}
+.lcat b{font:600 12.5px var(--mono);color:var(--muted)}
+.lcat small{color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.mline{margin:-4px 0 16px}
+.mline .capture{background:var(--paper)}
+.hint2{font:600 12.5px var(--mono);color:var(--muted);white-space:nowrap}
 .stage{max-width:440px;margin:4px auto 0}
 .says{min-height:20px;text-align:center;font-weight:700;color:var(--muted);margin:12px 0 18px}
 .srow{display:flex;align-items:center;gap:12px;margin:0 0 10px}
@@ -370,6 +404,7 @@ html.still *,html.still *::before,html.still *::after{transition:none!important;
     </div>
     <div class="grp">
       <button class="ib" id="openWrapped" data-tip="your week, wrapped  W" aria-label="your week, wrapped"><svg viewBox="0 0 24 24"><path class="star" d="M11 3.5l1.8 5.2 5.2 1.8-5.2 1.8L11 17.5l-1.8-5.2L4 10.5l5.2-1.8z"/><path class="star" d="M18.5 15.5v4M16.5 17.5h4"/></svg></button>
+      <button class="ib" id="openClients" data-tip="your clients  C" aria-label="your clients"><svg viewBox="0 0 24 24"><circle class="k1" cx="9" cy="8" r="3.2"/><path d="M3.5 19c.8-3.2 3-5 5.5-5s4.7 1.8 5.5 5"/><circle class="k2" cx="16.5" cy="9" r="2.6"/><path d="M15.6 14.1c2.2.2 4 1.7 4.8 4.4"/></svg></button>
       <button class="ib" id="openSettings" data-tip="island settings  S" aria-label="island settings"><svg viewBox="0 0 24 24"><path d="M4 8h16M4 16h16"/><circle class="k1" cx="15" cy="8" r="2.4" fill="var(--paper)"/><circle class="k2" cx="9" cy="16" r="2.4" fill="var(--paper)"/></svg></button>
       <button class="ib" id="theme" data-tip="switch theme" aria-label="switch between light and dark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path class="half" d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
     </div>
@@ -412,14 +447,24 @@ html.still *,html.still *::before,html.still *::after{transition:none!important;
       <div class="hours" id="hours"></div>
     </section>
 
+    <section class="card life" id="life" style="--d:4"></section>
+
     <div class="bar" style="--d:4">
       <h2 id="receiptsTitle">today's <em>receipts</em></h2>
+      <button class="btn quiet" id="addReceipt" title="log time lowkey couldn't see: a call, a meeting">+ add</button>
       <div class="seg filters" id="filters"><span class="thumb"></span>
         <button data-f="all">all <b class="roll"></b></button>
         <button data-f="pending">to review <b class="roll"></b></button>
         <button data-f="billed">billed <b class="roll"></b></button>
         <button data-f="personal">side quests <b class="roll"></b></button>
       </div>
+    </div>
+    <div class="mline" id="mline" hidden>
+      <label class="capture" for="receipt">
+        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+        <input id="receipt" autocomplete="off" spellcheck="false" aria-label="add a receipt" placeholder="what did lowkey miss? 1h call with acme at 3pm">
+        <span class="toks" id="mtoks"></span><kbd>↵</kbd>
+      </label>
     </div>
     <div class="grid" id="grid"></div>
   </main>
@@ -430,6 +475,7 @@ html.still *,html.still *::before,html.still *::after{transition:none!important;
 <div class="modal" id="wrappedModal"><div class="card wrapped" id="wrappedCard"></div></div>
 <div class="modal" id="billModal"><div class="card" id="billCard"></div></div>
 <div class="modal" id="setModal"><div class="card" id="setCard"></div></div>
+<div class="modal" id="cliModal"><div class="card" id="cliCard"></div></div>
 <div class="snack" id="snack" role="status" aria-live="polite"><span id="snackMsg"></span><button id="snackUndo" hidden>undo</button><i></i></div>
 <div class="tip" id="tip"></div>
 
@@ -464,6 +510,8 @@ function transition(kind, update){  // run a DOM update as a View Transition whe
   running[kind] = (running[kind] || 0) + 1;
   html.classList.add('vt-' + kind);
   const t = document.startViewTransition(update);
+  const guard = setTimeout(() => t.skipTransition(), 1000);  // no frame to animate in (window hidden)? just apply it
+  t.updateCallbackDone.finally(() => clearTimeout(guard));
   t.finished.finally(() => { if (!--running[kind]) html.classList.remove('vt-' + kind); });
   const p = t.updateCallbackDone.catch(() => {}); p.finished = t.finished.catch(() => {});
   return p;
@@ -584,7 +632,7 @@ async function boot(){
   await Promise.all([load(), loadFocus()]);
   setTimeout(() => document.body.classList.remove('intro'), 1800);  // the entrance plays once
   const intend = () => { scrollTo({top: 0, behavior: REDUCED ? 'auto' : 'smooth'}); $('#intend').focus({preventScroll: true}); };
-  ({'#settings': () => settings(), '#wrapped': () => wrapped(), '#bill': () => bill(), '#review': review, '#intend': intend})[location.hash]?.();  // deep links (island + docs)
+  ({'#settings': () => settings(), '#wrapped': () => wrapped(), '#bill': () => bill(), '#review': review, '#intend': intend, '#clients': () => clients_()})[location.hash]?.();  // deep links (island + docs)
 }
 
 async function load(){
@@ -637,6 +685,7 @@ function render(){
       b.onclick = () => { hideTip(); S.focus = +b.dataset.i; transition('cards', () => { S.filter = 'all'; renderCards(); }).then(() => focusCard(S.focus)); }; });
   } else { tr.innerHTML=''; hrs.innerHTML=''; }
   renderCards();
+  renderLife();
 }
 
 function renderCards(){
@@ -651,7 +700,8 @@ function renderCards(){
   const opts = n => [...S.config.clients.map(c=>c.name), PERSONAL].map(c=>`<option ${c===n?'selected':''}>${c}</option>`).join('');
   $('#grid').innerHTML = shown.map(([s,i], k) => {
     const billable = isBillable(s), pct = Math.round(s.confidence*100), done = s.status !== 'pending', id = tag(s.id);
-    const conf = s.by==='rules' ? `<span title="labelled by your keyword rules, not the model">keyword guess</span>`
+    const conf = s.manual ? `<span title="you added this one">added by you</span><i>·</i><a href="#" class="rmBtn" data-i="${i}">remove</a>`
+      : s.by==='rules' ? `<span title="labelled by your keyword rules, not the model">keyword guess</span>`
       : s.confidence < 0.6 ? `<span class="check" title="less than 60% of this line is backed by your windows">check me · ${pct}%</span>`
       : `<span title="how much of this line your windows back up">${pct}% backed</span>`;
     const verdict = s.status === 'billed'
@@ -664,7 +714,7 @@ function renderCards(){
       </div>
       <div class="body">
         <div class="task" data-i="${i}" title="click to edit  E">${esc(s.task)}</div>
-        <div class="meta"><span>${fmtH(s.active_s)}</span>${billable?`<i>·</i><span>${money(s.active_s/3600*rate(s.client))}</span>`:''}<i>·</i>${conf}<i>·</i><a href="#" class="whyBtn" data-i="${i}" title="the windows behind this line">why?</a></div>
+        <div class="meta"><span>${fmtH(s.active_s)}</span>${billable?`<i>·</i><span>${money(s.active_s/3600*rate(s.client))}</span>`:''}<i>·</i>${conf}${s.manual ? '' : `<i>·</i><a href="#" class="whyBtn" data-i="${i}" title="the windows behind this line">why?</a>`}</div>
         <div class="why" id="why${i}"><div>${s.evidence.map(e=>`<p>${fmtH(e.s)} · ${esc(e.app.replace('.exe',''))} — ${esc(e.title)}</p>`).join('')}</div></div>
         <div class="actions">${done
           ? `${verdict}<button class="link" data-act="undo" data-i="${i}">undo</button>`
@@ -676,6 +726,7 @@ function renderCards(){
   $('#grid').querySelectorAll('select').forEach(sel => sel.onchange = () => update(+sel.dataset.i, {client: sel.value, billable: sel.value!==PERSONAL}, `moved to ${sel.value}`, true,
     {from: sel.parentElement, at: '.who', text: `→ ${sel.value}`, island: `moved to ${sel.value}`, kind: 'move'}));
   $('#grid').querySelectorAll('.task').forEach(t => t.onclick = () => t.isContentEditable || act(+t.dataset.i, 'edit'));
+  $('#grid').querySelectorAll('.rmBtn').forEach(a => a.onclick = e => { e.preventDefault(); removeReceipt(+a.dataset.i); });
   $('#grid').querySelectorAll('.whyBtn').forEach(a => a.onclick = e => { e.preventDefault(); $('#why'+a.dataset.i).classList.toggle('open'); });
   $('#grid').querySelectorAll('.s').forEach(c => c.onfocus = () => S.focus = +c.dataset.i);
 }
@@ -915,6 +966,118 @@ function bill(from = $('#openBill')){
   openSheet($('#billModal'), from);
 }
 
+/* ---------- off the clock ---------- */
+const LIFE = {'watching': '#A78BFA', 'gaming': '#F59E0B', 'social': '#38BDF8', 'messaging': '#34D399', 'music': '#F472B6',
+              'shopping & food': '#FB923C', 'reading & learning': '#22D3EE', 'browsing': '#94A3B8', 'other': '#CBD5E1'};
+async function renderLife(){
+  const day = S.day, d = await (await fetch(`/api/life?day=${day}`)).json();
+  if (day !== S.day) return;  // you moved on to another day meanwhile
+  const box = $('#life');
+  if (!d.total_s) return box.innerHTML = `<div class="top"><div class="label">off the <em>clock</em></div><span class="sub">nothing personal on this day</span></div>`;
+  box.innerHTML = `<div class="top"><div class="label">off the <em>clock</em></div><span class="sub">${fmtH(d.total_s)} · no judgement</span></div>
+    <div class="lbar">${d.cats.map((c, k) => `<div style="--i:${k};width:${c.s / d.total_s * 100}%;background:${LIFE[c.name] || LIFE.other}" data-k="${k}"></div>`).join('')}</div>
+    <div class="lcats">${d.cats.map(c => `<div class="lcat" style="--c:${LIFE[c.name] || LIFE.other}"><i></i>${esc(c.name)} <b>${fmtH(c.s)}</b>
+      <small>${esc(c.sources.map(x => x.name).join(', '))}</small></div>`).join('')}</div>`;
+  box.querySelectorAll('.lbar div').forEach(b => { const c = d.cats[+b.dataset.k];
+    b.onmouseenter = () => showTip(b, `<b>${esc(c.name)}</b><span>${fmtH(c.s)}</span><div>${c.sources.map(x => `${esc(x.name)} ${fmtH(x.s)}`).join(' · ')}</div>`);
+    b.onmouseleave = hideTip; });
+}
+
+/* ---------- receipts you add yourself ---------- */
+$('#addReceipt').onclick = () => { const m = $('#mline'); m.hidden = !m.hidden; if (!m.hidden) $('#receipt').focus(); };
+let mT;
+$('#receipt').oninput = () => { clearTimeout(mT); mT = setTimeout(previewReceipt, 120); };
+async function previewReceipt(){
+  const v = $('#receipt').value.trim();
+  if (!v) return $('#mtoks').innerHTML = '';
+  const p = await call('/api/manual/parse', {text: v, day: S.day});
+  if (p.hint) return $('#mtoks').innerHTML = `<span class="hint2">${esc(p.hint.split('?')[0])}?</span>`;
+  const t = p.start ? new Date(p.start * 1000).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}).toLowerCase() : 'after your last session';
+  $('#mtoks').innerHTML = [p.client && `<span class="tok c" style="--c:${client(p.client)?.color || 'var(--paper)'}">${esc(p.client)}</span>`,
+    `<span class="tok">${p.dur_min >= 60 ? (p.dur_min / 60).toFixed(p.dur_min % 60 ? 1 : 0) + 'h' : p.dur_min + 'm'}</span>`,
+    `<span class="tok">${t}</span>`].filter(Boolean).join('');
+}
+async function refreshDay(){  // re-read this week from the server (a receipt changed the day's sessions)
+  const [from, to] = weekOf(S.day);
+  S.week = await (await fetch(`/api/range?from=${from}&to=${to}`)).json();
+}
+$('#receipt').onkeydown = async e => {
+  e.stopPropagation();
+  if (e.key === 'Escape') { e.target.value = ''; $('#mtoks').innerHTML = ''; $('#mline').hidden = true; return; }
+  if (e.key !== 'Enter' || !e.target.value.trim()) return;
+  const r = $('#mline .capture').getBoundingClientRect();
+  const m = await call('/api/manual', {text: e.target.value.trim(), day: S.day});
+  if (m.error) return snack('add a length, like 1h or 30m');
+  e.target.value = ''; $('#mtoks').innerHTML = '';
+  await refreshDay();
+  await transition('cards', () => render());
+  const col = m.client !== PERSONAL ? color(m.client) : '#9a9aa6';
+  fly({left: r.left + r.width / 2 - 40, top: r.top, width: 80, height: r.height}, `logged · ${fmtH(m.active_s)}`, col,
+      `logged · ${m.task} · ${fmtH(m.active_s)}`, 'logged');
+};
+async function removeReceipt(i){
+  const s = sessions()[i], at = new Date(s.start * 1000);
+  await call('/api/manual/delete', {id: s.id});
+  await refreshDay();
+  await transition('cards', () => render());
+  snack(`removed · ${s.task}`, async () => {
+    await call('/api/manual', {text: `${Math.round(s.active_s / 60)}m ${s.task} at ${at.getHours()}:${String(at.getMinutes()).padStart(2, '0')}`, day: S.day});
+    await refreshDay(); transition('cards', () => render());
+  });
+}
+
+/* ---------- your clients: one row each, saved as you go ---------- */
+async function clients_(from = $('#openClients')){
+  const st = await (await fetch('/api/state')).json(), cfg = st.config, me = cfg.me, ro = st.demo ? 'disabled' : '';
+  const row = c => `<div class="crow" data-orig="${esc(c.name)}">
+      <label class="swatch" style="--c:${c.color}" title="colour"><input type="color" value="${c.color}" ${ro}></label>
+      <input class="cname" value="${esc(c.name)}" placeholder="client name" ${ro}>
+      <label class="crate"><span>${esc(me.currency)}</span><input class="crt" type="number" min="0" step="50" value="${c.rate}" ${ro}></label>
+      <input class="chints" value="${esc(c.hints.join(', '))}" placeholder="words in their window titles" title="repo names, domains, project names" ${ro}>
+      <button class="ib" data-rm aria-label="remove client" ${ro}>${ICON.x}</button></div>`;
+  $('#cliCard').innerHTML = `${CLOSE}
+    <h2 class="mtitle">your <em>clients</em></h2>
+    <p class="says" id="csays" style="text-align:left;margin:0 0 14px">${st.demo ? "the demo's clients are fixed. run lowkey for real to edit yours" : 'changes save as you go. hints are words from their window titles: repos, domains, project names'}</p>
+    <div class="chead"><span></span><span>name</span><span>rate / hour</span><span>hints</span><span></span></div>
+    <div id="clist">${cfg.clients.map(row).join('')}</div>
+    <button class="btn quiet" id="addClient" ${ro}>+ add a client</button>
+    <h3 class="sec" style="margin-top:22px">you</h3>
+    <div class="me">
+      <label>name<input id="meName" value="${esc(me.name)}" ${ro}></label>
+      <label>email<input id="meEmail" value="${esc(me.email)}" ${ro}></label>
+      <label>currency<select id="meCur" ${ro}>${['₹', '$', '€', '£', '¥'].map(c => `<option ${c === me.currency ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+      <label>daily goal<input id="meGoal" type="number" min="1" max="16" value="${me.daily_goal_h || 6}" ${ro}></label>
+    </div>`;
+  openSheet($('#cliModal'), from);
+  if (st.demo) return;
+  const say = t => { const e = $('#csays'); e.textContent = t; if (!REDUCED) e.animate([{opacity: 0}, {opacity: 1}], {duration: 200}); };
+  let saveT;
+  const save = () => { clearTimeout(saveT); saveT = setTimeout(async () => {
+    const rows = [...$('#clist').children].filter(r => r.querySelector('.cname').value.trim());
+    const renames = {};
+    rows.forEach(r => { const o = r.dataset.orig, n = r.querySelector('.cname').value.trim(); if (o && o !== n) renames[o] = n; });
+    const body = {renames, me: {name: $('#meName').value, email: $('#meEmail').value, currency: $('#meCur').value, daily_goal_h: +$('#meGoal').value},
+      clients: rows.map(r => ({name: r.querySelector('.cname').value.trim(), rate: +r.querySelector('.crt').value || 0,
+        color: r.querySelector('input[type=color]').value, hints: r.querySelector('.chints').value.split(',').map(h => h.trim()).filter(Boolean)}))};
+    const res = await call('/api/config', body);
+    if (res.error) return say(`couldn't save: ${res.error.includes('ValueError') ? 'names must be unique (and not "Personal"), rates 0 or more' : res.error}`);
+    S.config = res.config;
+    rows.forEach(r => r.dataset.orig = r.querySelector('.cname').value.trim());
+    say('saved'); S.week = {}; await Promise.all([load(), loadFocus()]);  // names, colours and rates show everywhere at once
+  }, 600); };
+  const wire = r => {
+    r.querySelectorAll('input').forEach(i => i.oninput = () => { if (i.type === 'color') r.querySelector('.swatch').style.setProperty('--c', i.value); save(); });
+    r.querySelector('[data-rm]').onclick = () => { const html = r.outerHTML, next = r.nextSibling; r.remove(); save();
+      snack(`removed · ${r.dataset.orig || 'client'}`, () => { const t = document.createElement('div'); t.innerHTML = html; const n = t.firstChild;
+        $('#clist').insertBefore(n, next); wire(n); save(); }); };
+  };
+  [...$('#clist').children].forEach(wire);
+  $('#addClient').onclick = () => { const t = document.createElement('div');
+    t.innerHTML = row({name: '', rate: 1000, color: ['#B8FF3B', '#FF7AD9', '#7AA2FF', '#FFD23F', '#FF8A3D'][$('#clist').children.length % 5], hints: []});
+    const n = t.firstChild; n.dataset.orig = ''; $('#clist').appendChild(n); wire(n); n.querySelector('.cname').focus(); };
+  ['#meName', '#meEmail', '#meCur', '#meGoal'].forEach(k => $(k).oninput = save);
+}
+
 /* ---------- settings: the same three rows as the island's own settings, with one live preview ---------- */
 const SAYS = {
   edge: {top:['top','hangs from the top edge, like a MacBook notch'], bottom:['bottom','sits on the bottom edge, by your taskbar'],
@@ -972,6 +1135,7 @@ async function settings(from = $('#openSettings')){
 
 /* ---------- wiring ---------- */
 $('#prev').onclick = () => shiftDay(-1); $('#next').onclick = () => shiftDay(1);
+$('#openClients').onclick = () => clients_();
 $('#openWrapped').onclick = () => wrapped(); $('#openBill').onclick = () => bill(); $('#openSettings').onclick = () => settings();
 $('#queueCard').onclick = review;
 $('#snackUndo').onclick = () => { const f = S.undo; S.undo = null; $('#snack').classList.remove('show'); f && f(); };
@@ -1011,6 +1175,7 @@ document.addEventListener('keydown', e => {
   if (e.key==='w') return wrapped();
   if (e.key==='b') return bill();
   if (e.key==='s') return settings();
+  if (e.key==='c') return clients_();
   if (e.key==='i' || e.key==='/') { e.preventDefault(); return $('#intend').focus(); }
   if (!n) return;
   if (e.key==='j'||e.key==='k'){ S.focus = (S.focus + (e.key==='j'?1:-1) + n) % n; focusCard(S.focus); }

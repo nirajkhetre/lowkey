@@ -10,8 +10,8 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from . import focus
-from .config import CONFIG, DATA, DEMO, LIVE, MODEL, PORT, load, lock, save, update_settings
-from .labeler import WAKE, day_sessions, model_ok
+from .config import CONFIG, DATA, DEMO, LIVE, MODEL, PERSONAL, PORT, load, lock, save, save_config, update_settings
+from .labeler import WAKE, add_manual, day_sessions, delete_manual, life, model_ok, rename_client
 
 WEB = Path(__file__).parent / "web"
 STATUSES = ("pending", "billed", "nah")
@@ -24,6 +24,35 @@ def nums(v, n):
     except (TypeError, ValueError):
         return None
     return out if len(out) == n and all(abs(x) < 1e5 for x in out) else None
+
+
+def clean_config(e):
+    """Your profile and clients from the dashboard, checked: unique names (Personal is reserved), sane rates, hex
+    colours, and hints of 3+ characters (a hint like "a" would match every window)."""
+    me, out = e.get("me") or {}, {}
+    for k, n in (("name", 60), ("email", 80), ("currency", 3)):
+        if k in me:
+            out[k] = str(me[k]).strip()[:n]
+    if "daily_goal_h" in me:
+        g = float(me["daily_goal_h"])
+        if not 0 < g <= 16:
+            raise ValueError("goal")
+        out["daily_goal_h"] = int(g) if g == int(g) else g
+    clients, seen = [], set()
+    for c in e["clients"][:50]:
+        name = str(c["name"]).strip()[:40]
+        if not name or name.lower() in seen or name.lower() == PERSONAL.lower():
+            raise ValueError("name")
+        seen.add(name.lower())
+        rate = float(c.get("rate") or 0)
+        if not 0 <= rate <= 1e6:
+            raise ValueError("rate")
+        hints = [h for h in (str(h).strip()[:40] for h in (c.get("hints") or [])) if len(h) >= 3][:20]
+        clients.append({"name": name, "rate": int(rate) if rate == int(rate) else rate, "hints": hints,
+                        "color": c["color"] if re.fullmatch(r"#[0-9a-fA-F]{6}", str(c.get("color"))) else "#7AA2FF"})
+    names = {c["name"] for c in clients}
+    renames = {str(o): str(n) for o, n in (e.get("renames") or {}).items() if str(n) in names and str(o) != str(n)}
+    return out, clients, renames
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -88,6 +117,8 @@ class Handler(SimpleHTTPRequestHandler):
                                    "platform": sys.platform, "island": not DEMO})
         if url.path == "/api/island":  # where the island sits on screen, so the dashboard can send things home to it
             return self.send_json({"island": LIVE.get("island"), "settings": LIVE["settings"]})
+        if url.path == "/api/life":  # off the clock: personal time by kind and by source
+            return self.send_json(life(datetime.fromisoformat(q["day"]).strftime("%Y-%m-%d")))
         if url.path == "/api/intents":  # now, what's next (with the reason), what got done today
             return self.send_json(focus.listing())
         if url.path == "/api/range":
@@ -138,6 +169,27 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json({"ok": True})
         if self.path == "/api/settings":
             return self.send_json({"ok": True, "settings": update_settings(self.body())})
+        if self.path == "/api/config":  # your clients and profile, edited in the dashboard
+            if DEMO:
+                return self.send_json({"error": "the demo's clients are fixed; run lowkey for real to edit yours"}, 409)
+            me, clients, renames = clean_config(self.body())
+            save_config(me, clients)
+            for old, new in renames.items():
+                rename_client(old, new)
+            WAKE.set()
+            return self.send_json({"config": CONFIG})
+        if self.path == "/api/manual":  # a receipt you add yourself: "1h call with acme at 3pm"
+            e = self.body()
+            return self.send_json(add_manual(str(e["text"])[:200], datetime.fromisoformat(e["day"]).strftime("%Y-%m-%d")))
+        if self.path == "/api/manual/parse":  # live chips for the receipt line; a missing length is a hint, not an error
+            e = self.body()
+            try:
+                return self.send_json(focus.entry(str(e["text"])[:200], datetime.fromisoformat(e["day"]).strftime("%Y-%m-%d")))
+            except ValueError as x:
+                return self.send_json({"hint": str(x)})
+        if self.path == "/api/manual/delete":
+            delete_manual(str(self.body()["id"]))
+            return self.send_json({"ok": True})
         if self.path == "/api/intents/parse":  # live chips while you type: plain parsing only, instant
             p = focus.parse(str(self.body()["text"])[:200])
             return self.send_json({**p, "reason": focus.reason({**p, "created": time.time()}, time.time()) if p["text"] else ""})

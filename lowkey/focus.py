@@ -54,9 +54,35 @@ DAY = r"(today|tonight|eod|tomorrow|tmrw|monday|tuesday|wednesday|thursday|frida
 SHORT_DAY = r"(mon|tue|tues|wed|thu|thur|thurs|fri|sat|sun)"  # "sat down", "sun icon": only after by/on/due
 
 
+LENGTH = rf"(?:\b(?:about|around|roughly|for)\s+|~\s*)?\b{AMOUNT}\s*{UNIT}\b"
+
+
 def _minutes(n, unit):
     n = {"a": 1, "an": 1, "half a": 0.5, "half an": 0.5}.get(n.lower(), None) or float(n)
     return round(n * (60 if unit.lower().startswith("h") else 1))
+
+
+def _hour(m):
+    """A clock time from a match of (h)(:mm)?(am|pm)?: without am/pm, 1 to 7 read as afternoon (working hours)."""
+    hour, minute, ap = int(m[1]), int(m[2] or 0), (m[3] or "").lower()
+    return (hour % 12 + 12 if ap == "pm" else hour % 12 if ap == "am" else hour + 12 if hour < 8 else hour), minute
+
+
+def _cut(t, m):
+    return t[:m.start()] + " " + t[m.end():]
+
+
+def _client(low):
+    """The client whose name or hint appears in the words (the longest match wins), or None."""
+    return max((c for c in CONFIG["clients"] if any(h in low for h in [c["name"].lower(), *map(str.lower, c["hints"])])),
+               key=lambda c: max(len(h) for h in [c["name"], *c["hints"]] if h.lower() in low), default=None)
+
+
+def _clean(t):
+    t = re.sub(r"\s+", " ", t)
+    t = re.sub(r"^[\s,;:\-·]+|[\s,;:\-·]+$", "", t)
+    t = re.sub(r"(?:\s*[,;·-]?\s*\b(?:by|for|about|around|at|due|in|on|until|before|and|from|since)\b)+$", "", t, flags=re.I).strip(" ,;-·")
+    return re.sub(r"^(?:of|for|to|on|about|and)\b\s*", "", t, flags=re.I)  # "half an hour of email" -> "email"
 
 
 def parse(text, now=None):
@@ -69,9 +95,9 @@ def parse(text, now=None):
     m = re.search(rf"\bin\s+{AMOUNT}\s*{UNIT}\b", t, re.I)  # "in 2 hours" is a deadline, not a length
     if m:
         due, t = now + 60 * _minutes(m[1], m[2]), t[:m.start()] + " " + t[m.end():]
-    m = re.search(rf"(?:\b(?:about|around|roughly|for)\s+|~\s*)?\b{AMOUNT}\s*{UNIT}\b", t, re.I)
+    m = re.search(LENGTH, t, re.I)
     if m:
-        est, t = _minutes(m[1], m[2]), t[:m.start()] + " " + t[m.end():]
+        est, t = _minutes(m[1], m[2]), _cut(t, m)
     day = hour = minute = None
     m = (re.search(rf"\b(?:(?:by|before|on|due|until)\s+)?{DAY}\b", t, re.I)
          or re.search(rf"\b(?:by|before|on|due|until)\s+{SHORT_DAY}\b", t, re.I))
@@ -80,10 +106,7 @@ def parse(text, now=None):
     m = (re.search(r"\b(?:by|before|at|until|due)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b", t, re.I)
          or re.search(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b", t, re.I))
     if m and int(m[1]) <= 23:
-        hour, minute = int(m[1]), int(m[2] or 0)
-        ap = (m[3] or "").lower()
-        hour = hour % 12 + 12 if ap == "pm" else hour % 12 if ap == "am" else hour + 12 if hour < 8 else hour
-        t = t[:m.start()] + " " + t[m.end():]
+        (hour, minute), t = _hour(m), _cut(t, m)
     if due is None and (day or hour is not None):
         d = base.replace(second=0, microsecond=0)
         if day in ("tomorrow", "tmrw"):
@@ -96,14 +119,29 @@ def parse(text, now=None):
         if d.timestamp() <= now and day not in ("today", "tonight", "eod", "tomorrow", "tmrw"):
             d += timedelta(days=7 if day else 1)  # "by 5" at 6 pm: tomorrow; "by friday" late on a friday: next week
         due = d.timestamp()
-    low = t.lower()
-    client = max((c for c in CONFIG["clients"] if any(h in low for h in [c["name"].lower(), *map(str.lower, c["hints"])])),
-                 key=lambda c: max(len(h) for h in [c["name"], *c["hints"]] if h.lower() in low), default=None)
-    t = re.sub(r"\s+", " ", t)
-    t = re.sub(r"^[\s,;:\-·]+|[\s,;:\-·]+$", "", t)
-    t = re.sub(r"(?:\s*[,;·-]?\s*\b(?:by|for|about|around|at|due|in|on|until|before|and)\b)+$", "", t, flags=re.I).strip(" ,;-·")
-    t = re.sub(r"^(?:of|for|to|on|about|and)\b\s*", "", t, flags=re.I)  # "half an hour of email" -> "email"
-    return {"text": t, "client": client["name"] if client else None, "due": due, "est_min": est}
+    client = _client(t.lower())
+    return {"text": _clean(t), "client": client["name"] if client else None, "due": due, "est_min": est}
+
+
+def entry(text, day):
+    """Time lowkey couldn't see, logged after the fact: '1h call with acme at 3pm' on the day you're looking at.
+    It needs a length; the start is optional (None: the caller puts it after the day's last session). Nothing rolls
+    forward to tomorrow here: a receipt is about the past."""
+    t = " " + str(text)[:200] + " "
+    m = re.search(LENGTH, t, re.I)
+    if not m:
+        raise ValueError("how long was it? add a length, like 1h or 30m")
+    dur, t = _minutes(m[1], m[2]), _cut(t, m)
+    start = None
+    m = (re.search(r"\b(?:at|from|since|by)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b", t, re.I)
+         or re.search(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b", t, re.I))
+    if m and int(m[1]) <= 23:
+        (hour, minute), t = _hour(m), _cut(t, m)
+        start = datetime.fromisoformat(day).replace(hour=hour, minute=minute).timestamp()
+    client = _client(t.lower())
+    if not 0 < dur <= 16 * 60:
+        raise ValueError("length")
+    return {"text": _clean(t), "client": client["name"] if client else None, "start": start, "dur_min": dur}
 
 
 def guess_client(text):
@@ -307,6 +345,15 @@ def respond(kind, value=None, now=None):
     elif kind == "start" and p and p.get("id"):
         return act(p["id"], "start", None, now)
     publish(now)
+
+
+def rename(old, new):
+    with _lock:
+        for x in _items():
+            if x.get("client") == old:
+                x["client"] = new
+        _write()
+    publish()
 
 
 def publish(now=None):

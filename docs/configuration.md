@@ -11,6 +11,8 @@ Restart lowkey after editing `clients.json`. Settings apply live.
 
 ## `clients.json`
 
+The easy way: the 👥 **your clients** sheet in the dashboard (or press `C`). It edits this file for you, saves as you go, and carries a client's history over when you rename it. Editing the file by hand still works; restart lowkey afterwards.
+
 ```json
 {
   "me": { "name": "Riya Sharma", "email": "riya@example.com", "currency": "₹", "daily_goal_h": 6 },
@@ -96,7 +98,8 @@ data/
 ├── activity-2026-10-16.jsonl   one line per 5-second sample: {"ts", "dur", "app", "title"}
 ├── labels.json                 cached model labels, so each slot is labelled once
 ├── edits.json                  your approvals, rejections and edits
-└── intents.json                your intentions: what you said, time on each, how far you got
+├── intents.json                your intentions: what you said, time on each, how far you got
+└── manual.json                 receipts you added yourself ("1h call with acme at 3pm")
 ```
 
 Delete `labels.json` to relabel everything, for example after switching models. Delete the whole folder to start fresh.

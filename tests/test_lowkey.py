@@ -109,6 +109,7 @@ def test_api_answers_only_this_machines_pages():
         assert call("POST", "/api/edit", '{"status": "billed"}', **js) == 400                # no session id
         assert call("GET", "/api/range?from=2020-01-01&to=2026-01-01") == 400                # absurd range
         assert call("POST", "/api/catch", '{"text": "hi"}', Origin=f"http://127.0.0.1:{port}", **js) == 200
+        assert call("POST", "/api/config", '{"clients": []}', **js) == 409                   # the demo's clients are fixed
     finally:
         srv.shutdown()
         LIVE.pop("catches", None)
@@ -161,6 +162,39 @@ def test_intentions_parse_order_and_watch():
         focus.W.update(w)
         LIVE.pop("focus", None)
         LIVE.pop("focus_verdict", None)
+
+
+def test_receipts_renames_and_off_the_clock():
+    from lowkey import config, focus, server
+    real = config.DATA
+    config.DATA = labeler.DATA = Path(tempfile.mkdtemp())  # both: the labeler reads activity through its own name
+    focus._xs = None
+    try:
+        m = labeler.add_manual("1h call with acme at 3pm", "2026-10-16")
+        assert (m["client"], m["task"], m["active_s"]) == ("Acme Studio", "Call with acme", 3600)
+        assert [s["id"] for s in labeler.day_sessions("2026-10-16")] == [m["id"]]           # merged into its day
+        config.save("edits.json", {m["id"]: {"status": "billed"}})
+        labeler.rename_client("Acme Studio", "Acme Labs")                                     # history follows the name
+        assert labeler.day_sessions("2026-10-16")[0]["client"] == "Acme Labs"
+        labeler.delete_manual(m["id"])
+        assert labeler.day_sessions("2026-10-16") == [] and m["id"] not in config.load("edits.json", {})
+    finally:
+        config.DATA = labeler.DATA = real
+        focus._xs = None
+    assert labeler.source("chrome.exe", "lofi beats - YouTube - Google Chrome") == "YouTube"
+    assert labeler.source("chrome.exe", "Swiggy - Order food online - Google Chrome") == "Swiggy"  # site first or last
+    assert labeler.source("msedge.exe", "(3) WhatsApp - Personal - Microsoft Edge") == "WhatsApp"
+    assert labeler.category("Netflix", [], {}, False) == "watching" and labeler.category("Tiny Tool", [], {}, False) == "other"
+    me, clients, renames = server.clean_config({"me": {"daily_goal_h": "7"}, "renames": {"Acme Studio": "Acme Labs", "x": "nope"},
+                                                "clients": [{"name": "Acme Labs", "rate": "1500", "hints": ["acme", "a", ""], "color": "red"}]})
+    assert me == {"daily_goal_h": 7} and renames == {"Acme Studio": "Acme Labs"}
+    assert clients == [{"name": "Acme Labs", "rate": 1500, "hints": ["acme"], "color": "#7AA2FF"}]
+    for bad in ([{"name": "Personal"}], [{"name": "A1"}, {"name": "a1"}], [{"name": "X", "rate": -5}]):
+        try:
+            server.clean_config({"clients": bad})
+            raise AssertionError(f"accepted {bad}")
+        except ValueError:
+            pass
 
 
 def test_merge_joins_consecutive_same_client_slots():
