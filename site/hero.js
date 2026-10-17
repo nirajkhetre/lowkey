@@ -229,20 +229,133 @@
     e.preventDefault();
     portal(a);
   });
+  // The guide leaves its island, flies to the middle of the screen, turns into a little black bomb, its fuse burns
+  // down while it gets nervous, and it blows up into lime: the same lime the demo page opens on.
+  let lit = null;
   function portal(a) {
-    const r = a.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
-    const R = Math.hypot(Math.max(cx, innerWidth - cx), Math.max(cy, innerHeight - cy));
-    const p = document.createElement('div');
-    p.className = 'portal';
-    p.innerHTML = `<div class="pt-in"><span class="mb" data-mood="switched"><span class="g-eyes"><span class="g-blink"><i></i><i></i></span></span></span>
-      <b>opening the real dashboard</b><span>lowkey's own Python, starting in your browser</span><i class="pt-bar"></i></div>`;
-    document.body.append(p);
-    a.animate([{transform: 'scale(1)'}, {transform: 'scale(.9)'}, {transform: 'scale(1.06)'}], {duration: 260, easing: 'ease-out'});
-    p.animate([{clipPath: `circle(${Math.max(r.width, r.height) / 2}px at ${cx}px ${cy}px)`, borderRadius: '0'}, {clipPath: `circle(${R}px at ${cx}px ${cy}px)`}],
-      {duration: 680, easing: 'cubic-bezier(.75,0,.2,1)', fill: 'forwards'});
-    $('.pt-in', p).animate([{opacity: 0, transform: 'translateY(14px) scale(.96)'}, {opacity: 1, transform: 'none'}], {duration: 420, delay: 260, easing: 'cubic-bezier(.2,0,0,1)', fill: 'backwards'});
+    if (lit) return lit.skip();  // clicking again: skip straight to the bang
+    const href = a.href, sleep = ms => new Promise(r => setTimeout(r, ms));
+    let skipping = false;
+    const W = innerWidth, H = innerHeight, cx = W / 2, cy = H / 2;
+    const from = window.lowkeyGuide?.point?.() || {x: cx, y: 24};
+    const buddy = document.getElementById('gbuddy');
+    if (buddy) buddy.style.visibility = 'hidden';
+    const o = document.createElement('div');
+    o.className = 'boom';
+    o.innerHTML = `<div class="bm-dim"></div>
+      <div class="bm"><svg class="bm-fuse" viewBox="0 0 120 120" aria-hidden="true"><path d="M60 18 C 62 -2, 92 -6, 96 12 S 118 30, 108 40"/></svg>
+        <i class="bm-cap"></i><span class="mb" data-mood="working"><span class="g-eyes"><span class="g-blink"><i></i><i></i></span></span></span>
+</div>
+      <i class="bm-spark"></i><div class="bm-flash"></div>
+      <div class="portal-fill"><div class="pt-in"><span class="mb" data-mood="switched"><span class="g-eyes"><span class="g-blink"><i></i><i></i></span></span></span>
+        <b>opening the real dashboard</b><span>lowkey's own Python, starting in your browser</span><i class="pt-bar"></i></div></div>`;
+    document.body.append(o);
+    const bm = $('.bm', o), mb = $('.bm .mb', o), fuse = $('.bm-fuse path', o), spark = $('.bm-spark', o), blink = $('.g-blink', mb);
+    const mood = m => { blink.classList.add('shut'); setTimeout(() => { mb.dataset.mood = m; blink.classList.remove('shut'); }, 100); };
+    const place = (x, y, s, extra = '') => { bm.style.transform = `translate(${x - 60}px, ${y - 60}px) scale(${s})${extra}`; };
+    $('.bm-dim', o).animate([{opacity: 0}, {opacity: 1}], {duration: 500, fill: 'forwards'});
     try { sessionStorage.setItem('lk-portal', '1'); } catch {}
-    setTimeout(() => { location.href = a.href; }, 780);
+
+    const run = (async () => {
+      // 1. out of the notch, arcing to the middle, growing as it comes
+      const t0 = performance.now(), dur = 640, c = {x: (from.x + cx) / 2, y: Math.min(from.y, cy) - 40};
+      await new Promise(res => {
+        const step = now => {
+          const t = Math.min(1, (now - t0) / dur), e = ease(t), u = 1 - e;
+          const x = u * u * from.x + 2 * u * e * c.x + e * e * cx, y = u * u * from.y + 2 * u * e * c.y + e * e * cy;
+          const st = Math.sin(t * Math.PI) * .22;
+          place(x, y, .28 + e * 1.22, ` rotate(${(1 - e) * -18}deg) scale(${1 - st * .4}, ${1 + st})`);
+          t < 1 && !skipping ? requestAnimationFrame(step) : res();
+        };
+        requestAnimationFrame(step);
+      });
+      place(cx, cy, 1.5);
+      if (skipping) return;
+      mb.animate([{transform: 'scale(1.25,.75)'}, {transform: 'scale(.92,1.1)'}, {transform: 'none'}], {duration: 420, easing: 'cubic-bezier(.2,0,0,1)'});
+      // 2. it becomes a bomb: black body, a cap, and a fuse that lights
+      await sleep(160);
+      mood('sidequest');
+      [['--c1', '#6e6e76'], ['--c2', '#2b2b30'], ['--c3', '#0e0e10'], ['--ek', '#fff']].forEach(([k, v]) => mb.style.setProperty(k, v));  // a black bomb, whatever its eyes do
+      o.classList.add('armed');
+      const L = fuse.getTotalLength();
+      fuse.style.strokeDasharray = `${L}`;
+      fuse.animate([{strokeDashoffset: L}, {strokeDashoffset: 0}], {duration: 260, easing: 'ease-out', fill: 'forwards'});
+      await sleep(280);
+      if (skipping) return;
+      // 3. the fuse burns down; the spark rides its tip and throws embers; the bomb gets nervous
+      o.classList.add('lit');
+      const burn = 1050, b0 = performance.now();
+      let nextEmber = 0;
+      await new Promise(res => {
+        const step = now => {
+          const t = Math.min(1, (now - b0) / burn), left = L * (1 - t);
+          fuse.style.strokeDasharray = `${left} ${L}`;
+          fuse.style.strokeDashoffset = '0';
+          const p = fuse.getPointAtLength(Math.max(0, left)), box = fuse.ownerSVGElement.getBoundingClientRect();
+          const sx = box.left + p.x / 120 * box.width, sy = box.top + p.y / 120 * box.height;
+          spark.style.transform = `translate(${sx - 11}px, ${sy - 11}px) rotate(${now / 3}deg) scale(${.85 + Math.random() * .35})`;
+          if (now > nextEmber) { nextEmber = now + 45; ember(sx, sy); }
+          const shake = t * t * 5;
+          place(cx + (Math.random() - .5) * shake, cy + (Math.random() - .5) * shake, 1.5 + t * .22);
+          if (t > .35 && mb.dataset.mood === 'sidequest' && !mb.dataset.nervous) { mb.dataset.nervous = 1; mood('switched'); }
+          if (t > .78 && !mb.dataset.scared) { mb.dataset.scared = 1; mood('gonedark'); }
+          t < 1 && !skipping ? requestAnimationFrame(step) : res();
+        };
+        requestAnimationFrame(step);
+      });
+    })();
+    function ember(x, y) {
+      const e = document.createElement('i');
+      e.className = 'bm-ember';
+      e.style.left = x + 'px'; e.style.top = y + 'px';
+      o.append(e);
+      const ang = Math.random() * Math.PI * 2, d = 14 + Math.random() * 26;
+      e.animate([{transform: 'translate(-50%,-50%) scale(1)', opacity: 1}, {transform: `translate(calc(-50% + ${Math.cos(ang) * d}px), calc(-50% + ${Math.sin(ang) * d - 10}px)) scale(.2)`, opacity: 0}],
+        {duration: 420 + Math.random() * 200, easing: 'cubic-bezier(.2,0,0,1)'}).onfinish = () => e.remove();
+    }
+    async function bang() {
+      o.classList.add('boomed');
+      spark.remove();
+      // flash, shockwave, confetti in lowkey's colours, then lime floods out from the blast
+      bm.animate([{transform: bm.style.transform}, {transform: `translate(${cx - 60}px, ${cy - 60}px) scale(2.6)`, opacity: 0}], {duration: 220, easing: 'ease-in', fill: 'forwards'});
+      $('.bm-flash', o).animate([{opacity: 0}, {opacity: .95}, {opacity: 0}], {duration: 380, easing: 'ease-out'});
+      for (let k = 0; k < 2; k++) {
+        const ring = document.createElement('i');
+        ring.className = 'bm-ring';
+        ring.style.left = cx + 'px'; ring.style.top = cy + 'px';
+        o.append(ring);
+        ring.animate([{transform: 'translate(-50%,-50%) scale(.1)', opacity: 1}, {transform: `translate(-50%,-50%) scale(${k ? 9 : 6})`, opacity: 0}],
+          {duration: 700 + k * 200, delay: k * 70, easing: 'cubic-bezier(.1,.7,.2,1)'}).onfinish = () => ring.remove();
+      }
+      const COLS = ['#B8FF3B', '#FF7AD9', '#7AA2FF', '#FFD23F', '#111'];
+      for (let k = 0; k < 42; k++) {
+        const p = document.createElement('i');
+        p.className = 'bm-bit' + (k % 7 === 0 ? ' star' : k % 3 === 0 ? ' dot' : '');
+        p.style.left = cx + 'px'; p.style.top = cy + 'px';
+        p.style.background = k % 7 === 0 ? 'none' : COLS[k % COLS.length];
+        p.style.color = COLS[k % 4];
+        o.append(p);
+        const ang = (k / 42) * Math.PI * 2 + Math.random() * .3, d = 140 + Math.random() * Math.max(W, H) * .32, rot = (Math.random() - .5) * 720;
+        p.animate([{transform: 'translate(-50%,-50%) rotate(0) scale(1)', opacity: 1},
+          {transform: `translate(calc(-50% + ${Math.cos(ang) * d}px), calc(-50% + ${Math.sin(ang) * d}px)) rotate(${rot}deg) scale(.6)`, opacity: 1, offset: .8},
+          {transform: `translate(calc(-50% + ${Math.cos(ang) * d * 1.08}px), calc(-50% + ${Math.sin(ang) * d * 1.08 + 30}px)) rotate(${rot * 1.2}deg) scale(.4)`, opacity: 0}],
+          {duration: 820 + Math.random() * 300, easing: 'cubic-bezier(.1,.8,.25,1)'}).onfinish = () => p.remove();
+      }
+      const R = Math.hypot(W, H) / 2 + 40, fill = $('.portal-fill', o);
+      fill.animate([{clipPath: `circle(0px at ${cx}px ${cy}px)`}, {clipPath: `circle(${R * 1.05}px at ${cx}px ${cy}px)`, offset: .82}, {clipPath: `circle(${R}px at ${cx}px ${cy}px)`}],
+        {duration: 640, delay: 300, easing: 'cubic-bezier(.2,.8,.2,1)', fill: 'forwards'});
+      $('.pt-in', o).animate([{opacity: 0, transform: 'scale(.9)'}, {opacity: 1, transform: 'none'}], {duration: 420, delay: 640, easing: 'cubic-bezier(.2,0,0,1)', fill: 'backwards'});
+      await sleep(1250);
+      location.href = href;
+    }
+    lit = {skip() { if (skipping) return; skipping = true; }};
+    run.then(bang);
   }
-  addEventListener('pageshow', e => { if (e.persisted) document.querySelectorAll('.portal').forEach(p => p.remove()); });  // back from the demo: no leftover lime
+  addEventListener('pageshow', e => {  // back from the demo: no leftover bomb, and the guide is home
+    if (!e.persisted) return;
+    document.querySelectorAll('.boom, .portal').forEach(p => p.remove());
+    const buddy = document.getElementById('gbuddy');
+    if (buddy) buddy.style.visibility = '';
+    lit = null;
+  });
 })();
