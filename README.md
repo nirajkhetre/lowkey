@@ -1,4 +1,9 @@
 <p align="center">
+  <a href="docs/video/lowkey-demo.mp4"><img src="docs/images/demo-poster.jpg" alt="Watch the lowkey demo video (1:39)" width="100%"></a>
+  <br><sub><a href="docs/video/lowkey-demo.mp4"><b>▶ Watch the 1:39 demo</b></a>: the island, the local model writing your timesheet, review, and the bill.</sub>
+</p>
+
+<p align="center">
   <img src="docs/images/hero.png" alt="lowkey: bills your hours, lowkey. highkey private." width="100%">
 </p>
 
@@ -17,6 +22,7 @@
 </p>
 
 <p align="center">
+  <a href="docs/video/lowkey-demo.mp4">Demo video</a> ·
   <a href="#-quick-start">Quick start</a> ·
   <a href="#-what-you-get">What you get</a> ·
   <a href="#-how-it-works">How it works</a> ·
@@ -24,8 +30,6 @@
   <a href="docs/configuration.md">Configuration</a> ·
   <a href="docs/troubleshooting.md">Troubleshooting</a>
 </p>
-
-<!-- demo video goes here -->
 
 ---
 
