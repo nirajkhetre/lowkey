@@ -48,7 +48,7 @@
     <div id="gisl" class="rest" role="button" tabindex="0" aria-haspopup="true" aria-expanded="false" aria-label="lowkey guide: pick a section to have it explained">
       <div class="g-glow"></div>
       <div class="g-face g-rest"><span class="g-slot"></span><span class="g-roll"><span class="g-now">ask me about this page</span></span><span class="g-spark">✦</span></div>
-      <div class="g-face g-hello"><span class="g-slot"></span><span>hi! ${FINE ? 'double-click' : 'double-tap'} anything, or select some text, and I'll explain it.</span></div>
+      <div class="g-face g-hello"><span class="g-slot"></span><span>hi! ${FINE ? 'double-click' : 'double-tap'} any section and I'll explain it.</span></div>
       <div class="g-face g-menu"><span class="g-slot"></span><b>where should I take you?</b>
         <div class="g-chips">${IDS.map((id, i) => `<button type="button" data-go="${id}"><i>${i + 1}</i>${SAY[id].name}</button>`).join('')}</div></div>
       <div class="g-face g-talk"><span class="g-dot"></span><span class="g-roll"><span class="g-what"></span></span><button type="button" class="g-home" aria-label="send the guide home">✕</button></div>
@@ -323,7 +323,7 @@
   });
   addEventListener('resize', () => { if (at && !flight) { const p = perch(at); B.x = p.x; B.y = p.y; placeBubble(); } });
 
-  /* ---------- summon: double-click / double-tap a section, or select some text in it ---------- */
+  /* ---------- summon: double-click (or double-tap) a section ---------- */
   // A single click never summons the guide: clicks are for reading, links and buttons.
   const SKIP = 'a, button, iframe, input, textarea, pre, code, #gbubble, #gisl, nav, .video';
   const SECTIONS = IDS.map(i => '#' + i).join(',');
@@ -341,24 +341,14 @@
     explain(s.id);
   }
   document.addEventListener('dblclick', e => ask(target(e)));
-  let tap = {t: 0, x: 0, y: 0}, down = false, selT;
-  document.addEventListener('pointerdown', () => { down = true; });
+  let tap = {t: 0, x: 0, y: 0};
   document.addEventListener('pointerup', e => {
-    down = false;
     if (e.pointerType === 'touch') {  // double-tap, for phones that don't send dblclick
       const now = performance.now(), near = Math.hypot(e.clientX - tap.x, e.clientY - tap.y) < 30;
       if (now - tap.t < 320 && near) ask(target(e));
       tap = {t: now, x: e.clientX, y: e.clientY};
     }
-    setTimeout(selected, 0);
   });
-  document.addEventListener('selectionchange', () => { clearTimeout(selT); selT = setTimeout(() => !down && selected(), 500); });  // phones: once the handles settle
-  function selected() {
-    const sel = getSelection();
-    if (sel.isCollapsed || sel.toString().trim().length < 3) return;
-    const a = sectionOf(sel.anchorNode);
-    if (a && a === sectionOf(sel.focusNode)) ask(a);
-  }
 
   // the "ask lowkey" tag trails the pointer over parts it can explain
   let tagOn = false, tx = 0, ty = 0;
