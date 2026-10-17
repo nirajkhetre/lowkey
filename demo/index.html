@@ -1,0 +1,1798 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>lowkey — bills your hours</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🧾</text></svg>">
+<style>
+/* bundled fonts (OFL): no web-font requests */
+@font-face{font-family:"Bricolage Grotesque";src:url(fonts/BricolageGrotesque.ttf) format("truetype");font-weight:200 800;font-stretch:75% 100%}
+@font-face{font-family:"Instrument Serif";src:url(fonts/InstrumentSerif-Italic.ttf) format("truetype");font-style:italic}
+@font-face{font-family:"Geist Mono";src:url(fonts/GeistMono.ttf) format("truetype");font-weight:100 900}
+:root{
+  --bg:#F3EEE3; --paper:#FFFDF7; --ink:#111; --muted:#5d5a53; --line:2.5px solid var(--ink);
+  --shadow:5px 5px 0 var(--ink); --shadow-sm:3px 3px 0 var(--ink);
+  --lime:#B8FF3B; --pink:#FF7AD9; --blue:#7AA2FF; --yellow:#FFD23F; --orange:#FF8A3D; --grey:#d9d4c7;
+  /* motion: real damped springs sampled into linear() (response .42s / damping .72, and .5s / .86),
+     plus Material's emphasized curves for things entering and leaving */
+  --spring:linear(0, 0.016, 0.059, 0.121, 0.196, 0.278, 0.363, 0.447, 0.529, 0.606, 0.677, 0.741, 0.797, 0.847, 0.89, 0.926, 0.955, 0.979, 0.998, 1.013, 1.023, 1.031, 1.035, 1.038, 1.038, 1.038, 1.036, 1.034, 1.031, 1.028, 1.024, 1.021, 1.018, 1.015, 1.012, 1.01, 1.008, 1.006, 1.004, 1.003, 1);
+  --spring-soft:linear(0, 0.018, 0.064, 0.129, 0.204, 0.285, 0.366, 0.445, 0.52, 0.589, 0.652, 0.709, 0.759, 0.802, 0.84, 0.872, 0.899, 0.921, 0.94, 0.955, 0.968, 0.977, 0.985, 0.991, 0.996, 0.999, 1.001, 1.003, 1.004, 1.005, 1.005, 1.005, 1.005, 1.005, 1.004, 1.004, 1.003, 1.003, 1.003, 1.002, 1);
+  --t-spring:.5s; --t-soft:.64s;
+  --enter:cubic-bezier(.2,0,0,1); --exit:cubic-bezier(.3,0,1,1);
+  --display:"Bricolage Grotesque","Segoe UI Variable Display","Segoe UI",-apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  --serif:"Instrument Serif",Georgia,serif;
+  --mono:"Geist Mono","Cascadia Code","Consolas","SF Mono",Menlo,ui-monospace,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#121212;--paper:#1c1c1c;--ink:#f2efe8;--muted:#a9a49a;--grey:#3a3833}}
+:root[data-theme="dark"]{--bg:#121212;--paper:#1c1c1c;--ink:#f2efe8;--muted:#a9a49a;--grey:#3a3833}
+*{box-sizing:border-box}
+h1 em,h2 em,h3 em,.label em{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:-.3px}
+html,body{margin:0}
+body{background:var(--bg);background-image:radial-gradient(var(--grey) 1px,transparent 1.2px);background-size:22px 22px;color:var(--ink);font-family:var(--display);font-size:16px;line-height:1.35;min-height:100vh;font-variant-numeric:tabular-nums}
+button,select,input{font:inherit;color:inherit}
+.wrap{max-width:1180px;margin:0 auto;padding:22px 16px 80px;transition:transform var(--t-soft) var(--spring-soft),filter .3s}
+/* buttons press fast and spring back slow, like something physical */
+.btn{background:var(--paper);border:var(--line);border-radius:12px;box-shadow:var(--shadow-sm);padding:9px 14px;font-weight:700;font-stretch:88%;cursor:pointer;white-space:nowrap;
+  transition:transform .45s var(--spring),box-shadow .45s var(--spring),background .2s}
+.btn:hover{transform:translate(-1px,-1px);box-shadow:4px 4px 0 var(--ink)}
+.btn:active{transform:translate(3px,3px);box-shadow:0 0 0 var(--ink);transition-duration:.06s}
+.btn.lime{background:var(--lime);color:#111}
+.btn.quiet{box-shadow:none;background:transparent}          /* secondary: no shadow until you reach for it */
+.btn.quiet:hover{box-shadow:var(--shadow-sm);background:var(--paper)}
+.link{border:0;background:none;padding:6px 4px;font-weight:800;cursor:pointer;text-decoration:underline;text-decoration-thickness:2px;text-underline-offset:3px}
+.card{background:var(--paper);border:var(--line);border-radius:18px;box-shadow:var(--shadow)}
+kbd{font-family:var(--mono);font-size:.75em;border:1.5px solid var(--ink);border-radius:5px;padding:0 5px;background:var(--paper)}
+
+/* icon buttons: no labels, a tooltip explains them after a short hover (the same intent delay as the island) */
+.ib{width:36px;height:36px;border:0;border-radius:999px;background:transparent;display:grid;place-items:center;cursor:pointer;flex:none;transition:background .15s,transform .4s var(--spring)}
+.ib:hover{background:var(--bg)}
+.ib.bin .lid{transform-origin:100% 100%}.ib.bin:hover .lid{transform:rotate(14deg) translateY(-1px)}  /* the lid lifts: a hint, not a warning */
+.ib:active{transform:scale(.88);transition-duration:.06s}
+.ib svg{width:19px;height:19px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;overflow:visible;transition:transform .4s var(--spring)}
+.ib svg *{transition:transform .45s var(--spring);transform-box:fill-box;transform-origin:center}
+#prev:hover svg{transform:translateX(-2px)} #next:hover svg{transform:translateX(2px)}
+#openWrapped:hover .star{transform:scale(1.18) rotate(-12deg)}
+#openSettings:hover .k1{transform:translateX(-4px)} #openSettings:hover .k2{transform:translateX(4px)}
+#openClients:hover .k1{transform:translateY(-1.5px)} #openClients:hover .k2{transform:translateY(-1.5px) translateX(1px)}
+#theme .half{transform-box:view-box;transform-origin:12px 12px}
+#theme:hover .half{transform:rotate(180deg)}
+[data-tip]{position:relative}
+[data-tip]::after{content:attr(data-tip);position:absolute;top:calc(100% + 10px);left:50%;transform:translate(-50%,-4px) scale(.94);transform-origin:50% 0;background:var(--ink);color:var(--bg);font:700 12.5px/1 var(--display);padding:7px 10px;border-radius:9px;white-space:pre;opacity:0;pointer-events:none;transition:opacity .12s,transform .35s var(--spring);z-index:10}
+[data-tip]:hover::after,[data-tip]:focus-visible::after{opacity:1;transform:translate(-50%,0) scale(1);transition-delay:.35s}
+#theme::after{left:auto;right:-4px;transform:translateY(-4px) scale(.94);transform-origin:100% 0}  /* the last icon: its tip opens leftward */
+#theme:hover::after,#theme:focus-visible::after{transform:none}
+html{overflow-x:clip}  /* a hidden tooltip near the edge must never add a sideways scrollbar */
+.tip{position:fixed;z-index:15;max-width:300px;background:var(--ink);color:var(--bg);border-radius:12px;padding:9px 12px;font-size:13px;font-weight:600;line-height:1.3;pointer-events:none;
+  opacity:0;transform:translate(-50%,calc(-100% - 6px)) scale(.94);transform-origin:50% 100%;transition:opacity .12s,transform .35s var(--spring)}
+.tip.show{opacity:1;transform:translate(-50%,calc(-100% - 12px)) scale(1)}
+.tip b{font-weight:800}.tip span{font-family:var(--mono);font-size:12px;opacity:.7;margin-left:6px}
+.tip div{margin-top:3px;opacity:.85}
+
+/* header: identity, one date control, one quiet tool group, one primary action */
+header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px}
+.logo{font-size:44px;font-weight:800;letter-spacing:-2px;line-height:1;position:relative}
+.logo .dot{color:var(--pink);animation:blink 1.6s steps(1) infinite}
+@keyframes blink{50%{opacity:.15}}
+.pill{display:inline-flex;align-items:center;gap:7px;border:var(--line);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:700;background:var(--paper);font-stretch:90%}
+.pill i{width:10px;height:10px;border-radius:50%;background:var(--lime);border:1.5px solid var(--ink);display:inline-block}
+.pill.warn i{background:var(--orange)}
+/* the model's mark: one sparkle in the brand colours, only ever on what the local model wrote or is doing */
+.spark{width:15px;height:15px;flex:none;display:inline-block;vertical-align:-2px;overflow:visible}
+.spark path{fill:url(#aiG);stroke:var(--ink);stroke-width:1.7;stroke-linejoin:round}
+.warn .spark path{fill:var(--grey)}
+.mind{transition:background .3s}
+.mind span{display:inline-block;transition:opacity .2s}
+.mind.thinking{background:linear-gradient(100deg,var(--paper) 0 30%,color-mix(in srgb,var(--blue) 35%,var(--paper)) 42%,color-mix(in srgb,var(--pink) 30%,var(--paper)) 50%,var(--paper) 62% 100%) 0 0/300% 100%;animation:shimmer 1.4s linear infinite}
+.thinking .spark{animation:think 1.2s var(--spring-soft) infinite}
+@keyframes think{0%{transform:rotate(0) scale(1)}45%{transform:rotate(50deg) scale(.78)}100%{transform:rotate(90deg) scale(1)}}
+@keyframes shimmer{from{background-position:100% 0}to{background-position:0 0}}
+/* new words from the model write themselves in, left to right; nothing a person typed ever does this */
+.writing{-webkit-mask-image:linear-gradient(90deg,#000 40%,rgba(0,0,0,.2) 50%,transparent 60%);mask-image:linear-gradient(90deg,#000 40%,rgba(0,0,0,.2) 50%,transparent 60%);
+  -webkit-mask-size:260% 100%;mask-size:260% 100%;animation:write calc(.45s + var(--len,40) * 16ms) var(--enter) both}
+@keyframes write{from{-webkit-mask-position:100% 0;mask-position:100% 0}to{-webkit-mask-position:0 0;mask-position:0 0}}
+.brief{display:flex;gap:12px;align-items:flex-start;margin:2px 4px 20px;max-width:920px}
+.brief>.spark{width:24px;height:24px;margin-top:3px}
+.brief #briefTxt{display:block;font-size:22px;font-weight:650;line-height:1.28;letter-spacing:-.3px;text-wrap:pretty}
+.brief small{display:block;font:600 12px/1.4 var(--mono);color:var(--muted);margin-top:6px}
+.brief.thinking #briefTxt{color:transparent;background:linear-gradient(100deg,var(--muted) 0 35%,var(--blue) 45%,var(--pink) 50%,var(--muted) 60% 100%) 0 0/300% 100%;-webkit-background-clip:text;background-clip:text;animation:shimmer 1.6s linear infinite}
+.meta .ai{display:inline-flex;align-items:center;gap:4px;color:var(--ink)}
+.meta .ai .spark{width:13px;height:13px}
+.why .lead{white-space:normal;font-family:var(--display);font-size:13.5px;font-weight:600;color:var(--ink);margin:0 0 7px;line-height:1.4}
+.why .lead .spark{width:13px;height:13px;margin-right:3px}
+.why mark{background:var(--lime);color:#111;border-radius:4px;padding:0 3px;font-weight:700}
+.snack.ai #snackMsg::before{content:"";display:inline-block;width:14px;height:14px;margin-right:7px;vertical-align:-2px;
+  background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cdefs%3E%3ClinearGradient id='g' x2='1' y2='1'%3E%3Cstop stop-color='%23B8FF3B'/%3E%3Cstop offset='.5' stop-color='%237AA2FF'/%3E%3Cstop offset='1' stop-color='%23FF7AD9'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M12 2.5c.7 5 3 7.3 8 8-5 .7-7.3 3-8 8-.7-5-3-7.3-8-8 5-.7 7.3-3 8-8z' fill='url(%23g)'/%3E%3C/svg%3E") center/contain no-repeat}
+@media (prefers-reduced-motion: reduce){.writing{animation:none;-webkit-mask-image:none;mask-image:none}.thinking .spark,.mind.thinking,.brief.thinking #briefTxt{animation-duration:4s}}
+.grp{display:flex;align-items:center;gap:2px;border:var(--line);border-radius:999px;background:var(--paper);box-shadow:var(--shadow-sm);padding:3px}
+.datenav{margin-left:auto}
+.datenav .day{font-weight:800;font-size:16px;min-width:112px;text-align:center}
+
+/* hero */
+.hero{display:grid;grid-template-columns:1.5fr 1fr 1fr;gap:18px;margin-bottom:22px}
+.hero .card{padding:18px 20px;position:relative;overflow:hidden}
+.label{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted)}
+.money{font-size:64px;font-weight:800;letter-spacing:-3px;line-height:1;margin:6px 0 4px}
+.money-card{background:var(--lime)!important;color:#111}
+.money-card .label,.money-card .sub{color:#333}
+.split{display:flex;height:22px;border:var(--line);border-radius:999px;overflow:hidden;margin:12px 0 8px}
+.split div{height:100%;transform-origin:left}
+.stripes{background:repeating-linear-gradient(45deg,var(--grey) 0 6px,var(--paper) 6px 12px)}
+.big{font-size:34px;font-weight:800;letter-spacing:-1px}
+.sub{color:var(--muted);font-weight:600;font-size:14px}
+.queue{font:inherit;color:inherit;text-align:left;cursor:pointer;transition:transform .45s var(--spring),box-shadow .45s var(--spring)}
+.queue:hover{transform:translate(-2px,-2px);box-shadow:7px 7px 0 var(--ink)}
+.queue:active{transform:translate(2px,2px);box-shadow:2px 2px 0 var(--ink);transition-duration:.06s}
+.qfoot{display:grid}
+.qfoot>*{grid-area:1/1;transition:opacity .2s,transform .35s var(--spring)}
+.qfoot .keys{opacity:0;transform:translateY(5px)}
+.queue:hover .qfoot .sub:first-child{opacity:0;transform:translateY(-5px)}
+.queue:hover .qfoot .keys{opacity:1;transform:none}            /* the shortcuts show up when you reach for the queue */
+
+
+/* focus: one intention at a time. Now (with an honest ring: time against your estimate), one line to say what's
+   next, and the queue with its reasons. Not a list app: there's no list screen. */
+.focus{padding:16px 18px;margin-bottom:22px;display:grid;grid-template-columns:minmax(0,1fr);gap:14px}  /* a long intention ellipsizes, never widens the page */
+.fnow{display:flex;flex-wrap:wrap;align-items:center;gap:14px;min-height:58px}
+.ring{width:56px;height:56px;flex:none;position:relative;--c:var(--lime)}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+.ring circle{fill:none;stroke-width:6}
+.ring .bg{stroke:var(--grey)}
+.ring .fg{stroke:var(--c);stroke-linecap:round;transition:stroke-dashoffset .9s var(--spring-soft),stroke .3s}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font:700 12px/1 var(--mono)}
+.ring.full .fg{filter:drop-shadow(0 0 4px var(--c))}
+.fnow .what{flex:1 1 180px;min-width:0}
+.kick{font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.fnow h3{margin:2px 0 4px;font-size:22px;letter-spacing:-.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font:600 12.5px var(--mono);color:var(--muted)}
+.tag2{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--ink);border-radius:999px;padding:1px 9px;font:800 12.5px var(--display);background:var(--c,var(--paper));color:#111}
+.tag2.side{background:var(--paper);color:var(--ink)}
+.onit i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:5px;animation:beat 2.4s ease-in-out infinite}
+.drift{background:var(--yellow);color:#111;border:1.5px solid var(--ink);border-radius:999px;padding:1px 9px;font:800 12.5px var(--display)}
+.factions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.factions .seg{animation:pop .4s var(--spring) both}
+[hidden]{display:none!important}
+#askHint{display:inline-block}
+#askHint.swap{animation:swap .3s var(--enter)}
+/* idle: the headline is the question. No box and no plus: you're starting something, not filing it away */
+.focus.active .fask,.focus:not(.active) .fnow{display:none}
+.fask{display:flex;align-items:center;gap:14px;min-height:58px}
+.fask .what{flex:1;min-width:0}
+.askf{display:block;position:relative;margin:2px 0 7px}
+.askf::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:2.5px;border-radius:2px;background:var(--ink);opacity:0;transform:scaleX(.35);transform-origin:left;transition:transform .5s var(--spring),opacity .2s}
+.askf:hover::after{opacity:.15;transform:none}
+.fask:focus-within .askf::after{opacity:1;transform:none}
+.askin{display:block;width:100%;border:0;background:none;outline:none;padding:0;font:700 22px/1.25 var(--display);letter-spacing:-.5px;color:var(--ink);caret-color:var(--pink);text-overflow:ellipsis}
+.askin::placeholder{color:var(--muted);opacity:.55}
+.fask .fline{min-height:22px}
+.fask .fline kbd{font-size:.85em}
+/* the ring waits as a dotted circle; it turns over while you type, takes the client's colour, and shows your estimate */
+.ring.ask .bg{stroke-dasharray:1.6 8.45;stroke-linecap:round;transition:stroke .3s}
+.ring.ask.has .bg{stroke:var(--c)}
+.fask:focus-within .ring.ask .bg{animation:orbit 9s linear infinite}
+@keyframes orbit{to{stroke-dashoffset:-150.8}}
+.fask.pending .ring.ask .bg{animation:orbit 1.1s linear infinite}  /* the model is placing it: the ring hurries, the words wait */
+.fask.pending .askin,.then.pending input{opacity:.5;transition:opacity .2s}
+.then.pending svg{animation:spin 1s linear infinite}
+@keyframes spin{to{rotate:360deg}}
+.ring.ask b{color:var(--muted)}
+.ring.ask.est b{color:var(--ink)}
+.btn.appear{scale:.7;opacity:0;pointer-events:none;transition:transform .45s var(--spring),box-shadow .45s var(--spring),scale .45s var(--spring),opacity .18s}
+.fask.typed .btn.appear{scale:1;opacity:1;pointer-events:auto}
+.fask.typed .btn.appear+.btn.appear{transition-delay:40ms}
+/* while something is on: "then…" is one more chip at the end of the line, and it opens in place */
+#fnext{display:contents}
+.then{display:inline-flex;align-items:center;gap:6px;min-height:34px;border:2px dashed color-mix(in srgb,var(--ink) 40%,transparent);border-radius:999px;padding:3px 12px 3px 10px;cursor:text;color:var(--muted);
+  width:auto;max-width:100%;interpolate-size:allow-keywords;transition:border-color .2s,background .2s,color .2s,box-shadow .4s var(--spring),transform .4s var(--spring),width .55s var(--spring)}
+.then.open{width:var(--room,320px)}  /* it opens into the room left on its line (measured), so nothing jumps to the next one */
+.then:hover{border-color:var(--ink);color:var(--ink)}
+.then:focus-within{border-style:solid;border-color:var(--ink);background:var(--paper);color:var(--ink);box-shadow:var(--shadow-sm);transform:translate(-1px,-1px)}
+.then svg{width:15px;height:15px;flex:none;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.then input{flex:1 1 44px;width:44px;min-width:44px;border:0;background:none;outline:none;padding:3px 0;font:700 14px var(--display);color:var(--ink);text-overflow:ellipsis}
+.then input::placeholder{color:inherit;opacity:1}
+.then .toks{flex:0 1 auto;min-width:0;max-width:55%;flex-wrap:nowrap;overflow:hidden}
+.toks.clip{-webkit-mask-image:linear-gradient(90deg,#000 78%,transparent);mask-image:linear-gradient(90deg,#000 78%,transparent)}
+.then .toks:empty{display:none}
+.nx.fresh{animation:pop .45s var(--spring) both}
+.shake{animation:shake .42s cubic-bezier(.36,.07,.19,.97) both}
+@keyframes shake{20%,80%{translate:-2px}30%,70%{translate:4px}40%,60%{translate:-6px}50%{translate:6px}}
+.toks{display:flex;gap:6px;flex-wrap:wrap}
+.tok{border:1.5px solid var(--ink);border-radius:999px;padding:2px 9px;font:800 12.5px var(--display);background:var(--paper);white-space:nowrap;animation:pop .35s var(--spring) both}
+.tok.c{background:var(--c);color:#111}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+.nexts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.nx{display:inline-flex;align-items:center;gap:8px;border:var(--line);border-radius:999px;padding:5px 6px 5px 12px;background:var(--paper);cursor:pointer;font:700 14px var(--display);color:inherit;
+  transition:transform .4s var(--spring),box-shadow .4s var(--spring)}
+.nx:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.nx:active{transform:translate(1px,1px);box-shadow:none;transition-duration:.06s}
+.nx>i{width:9px;height:9px;border-radius:50%;background:var(--c);border:1.5px solid var(--ink)}
+.nx small{font:600 11.5px var(--mono);color:var(--muted)}
+.nx .x{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;opacity:0;transition:opacity .2s,background .2s}
+.nx:hover .x{opacity:.7}.nx .x:hover{opacity:1;background:var(--bg)}
+.nx .x svg{width:12px;height:12px;stroke:currentColor;stroke-width:2.6;fill:none;stroke-linecap:round}
+.donecount{font:600 12.5px var(--mono);color:var(--muted);margin-left:auto}
+html.vt-focus .vtf{view-transition-name:var(--vt)}
+
+/* rolling digits: each digit is a column that rolls to its new value (Apple's numeric text transition) */
+.roll{display:inline-flex;line-height:1}
+.dg{display:inline-block;height:1em;overflow:hidden}
+.dg>span{display:flex;flex-direction:column;transition:transform .7s var(--spring)}
+.dg i{display:block;height:1em;font-style:normal;text-align:center}
+
+/* timeline */
+.timeline{padding:14px 16px 10px;margin-bottom:26px}
+.track{position:relative;height:46px;border:var(--line);border-radius:12px;background:var(--bg);overflow:hidden}
+.block{position:absolute;top:0;bottom:0;border-right:2px solid var(--ink);cursor:pointer;transform-origin:left;transition:filter .15s}
+.block:hover{filter:brightness(1.08) saturate(1.2)}
+.now{position:absolute;top:0;bottom:0;width:2px;background:var(--ink);z-index:2;pointer-events:none}
+.now::after{content:"";position:absolute;top:50%;left:50%;width:10px;height:10px;border-radius:50%;background:var(--pink);border:2px solid var(--ink);transform:translate(-50%,-50%);animation:beat 2s ease-in-out infinite}
+@keyframes beat{50%{transform:translate(-50%,-50%) scale(1.25)}}
+.hours{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:6px}
+.block.byyou:not(.stripes){background-image:radial-gradient(rgba(17,17,17,.3) 1px,transparent 1.5px);background-size:7px 7px}  /* time you logged yourself */
+.block.fill{animation:fill .8s var(--spring-soft) both}
+@keyframes fill{from{clip-path:inset(0 100% 0 0)}}
+/* the gaps in your day are time lowkey didn't see: point at one, click (or drag across part of it), say what it was */
+.timeline{position:relative}
+.thead{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.tlog{display:inline-flex;align-items:center;gap:7px;margin:-6px -8px -6px auto;padding:6px 8px;border:0;border-radius:999px;background:none;font:700 13px var(--display);color:var(--muted);cursor:pointer;transition:background .15s,color .15s}
+.tlog:hover,.tlog:focus-visible{background:var(--bg);color:var(--ink)}
+.tlog svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.tlog svg .hand{transform-origin:12px 13px;transition:transform .6s var(--spring)}
+.tlog:hover svg .hand{transform:rotate(-50deg)}
+.tlog kbd{opacity:.65}
+.tlog{white-space:nowrap}
+@media (max-width:540px){.tlog kbd,.tlog .wide{display:none}}  /* a phone: no keyboard to hint at, less room to say it in */
+.gap{position:absolute;top:0;bottom:0;z-index:1;display:grid;place-items:center;padding:0;border:0;background:none;color:var(--ink);cursor:crosshair;touch-action:none}
+.gap::before{content:"";position:absolute;inset:5px 2px;border:2px dashed var(--ink);border-radius:8px;opacity:0;transition:opacity .15s}
+.gap span{position:relative;font:700 12px var(--mono);white-space:nowrap;opacity:0;scale:.85;transition:opacity .15s,scale .4s var(--spring)}
+.gap:hover::before,.gap:focus-visible::before{opacity:.4}
+.gap:hover span,.gap:focus-visible span{opacity:1;scale:1}
+.gap:focus-visible{outline:none}
+.track:has(.pick) .gap::before,.track:has(.pick) .gap span{opacity:0}  /* one thing at a time: the pick, not the hint */
+.pick{position:absolute;top:4px;bottom:4px;z-index:3;display:grid;place-items:center;border:2px solid var(--ink);border-radius:9px;background:color-mix(in srgb,var(--pc,var(--lime)) 72%,var(--paper));
+  color:#111;font:700 12px var(--mono);pointer-events:none;animation:pickin .3s var(--spring) both;transition:background .3s,opacity .25s}
+.pick b{max-width:100%;overflow:hidden;white-space:nowrap;padding:0 9px}
+.pick i{position:absolute;top:50%;width:9px;height:24px;margin-top:-12px;border:2px solid var(--ink);border-radius:5px;background:var(--paper);cursor:ew-resize;pointer-events:auto;scale:0;transition:scale .35s var(--spring)}
+.pick .h0{left:-1px}.pick .h1{right:-1px}
+.pick.ready i{scale:1}
+.pick.moved{opacity:.35}  /* the words named another time: what you picked steps back */
+.pick.bye{animation:pickin .15s var(--exit) reverse both}
+@keyframes pickin{from{opacity:0;transform:scaleY(.55)}}
+.logpop{position:absolute;z-index:12;width:min(400px,calc(100% - 20px));padding:12px 14px;background:var(--paper);border:var(--line);border-radius:16px;box-shadow:var(--shadow);
+  transform-origin:var(--ax,50%) -8px;animation:popin .4s var(--spring) both}
+.logpop::before{content:"";position:absolute;top:-8.5px;left:var(--ax,50%);width:14px;height:14px;margin-left:-8px;background:var(--paper);border-left:var(--line);border-top:var(--line);border-radius:4px 0 0 0;transform:rotate(45deg)}
+.logpop.closing{animation:popin .16s var(--exit) reverse both;pointer-events:none}
+@keyframes popin{from{opacity:0;transform:translateY(-6px) scale(.94)}}
+.lpt{display:flex;align-items:center;gap:8px;font:700 13px var(--mono)}
+.lpt>i{width:10px;height:10px;flex:none;border-radius:50%;background:var(--pc,var(--grey));border:1.5px solid var(--ink);transition:background .3s}
+.lpt .ib{width:28px;height:28px;margin:-6px -8px -6px auto}
+.lpt .ib svg{width:15px;height:15px}
+.lpin{display:block;width:100%;margin:6px 0 10px;padding:6px 0;border:0;border-bottom:2.5px solid var(--grey);background:none;outline:none;font:700 19px var(--display);color:var(--ink);caret-color:var(--pink);transition:border-color .25s}
+.lpin:focus{border-bottom-color:var(--ink)}
+.lpin::placeholder{color:var(--muted);opacity:.6}
+.lpf{display:flex;align-items:center;gap:8px;min-height:26px}
+.lpf .toks{flex:1;min-width:0}
+.lph{margin-left:auto;font:600 12.5px var(--mono);color:var(--muted);text-align:right}
+.tok.warn{background:var(--yellow);color:#111}
+.tok.auto{border-style:dashed;color:var(--muted)}
+.logpop.pending .lpin{opacity:.5}
+
+/* segmented controls: one ink thumb springs to the chosen option */
+.seg{position:relative;display:flex;border:var(--line);border-radius:999px;background:var(--paper);padding:3px}
+.seg button{position:relative;z-index:1;flex:1;border:0;background:none;padding:6px 13px;border-radius:999px;font-weight:700;font-size:14px;cursor:pointer;color:var(--muted);white-space:nowrap;transition:color .25s}
+.seg button:hover:not(.on):not(:disabled){color:var(--ink)}
+.seg button.on{color:var(--bg)}
+.seg button:disabled{opacity:.4;cursor:not-allowed}
+.seg button b{font-family:var(--mono);font-size:12px;font-weight:600;opacity:.7;margin-left:2px}
+.seg .thumb{position:absolute;top:3px;bottom:3px;left:3px;width:0;border-radius:999px;background:var(--ink)}
+.seg.ready .thumb{transition:left var(--t-spring) var(--spring),width var(--t-spring) var(--spring)}
+.seg:active .thumb{scale:.97;transition:left var(--t-spring) var(--spring),width var(--t-spring) var(--spring),scale .1s}
+.filters button{flex:none}
+
+/* sessions: the line is the content; the rest stays quiet until you need it */
+.bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:14px}
+.bar h2{margin:0 auto 0 0;font-size:28px;letter-spacing:-1px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:20px}
+.s{display:flex;flex-direction:column;transition:transform .45s var(--spring),opacity .3s,box-shadow .45s var(--spring);outline:none;scroll-margin:90px}
+.s:focus{transform:translate(-3px,-3px);box-shadow:8px 8px 0 var(--ink)}
+.s.done{opacity:.7}
+.s.done:hover,.s.done:focus{opacity:1}
+.s .top{display:flex;align-items:center;gap:8px;padding:14px 14px 0}
+.s .t{margin-left:auto;font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--muted)}
+.who{position:relative;display:inline-flex;border:var(--line);border-radius:999px;background:var(--c);color:#111;box-shadow:2px 2px 0 var(--ink);max-width:62%;transition:transform .4s var(--spring),box-shadow .4s var(--spring)}
+.who:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.who.side{color:var(--ink)}
+.who select{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:inherit;font-weight:800;font-size:14px;padding:4px 28px 4px 12px;cursor:pointer;max-width:100%;text-overflow:ellipsis}
+.who select option{color:#111;background:#fff}
+.who::after{content:"";position:absolute;right:11px;top:50%;width:6px;height:6px;border-right:2px solid currentColor;border-bottom:2px solid currentColor;transform:translateY(-70%) rotate(45deg);pointer-events:none}
+.s .body{padding:10px 14px 14px;flex:1;display:flex;flex-direction:column;gap:10px}
+.task{font-size:19px;font-weight:700;line-height:1.25;outline:none;border-radius:8px;padding:2px 4px;margin:-2px -4px;cursor:text;transition:background .15s,box-shadow .2s}
+.task:hover{background:var(--bg)}
+.task[contenteditable=true]{background:var(--bg);box-shadow:inset 0 0 0 2px var(--ink)}
+.meta{display:flex;gap:6px;flex-wrap:wrap;align-items:center;font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--muted)}
+.meta i{font-style:normal;opacity:.6}
+.meta .check{background:var(--yellow);color:#111;border:1.5px solid var(--ink);border-radius:999px;padding:1px 8px;font-family:var(--display);font-weight:800}
+.meta a{color:var(--ink);text-decoration:underline;text-decoration-thickness:1.5px;text-underline-offset:3px}
+.why{font-family:var(--mono);font-size:12px;color:var(--muted);display:grid;grid-template-rows:0fr;margin-top:-10px;transition:grid-template-rows .45s var(--spring-soft),margin-top .45s var(--spring-soft)}
+.why>div{overflow:hidden}
+.why.open{grid-template-rows:1fr;margin-top:0}
+.why.open>div{border-top:1.5px dashed var(--ink);padding-top:8px}
+.why p{margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.actions{display:flex;gap:8px;align-items:center;margin-top:auto}
+.verdict{display:inline-flex;align-items:center;gap:5px;border:var(--line);border-radius:999px;padding:5px 12px;font-weight:800;font-size:14px;transform:rotate(-2deg)}
+.verdict.billed{background:var(--lime);color:#111}
+.verdict.nah{background:var(--bg);color:var(--muted)}
+.verdict svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+.verdict svg path{stroke-dasharray:24}
+.verdict.fresh svg path{animation:draw .45s .28s var(--enter) both}      /* the tick draws itself in, once */
+@keyframes draw{from{stroke-dashoffset:24}}
+.empty{padding:40px;text-align:center;font-size:20px;font-weight:700}
+.skel{padding:16px;display:flex;flex-direction:column;gap:12px;min-height:180px}
+.skel i{display:block;height:14px;border-radius:8px;background:linear-gradient(90deg,var(--bg) 25%,var(--grey) 40%,var(--bg) 60%);background-size:400% 100%;animation:shimmer 1.4s ease infinite}
+.skel i:nth-child(1){width:38%;height:24px;border-radius:999px}.skel i:nth-child(2){width:92%;height:18px}.skel i:nth-child(3){width:70%;height:18px}.skel i:nth-child(4){width:46%;margin-top:auto}
+@keyframes shimmer{from{background-position:100% 50%}to{background-position:0 50%}}
+
+/* first load: sections rise in on a stagger, the day's blocks grow out of the timeline */
+body.intro .focus,body.intro main>:not(.hero),body.intro .hero>*,body.intro #grid>*{animation:rise .8s var(--spring-soft) both;animation-delay:calc(var(--d,0) * 55ms)}
+body.intro .block,body.intro .split>div{animation:grow .9s var(--spring-soft) both;animation-delay:calc(260ms + var(--i,0) * 45ms)}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}}
+@keyframes grow{from{transform:scaleX(0)}}
+
+/* snackbar: what just happened, with a way back (the shrinking line is the undo window) */
+.snack{position:fixed;left:50%;bottom:22px;z-index:30;display:flex;align-items:center;gap:14px;background:var(--ink);color:var(--bg);padding:12px 12px 12px 18px;border-radius:14px;font-weight:800;box-shadow:0 10px 30px rgba(0,0,0,.25);
+  transform:translate(-50%,calc(100% + 40px));transition:transform .5s var(--spring);overflow:hidden;max-width:calc(100% - 32px)}
+.snack.show{transform:translate(-50%,0)}
+.snack button{border:0;background:var(--lime);color:#111;font-weight:800;border-radius:9px;padding:5px 11px;cursor:pointer;transition:transform .4s var(--spring)}
+.snack button:active{transform:scale(.92);transition-duration:.06s}
+.snack button[hidden]{display:none}
+.snack i{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--lime);transform-origin:left;transform:scaleX(0)}
+.snack.show.undoable i{animation:count 5s linear forwards}
+@keyframes count{from{transform:scaleX(1)}}
+
+/* sheets (modals): rise on a soft spring over a blurred backdrop while the page recedes */
+.modal{position:fixed;inset:0;background:rgba(17,17,17,.38);-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:16px;z-index:20}
+.modal.open{display:flex;animation:fade .3s var(--enter) both}
+.modal .card{max-width:760px;width:100%;max-height:92vh;overflow:auto;padding:22px;position:relative}
+.modal.open .card{animation:sheet var(--t-soft) var(--spring-soft) both}
+.modal.closing{animation:fade .2s var(--exit) reverse both}
+.modal.closing .card{animation:sheet .2s var(--exit) reverse both}
+.modal.leaving{animation:fade .3s var(--exit) reverse both;pointer-events:none}
+.modal.leaving .card{visibility:hidden}
+.modal.morphed .card{animation:none}
+.modal.morphed .wrapped{animation:shift 8s ease infinite}
+body.sheeted .wrap{transform:scale(.975);filter:saturate(.85)}
+@keyframes fade{from{opacity:0}}
+@keyframes sheet{from{opacity:0;transform:translateY(28px) scale(.96)}}
+.x{position:absolute;right:12px;top:12px}
+.mtitle{margin:0 0 12px;font-size:30px;letter-spacing:-1px}
+.wrapped{background:linear-gradient(135deg,#FF7AD9,#7AA2FF 45%,#B8FF3B);background-size:200% 200%;animation:shift 8s ease infinite;color:#111}
+.modal.open .wrapped{animation:sheet var(--t-soft) var(--spring-soft) both,shift 8s ease infinite}
+@keyframes shift{50%{background-position:100% 100%}}
+.wrapped h1{font-size:52px;letter-spacing:-3px;margin:4px 0 14px;line-height:.95}
+.wgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.wgrid .card{box-shadow:var(--shadow-sm);padding:14px;background:#FFFDF7;color:#111;border-color:#111}
+.wgrid .card .big{font-size:30px}
+.receipt{background:#fff;color:#111;font-family:var(--mono);padding:24px 26px 34px;border:none;border-radius:0;box-shadow:var(--shadow);
+  -webkit-mask:radial-gradient(circle 8px at 50% 100%,#0000 98%,#000) 50% 100%/18px 100% repeat-x;mask:radial-gradient(circle 8px at 50% 100%,#0000 98%,#000) 0 100%/18px 51% repeat-x,linear-gradient(#000 0 0) top/100% calc(100% - 9px) no-repeat}
+.receipt h3{font-family:var(--display);font-size:30px;margin:0;letter-spacing:-1px}
+.receipt table{width:100%;border-collapse:collapse;font-size:13px;margin:14px 0}
+.receipt td{padding:5px 2px;border-bottom:1px dashed #999;vertical-align:top}
+.receipt td.n,.receipt td:first-child{text-align:right;white-space:nowrap}
+.receipt td:first-child{text-align:left;padding-right:10px}
+.receipt .tot{font-size:22px;font-weight:800;text-align:right;border-top:2px solid #111;padding-top:8px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.row select,.row input{border:var(--line);border-radius:12px;padding:8px 10px;background:var(--paper);font-weight:700}
+
+/* settings: one live preview screen, acted out by whatever option you hover */
+#setModal .card{max-width:560px}
+/* clients: one row each, saved as you go */
+#cliModal .card{max-width:720px}
+.crow{display:grid;grid-template-columns:34px 1.3fr .8fr 1.7fr 36px;gap:8px;align-items:center;margin-bottom:8px;animation:pop .35s var(--spring) both}
+.crow input,.me input,.me select{border:var(--line);border-radius:10px;padding:8px 10px;background:var(--paper);font-weight:700;min-width:0;width:100%;color:var(--ink)}
+.crow input:disabled,.me input:disabled,.me select:disabled{opacity:.6}
+.swatch{width:32px;height:32px;border-radius:50%;background:var(--c);border:var(--line);position:relative;overflow:hidden;cursor:pointer;box-shadow:2px 2px 0 var(--ink)}
+.swatch input,.swatch input:disabled{position:absolute;inset:-8px;opacity:0;cursor:pointer;width:auto;padding:0;border:0}
+.crate:has(input:disabled),.swatch:has(input:disabled){opacity:.6}
+.crate input:disabled{opacity:1}
+.crate{display:flex;align-items:center;border:var(--line);border-radius:10px;background:var(--paper);padding-left:10px;font-weight:700;color:var(--muted)}
+.crate input{border:0;padding-left:4px}
+.chead{display:grid;grid-template-columns:34px 1.3fr .8fr 1.7fr 36px;gap:8px;font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);margin:0 0 6px}
+.me{display:grid;grid-template-columns:1.2fr 1.4fr .6fr .7fr;gap:8px}
+.me label{font-size:12px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--muted);display:grid;gap:4px}
+@media (max-width:640px){.crow,.chead{grid-template-columns:34px 1fr 36px}.crow .crate,.crow .chints,.chead span:nth-child(3),.chead span:nth-child(4){grid-column:2/3}.me{grid-template-columns:1fr 1fr}}
+/* off the clock: personal time by kind and by app. Neutral, like Screen Time: no scores, no scolding.
+   A ring for the share, a row per kind (opens to its apps), and the week around it for context. */
+.life{padding:16px 18px 18px;margin-bottom:26px}
+.lhead{display:flex;flex-wrap:wrap;align-items:baseline;gap:4px 12px;margin-bottom:12px;min-height:20px}
+.lcmp{margin-left:auto;display:inline-flex;align-items:center;gap:5px;font:600 12.5px var(--mono);color:var(--muted);text-align:right}
+.lcmp svg{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round;transition:transform .5s var(--spring)}
+.lcmp.up svg{transform:rotate(180deg)}
+.lcmp.near svg{display:none}
+.lcmp span.swap{animation:swap .3s var(--enter)}
+.lbody{display:grid;grid-template-columns:148px minmax(0,1fr) 232px;gap:30px;align-items:center}
+
+/* the ring: an arc per kind, fanned out from twelve o'clock; the kind you point at lifts, the rest step back */
+.donut{position:relative;width:148px;height:148px}
+.donut svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+.donut circle{fill:none;stroke-width:15}
+.donut .trk{stroke:var(--bg);transition:stroke .3s}
+.donut:not(.has) .trk{stroke:var(--grey)}
+.dseg{stroke:var(--c);cursor:pointer;transition:stroke-dasharray .9s var(--spring-soft),stroke-dashoffset .9s var(--spring-soft),stroke-width .45s var(--spring),opacity .25s}
+.donut.hl .dseg{opacity:.25}
+.donut.hl .dseg.on{opacity:1;stroke-width:21}
+.dmid{position:absolute;inset:24px;display:grid;place-content:center;justify-items:center;text-align:center;pointer-events:none}
+.dmid b{font-size:24px;font-weight:800;letter-spacing:-1px}
+.dmid small{display:block;max-width:88px;margin-top:5px;font-size:12.5px;font-weight:700;color:var(--muted);line-height:1.1;text-wrap:balance}
+.dmid small.swap{animation:swap .3s var(--enter)}
+@keyframes swap{from{opacity:0;transform:translateY(4px)}}
+
+/* a row per kind: icon, name with its apps, time, and a meter against the biggest kind */
+.lrows{display:grid;align-content:center;min-width:0;min-height:118px}
+.lrow{display:grid;grid-template-columns:32px minmax(0,1fr) auto 14px;grid-template-areas:"ic name time chev" "ic meter meter chev";column-gap:12px;row-gap:7px;align-items:center;
+  justify-self:stretch;margin:0 -10px;padding:8px 10px;border:0;border-radius:12px;background:none;color:inherit;text-align:left;cursor:default;transition:background .2s}
+button.lrow{cursor:pointer}
+.lrow.on,.lrow:focus-visible{background:var(--bg)}
+.lrow:focus-visible{outline:2px solid var(--ink);outline-offset:-2px}
+.lic{grid-area:ic;width:32px;height:32px;border-radius:10px;background:var(--c);border:1.5px solid var(--ink);box-shadow:2px 2px 0 var(--ink);display:grid;place-items:center;transition:transform .45s var(--spring)}
+.lic svg{width:18px;height:18px;stroke:#111;fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.lrow.on .lic{transform:rotate(-7deg) scale(1.07)}
+.lname{grid-area:name;display:flex;align-items:baseline;gap:8px;min-width:0;white-space:nowrap}
+.lname b{font-size:15px;font-weight:800}
+.lname small{min-width:0;overflow:hidden;text-overflow:ellipsis;font-size:13px;font-weight:600;color:var(--muted);transition:opacity .2s}
+.lrow[aria-expanded=true] .lname small{opacity:0}  /* open, its apps are listed right below */
+.ltime{grid-area:time;font:700 13.5px var(--mono)}
+.lchev{grid-area:chev;width:14px;height:14px;stroke:var(--muted);fill:none;stroke-width:2.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .45s var(--spring)}
+.lrow[aria-expanded=true] .lchev{transform:rotate(90deg)}
+.lmeter{grid-area:meter;height:8px;border:1.5px solid var(--ink);border-radius:99px;background:var(--bg);overflow:hidden}
+.lmeter i{display:block;height:100%;width:calc(var(--w) * 100%);background:var(--c);border-radius:99px;transform-origin:left}
+.lrows.fresh .lrow{animation:lrise .55s var(--spring-soft) both;animation-delay:calc(var(--i) * 45ms)}
+.lrows.fresh .lmeter i{animation:grow .8s var(--spring-soft) both;animation-delay:calc(140ms + var(--i) * 45ms)}
+@keyframes lrise{from{opacity:0;transform:translateY(8px)}}
+/* its apps, opened in place: each with its time and a small meter against the biggest one */
+.lmore{display:grid;grid-template-rows:0fr;transition:grid-template-rows .45s var(--spring-soft)}
+.lmore>div{overflow:hidden;padding:0 26px 0 44px}
+.lmore.open{grid-template-rows:1fr}
+.lsrc{display:grid;grid-template-columns:minmax(0,1fr) 64px 56px;gap:12px;align-items:center;padding:4px 0;font-size:13.5px;font-weight:700;opacity:0;transform:translateY(-4px);transition:opacity .15s,transform .35s var(--spring)}
+.lsrc:first-child{margin-top:2px}.lsrc:last-child{margin-bottom:8px}
+.lmore.open .lsrc{opacity:1;transform:none;transition-delay:calc(60ms + var(--i) * 35ms)}
+.lsrc span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.lsrc b{font:600 12.5px var(--mono);color:var(--muted);text-align:right}
+.lsrc i{height:5px;border-radius:99px;background:var(--bg);overflow:hidden}
+.lsrc i::after{content:"";display:block;height:100%;width:calc(var(--w) * 100%);border-radius:99px;background:var(--c)}
+.lempty b{display:block;font-size:20px;font-weight:800;letter-spacing:-.5px}
+.lempty span{display:block;margin-top:4px;color:var(--muted);font-weight:600;font-size:14px;max-width:46ch}
+.lsk{display:grid;gap:12px}
+.lsk i{height:32px;border-radius:10px;background:linear-gradient(90deg,var(--bg) 25%,var(--grey) 40%,var(--bg) 60%);background-size:400% 100%;animation:shimmer 1.4s ease infinite}
+.lsk i:nth-child(2){width:78%}.lsk i:nth-child(3){width:56%}
+
+/* the week around it: a stacked bar a day, the daily average dashed across, the day you're on in ink */
+.lweek{padding-left:26px;border-left:1.5px dashed var(--grey)}
+.lwhead{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:10px}
+.lwhead b{font:600 12px var(--mono);color:var(--muted)}
+.lwbars{position:relative;display:grid;grid-template-columns:repeat(7,1fr);height:108px}
+.lwd{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;gap:8px;padding:0;border:0;background:none;color:inherit;cursor:pointer}
+.lwd:disabled{cursor:default}
+.lwbar{width:16px;height:calc(var(--h,0) * 78px);display:flex;flex-direction:column-reverse;border:1.5px solid var(--ink);border-radius:6px;overflow:hidden;background:var(--paper);filter:grayscale(1);opacity:.38;
+  transition:height .8s var(--spring-soft),opacity .25s,filter .35s;transition-delay:calc(var(--k) * 35ms),0s,0s}
+.lwbar i{flex:1 1 0;min-height:0}
+.lwd:not(:disabled):hover .lwbar{opacity:.7;filter:grayscale(.3)}
+.lwd.on .lwbar{opacity:1;filter:none}
+.lwd.off .lwbar{opacity:0}
+.lwl{position:relative;z-index:1;width:22px;height:18px;display:grid;place-items:center;font:800 11px var(--display);letter-spacing:.5px;color:var(--muted);transition:color .3s}
+.lwd.on .lwl{color:var(--bg)}
+.lwd.off .lwl{opacity:.4}
+.lwthumb{position:absolute;bottom:0;left:calc((var(--k,0) + .5) * 100% / 7);width:22px;height:18px;margin-left:-11px;border-radius:99px;background:var(--ink);transition:left var(--t-spring) var(--spring)}
+.lwavg{position:absolute;left:-6px;right:-6px;bottom:calc(var(--a,0) * 78px + 26px);border-top:1.5px dashed var(--ink);opacity:.45;pointer-events:none;transition:bottom .8s var(--spring-soft),opacity .3s}
+.lwavg.none{opacity:0}
+@media (max-width:900px){.lbody{grid-template-columns:148px minmax(0,1fr)}.lweek{grid-column:1/-1;padding:14px 0 0;border-left:0;border-top:1.5px dashed var(--grey)}}
+@media (max-width:540px){.lbody{grid-template-columns:1fr;gap:18px}.donut{justify-self:center}.lname small{display:none}}
+.stage{max-width:440px;margin:4px auto 0}
+.says{min-height:20px;text-align:center;font-weight:700;color:var(--muted);margin:12px 0 18px}
+.srow{display:flex;align-items:center;gap:12px;margin:0 0 10px}
+.slabel{width:88px;flex:none;white-space:nowrap;font-weight:700;color:var(--muted);font-size:14px}
+@media (max-width:520px){.srow{flex-direction:column;align-items:stretch;gap:6px}.slabel{width:auto}}  /* phones: the label sits above its control */
+.srow .seg{flex:1}
+.scr{aspect-ratio:16/10;border:2.5px solid #111;border-radius:12px;position:relative;overflow:hidden;background:linear-gradient(135deg,#2b5876,#7b4397 65%,#dc6a49)}
+.scr::before{content:"";position:absolute;left:20%;top:30%;width:44%;height:42%;background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.35);border-radius:6px}
+.tb{position:absolute;background:rgba(16,16,16,.93);z-index:1}
+.tb::before{content:"";position:absolute;background:radial-gradient(circle,#d8d8d8 42%,transparent 48%)}
+.tb-top,.tb-bottom{left:0;right:0;height:9%}.tb-top{top:0}.tb-bottom{bottom:0}
+.tb-left,.tb-right{top:0;bottom:0;width:6.5%}.tb-left{left:0}.tb-right{right:0}
+.tb-top::before,.tb-bottom::before{left:3%;top:22%;bottom:22%;width:24%;background-size:16% 100%;background-repeat:repeat-x}
+.tb-left::before,.tb-right::before{top:4%;left:22%;right:22%;height:24%;background-size:100% 16%;background-repeat:repeat-y}
+.tb-none{display:none}
+.isl{position:absolute;background:#0b0b0b;z-index:2;overflow:hidden;transition:all var(--t-soft) var(--spring)}
+.isl.tuck{transition-duration:.2s;transition-timing-function:var(--exit)}
+.isl i,.isl b{position:absolute;opacity:0;transition:opacity .25s .12s}
+.isl i{width:7px;height:7px;border-radius:50%;background:#B8FF3B;left:9%;top:50%;transform:translateY(-50%)}
+.isl b{height:3px;border-radius:2px;background:#eee;left:22%;width:40%;top:50%;transform:translateY(-50%)}
+.isl-top,.isl-bottom{left:50%;transform:translateX(-50%);width:24%;height:3.2%}
+.isl-top{top:var(--off);border-radius:0 0 6px 6px;box-shadow:inset 0 -1.5px 0 #B8FF3B}
+.isl-bottom{bottom:var(--off);border-radius:6px 6px 0 0;box-shadow:inset 0 1.5px 0 #B8FF3B}
+.isl-left,.isl-right{top:50%;transform:translateY(-50%);width:2.2%;height:24%}
+.isl-left{left:var(--off);border-radius:0 6px 6px 0;box-shadow:inset -1.5px 0 0 #B8FF3B}
+.isl-right{right:var(--off);border-radius:6px 0 0 6px;box-shadow:inset 1.5px 0 0 #B8FF3B}
+.isl.pill{box-shadow:0 3px 10px rgba(0,0,0,.45)}
+.isl-top.pill,.isl-bottom.pill{width:44%;height:10%}
+.isl-left.pill,.isl-right.pill{width:38%;height:10%}
+.isl-top.pill{border-radius:0 0 12px 12px}.isl-bottom.pill{border-radius:12px 12px 0 0}
+.isl-left.pill{border-radius:0 12px 12px 0}.isl-right.pill{border-radius:12px 0 0 12px}
+.isl.pill i,.isl.pill b{opacity:1}
+.isl-top.tuck,.isl-bottom.tuck{height:0!important}
+.isl-left.tuck,.isl-right.tuck{width:0!important}
+
+footer{margin-top:40px;font-family:var(--mono);font-size:12.5px;color:var(--muted);text-align:center}
+footer b{color:var(--ink)}
+.burst{position:fixed;pointer-events:none;border:2px solid #111;z-index:40}
+/* a change flying home to the island: a little capsule in the island's own black, dotted in the client's colour */
+.fly{position:fixed;left:0;top:0;z-index:60;pointer-events:none;display:flex;align-items:center;gap:7px;height:30px;padding:0 13px 0 10px;border-radius:999px;
+  background:#0b0b0b;color:#f4f4f4;font:800 13.5px/1 var(--display);white-space:nowrap;will-change:transform;
+  box-shadow:inset 0 0 0 1px rgba(255,255,255,.14),0 10px 26px rgba(0,0,0,.32)}
+.fly i{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c)}
+
+/* view transitions (progressive enhancement: browsers without them just update in place) */
+::view-transition-group(*){animation-duration:var(--t-spring);animation-timing-function:var(--spring)}
+/* cards: each card (and its main action) is its own layer, so filters re-flow them and "bill it" morphs into its sticker */
+html.vt-cards .s{view-transition-name:var(--vt)}
+html.vt-cards .vt-a{view-transition-name:var(--va)}
+html.vt-cards .vt-b{view-transition-name:var(--vb)}
+html.vt-cards::view-transition-old(root),html.vt-sheet::view-transition-old(root),html.vt-focus::view-transition-old(root){animation:none;opacity:0}
+html.vt-cards::view-transition-new(root),html.vt-sheet::view-transition-new(root),html.vt-focus::view-transition-new(root){animation:none}
+html.vt-cards::view-transition-new(*):only-child,html.vt-focus::view-transition-new(*):only-child{animation:vt-in .42s var(--enter) both}
+html.vt-cards::view-transition-old(*):only-child,html.vt-focus::view-transition-old(*):only-child{animation:vt-out .2s var(--exit) both}
+@keyframes vt-in{from{opacity:0;transform:scale(.94) translateY(10px)}}
+@keyframes vt-out{to{opacity:0;transform:scale(.94)}}
+/* days: the content slides along the x axis, the date rolls */
+html.vt-fwd main,html.vt-back main{view-transition-name:content}
+html.vt-fwd #dayLabel,html.vt-back #dayLabel{view-transition-name:day}
+html.vt-fwd::view-transition-old(content){animation:slide-out-l .22s var(--exit) both}
+html.vt-fwd::view-transition-new(content){animation:slide-in-r .5s var(--enter) both}
+html.vt-back::view-transition-old(content){animation:slide-out-r .22s var(--exit) both}
+html.vt-back::view-transition-new(content){animation:slide-in-l .5s var(--enter) both}
+html.vt-fwd::view-transition-old(day){animation:roll-out-u .2s var(--exit) both}
+html.vt-fwd::view-transition-new(day){animation:roll-in-u .45s var(--spring) both}
+html.vt-back::view-transition-old(day){animation:roll-out-d .2s var(--exit) both}
+html.vt-back::view-transition-new(day){animation:roll-in-d .45s var(--spring) both}
+@keyframes slide-out-l{to{opacity:0;transform:translateX(-40px)}}
+@keyframes slide-out-r{to{opacity:0;transform:translateX(40px)}}
+@keyframes slide-in-r{from{opacity:0;transform:translateX(40px)}}
+@keyframes slide-in-l{from{opacity:0;transform:translateX(-40px)}}
+@keyframes roll-out-u{to{opacity:0;transform:translateY(-12px)}}
+@keyframes roll-in-u{from{opacity:0;transform:translateY(12px)}}
+@keyframes roll-out-d{to{opacity:0;transform:translateY(12px)}}
+@keyframes roll-in-d{from{opacity:0;transform:translateY(-12px)}}
+/* sheets: a container transform. The button grows into the sheet as one solid container; what was inside
+   fades out at its own size and the sheet's content fades in at its own size, so nothing ever stretches */
+html.vt-sheet::view-transition-group(sheet){animation-duration:var(--t-soft);animation-timing-function:var(--spring-soft);
+  overflow:clip;border-radius:18px;background:var(--paper);box-shadow:0 0 0 2.5px var(--ink),var(--shadow)}
+html.vt-sheet::view-transition-old(sheet),html.vt-sheet::view-transition-new(sheet){height:auto;width:auto;object-fit:none;inset:0;margin:auto}
+html.vt-sheet::view-transition-old(sheet){animation:fade .12s linear reverse both}
+html.vt-sheet::view-transition-new(sheet){animation:fade .26s .1s linear both}
+/* theme: the new one spreads out from the switch as a circle */
+html.vt-theme::view-transition-old(root),html.vt-theme::view-transition-new(root){animation:none;mix-blend-mode:normal}
+
+@media (max-width:820px){.hero{grid-template-columns:1fr}.money{font-size:48px}.datenav{margin-left:0}.filters{overflow-x:auto;max-width:100%}}
+@media (prefers-reduced-motion:reduce){*,*::before,*::after{transition-duration:.01ms!important;animation:none!important}}
+html.still *,html.still *::before,html.still *::after{transition:none!important;animation:none!important}  /* docs screenshots: final frames only */
+@media print{body *{visibility:hidden}#receipt,#receipt *{visibility:visible}#receipt{position:absolute;left:0;top:0;width:100%;box-shadow:none;-webkit-mask:none;mask:none}body{background:#fff}.wrap{transform:none!important}}
+</style>
+<script src="https://cdn.jsdelivr.net/pyodide/v0.26.4/full/pyodide.js"></script>
+<script src="demo.js"></script>
+</head>
+<body class="intro">
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="aiG" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#B8FF3B"/><stop offset=".5" stop-color="#7AA2FF"/><stop offset="1" stop-color="#FF7AD9"/></linearGradient></defs></svg>
+<div class="wrap">
+  <header>
+    <div class="logo">lowkey<span class="dot">.</span></div>
+    <span class="pill mind" id="modelPill" data-tip="gemma, running on this laptop: it writes every line you see with this mark"><svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c.7 5 3 7.3 8 8-5 .7-7.3 3-8 8-.7-5-3-7.3-8-8 5-.7 7.3-3 8-8z"/></svg><span id="mindTxt">loading…</span></span>
+    <div class="grp datenav">
+      <button class="ib" id="prev" data-tip="previous day  ←" aria-label="previous day"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <div class="day" id="dayLabel">—</div>
+      <button class="ib" id="next" data-tip="next day  →" aria-label="next day"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg></button>
+    </div>
+    <div class="grp">
+      <button class="ib" id="openWrapped" data-tip="your week, wrapped  W" aria-label="your week, wrapped"><svg viewBox="0 0 24 24"><path class="star" d="M11 3.5l1.8 5.2 5.2 1.8-5.2 1.8L11 17.5l-1.8-5.2L4 10.5l5.2-1.8z"/><path class="star" d="M18.5 15.5v4M16.5 17.5h4"/></svg></button>
+      <button class="ib" id="openClients" data-tip="your clients  C" aria-label="your clients"><svg viewBox="0 0 24 24"><circle class="k1" cx="9" cy="8" r="3.2"/><path d="M3.5 19c.8-3.2 3-5 5.5-5s4.7 1.8 5.5 5"/><circle class="k2" cx="16.5" cy="9" r="2.6"/><path d="M15.6 14.1c2.2.2 4 1.7 4.8 4.4"/></svg></button>
+      <button class="ib" id="openSettings" data-tip="island settings  S" aria-label="island settings"><svg viewBox="0 0 24 24"><path d="M4 8h16M4 16h16"/><circle class="k1" cx="15" cy="8" r="2.4" fill="var(--paper)"/><circle class="k2" cx="9" cy="16" r="2.4" fill="var(--paper)"/></svg></button>
+      <button class="ib" id="theme" data-tip="switch theme" aria-label="switch between light and dark"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8"/><path class="half" d="M12 4a8 8 0 0 1 0 16z" fill="currentColor"/></svg></button>
+    </div>
+    <button class="btn lime" id="openBill">send the bill</button>
+  </header>
+
+  <section class="card focus" id="focus" style="--d:0">
+    <div class="fnow" id="fnow"></div>
+    <div class="fask" id="fask">
+      <div class="ring ask" id="askRing"><svg viewBox="0 0 56 56"><circle class="bg" cx="28" cy="28" r="24"/></svg><b id="askEst">—</b></div>
+      <div class="what" id="askWhat">
+        <div class="kick">now</div>
+        <label class="askf"><input id="intend" class="askin" autocomplete="off" spellcheck="false" placeholder="what are you working on?" aria-label="what are you working on?"></label>
+        <div class="fline"><span class="toks" id="askToks"></span><span id="askHint"></span></div>
+      </div>
+      <div class="factions"><button class="btn quiet appear" id="askLater" title="line it up without starting it (Shift+Enter)">later</button><button class="btn lime appear" id="askGo">start</button></div>
+    </div>
+    <div class="nexts" id="fnexts">
+      <span class="kick" id="fnk">next up</span><span id="fnext"></span>
+      <label class="then" id="thenBox" title="what comes after this"><svg viewBox="0 0 24 24"><path d="M6 4v7a4 4 0 0 0 4 4h9"/><path d="M15 11l4 4-4 4"/></svg><input id="then" autocomplete="off" spellcheck="false" placeholder="then…" aria-label="what comes after this"><span class="toks" id="thenToks"></span></label>
+      <span class="donecount" id="fdone"></span>
+    </div>
+  </section>
+
+  <main>
+    <div class="brief" id="brief" hidden><svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c.7 5 3 7.3 8 8-5 .7-7.3 3-8 8-.7-5-3-7.3-8-8 5-.7 7.3-3 8-8z"/></svg>
+      <div><span id="briefTxt"></span><small id="briefBy"></small></div></div>
+    <section class="hero" style="--d:0">
+      <div class="card money-card" style="--d:0">
+        <div class="label" id="moneyLabel">you made today</div>
+        <div class="money"><span class="roll" id="money">—</span></div>
+        <div class="sub" id="moneySub">&nbsp;</div>
+      </div>
+      <div class="card" style="--d:1">
+        <div class="label">work vs. side quests</div>
+        <div class="split" id="split"></div>
+        <div class="sub" id="splitSub">&nbsp;</div>
+      </div>
+      <button class="card queue" id="queueCard" style="--d:2">
+        <div class="label">vibe check queue</div>
+        <div class="big"><span class="roll" id="qn"></span><span id="qt">—</span></div>
+        <div class="qfoot"><div class="sub" id="queueSub">&nbsp;</div>
+          <div class="sub keys"><kbd>Y</kbd> bill · <kbd>N</kbd> nah · <kbd>J</kbd>/<kbd>K</kbd> move · <kbd>E</kbd> edit</div></div>
+      </button>
+    </section>
+
+    <section class="card timeline" id="timeline" style="--d:3">
+      <div class="thead"><div class="label">your day, in blocks</div>
+        <button class="tlog" id="logBtn" data-tip="or click any gap in your day"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path class="hand" d="M12 9v4l2.5 1.5"/><path d="M9.5 2.5h5"/></svg><span>log <span class="wide">missed </span>time</span><kbd>L</kbd></button></div>
+      <div class="track" id="track"></div>
+      <div class="hours" id="hours"></div>
+      <div class="logpop" id="logpop" role="dialog" aria-label="log time lowkey didn't see" hidden>
+        <div class="lpt"><i></i><span id="lpSpan"></span><button class="ib" id="lpX" aria-label="close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+        <input id="logIn" class="lpin" autocomplete="off" spellcheck="false" placeholder="what was it? call with acme" aria-label="what was it?">
+        <div class="lpf"><span class="toks" id="lpToks"></span><span class="lph" id="lpHint"></span></div>
+      </div>
+    </section>
+
+    <section class="card life" id="life" style="--d:4">
+      <div class="lhead"><div class="label">off the <em>clock</em></div>
+        <span class="lcmp near" id="lcmp"><svg viewBox="0 0 24 24"><path d="M12 5v14M6.5 13.5L12 19l5.5-5.5"/></svg><span></span></span></div>
+      <div class="lbody">
+        <div class="donut" id="donut"><svg viewBox="0 0 120 120"><circle class="trk" cx="60" cy="60" r="50"/></svg>
+          <div class="dmid"><b class="roll" id="dtot"></b><small id="dlab"></small></div></div>
+        <div class="lrows" id="lrows"><div class="lsk"><i></i><i></i><i></i></div></div>
+        <div class="lweek"><div class="lwhead"><span class="kick" id="lwk">this week</span><b id="lavg"></b></div>
+          <div class="lwbars" id="lweek"></div></div>
+      </div>
+    </section>
+
+    <div class="bar" style="--d:4">
+      <h2 id="receiptsTitle">today's <em>receipts</em></h2>
+      <div class="seg filters" id="filters"><span class="thumb"></span>
+        <button data-f="all">all <b class="roll"></b></button>
+        <button data-f="pending">to review <b class="roll"></b></button>
+        <button data-f="billed">billed <b class="roll"></b></button>
+        <button data-f="personal">side quests <b class="roll"></b></button>
+      </div>
+    </div>
+    <div class="grid" id="grid"></div>
+  </main>
+
+  <footer id="foot"></footer>
+</div>
+
+<div class="modal" id="wrappedModal"><div class="card wrapped" id="wrappedCard"></div></div>
+<div class="modal" id="billModal"><div class="card" id="billCard"></div></div>
+<div class="modal" id="setModal"><div class="card" id="setCard"></div></div>
+<div class="modal" id="cliModal"><div class="card" id="cliCard"></div></div>
+<div class="snack" id="snack" role="status" aria-live="polite"><span id="snackMsg"></span><button id="snackUndo" hidden>undo</button><i></i></div>
+<div class="tip" id="tip"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const S = { config:null, days:[], day:null, week:{}, filter:'all', focus:0, undo:null, fresh:null };
+const PERSONAL = 'Personal';
+const STILL = /HeadlessChrome/.test(navigator.userAgent);  // docs screenshots: render the settled state, no motion
+if (STILL) document.documentElement.classList.add('still');
+const REDUCED = STILL || matchMedia('(prefers-reduced-motion: reduce)').matches;
+const ICON = { check:'<svg viewBox="0 0 24 24"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+               x:'<svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg>' };
+const CLOSE = `<button class="ib x" onclick="closeM()" aria-label="close">${ICON.x}</button>`;
+
+const fmtH = s => { const m = Math.round(s/60); return m < 60 ? `${m}m` : `${Math.floor(m/60)}h ${String(m%60).padStart(2,'0')}m`; };
+const fmtT = ts => new Date(ts*1000).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}).toLowerCase();
+const money = n => `${S.config.me.currency}${Math.round(n).toLocaleString('en-IN')}`;
+const client = name => S.config.clients.find(c => c.name === name);
+const color = name => client(name)?.color || 'var(--grey)';
+const rate = name => client(name)?.rate || 0;
+const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const weekOf = day => { const d = new Date(day+'T00:00'); const mon = new Date(d); mon.setDate(d.getDate() - (d.getDay()+6)%7); const sun = new Date(mon); sun.setDate(mon.getDate()+6); return [iso(mon), iso(sun)]; };
+const isBillable = s => s.billable && s.client !== PERSONAL && s.status !== 'nah';
+const SPARK = '<svg class="spark" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.5c.7 5 3 7.3 8 8-5 .7-7.3 3-8 8-.7-5-3-7.3-8-8 5-.7 7.3-3 8-8z"/></svg>';
+const esc = t => String(t).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tag = id => String(id).replace(/[^\w-]/g, '-');
+
+/* ---------- motion helpers ---------- */
+const running = {};
+function transition(kind, update){  // run a DOM update as a View Transition when the browser can; otherwise just update
+  if (!document.startViewTransition || REDUCED || document.hidden) { update(); const p = Promise.resolve(); p.finished = p; return p; }
+  const html = document.documentElement;
+  running[kind] = (running[kind] || 0) + 1;
+  html.classList.add('vt-' + kind);
+  const t = document.startViewTransition(update);
+  const guard = setTimeout(() => t.skipTransition(), 1000);  // no frame to animate in (window hidden)? just apply it
+  t.updateCallbackDone.finally(() => clearTimeout(guard));
+  t.ready.catch(() => {});  // a skipped transition rejects "ready"; the update itself still landed
+  t.finished.finally(() => { if (!--running[kind]) html.classList.remove('vt-' + kind); });
+  const p = t.updateCallbackDone.catch(() => {}); p.finished = t.finished.catch(() => {});
+  return p;
+}
+function roll(el, text){  // Apple's numeric text: every digit is a column that rolls to its new value
+  el.setAttribute('aria-label', text);
+  const chars = [...text], shape = chars.map(c => /\d/.test(c) ? '#' : c).join('');
+  if (el.dataset.shape !== shape) {
+    el.dataset.shape = shape;
+    el.innerHTML = chars.map(c => /\d/.test(c)
+      ? `<span class="dg" aria-hidden="true"><span>${[...'0123456789'].map(d => `<i>${d}</i>`).join('')}</span></span>`
+      : `<span aria-hidden="true">${c === ' ' ? '&nbsp;' : esc(c)}</span>`).join('');  // a flex row would drop a bare space
+    void el.offsetWidth;  // new columns start at 0 and roll up into place
+  }
+  const cols = [...el.querySelectorAll('.dg>span')], digits = chars.filter(c => /\d/.test(c));
+  cols.forEach((c, k) => { c.style.transitionDelay = (cols.length - 1 - k) * 22 + 'ms'; c.style.transform = `translateY(${-digits[k]}em)`; });
+}
+function clearRoll(el, text=''){ el.dataset.shape = ''; el.textContent = text; el.removeAttribute('aria-label'); }
+function snack(msg, undo, ai){  // Google's snackbar: says what happened, and offers a way back while the line runs out
+  const s = $('#snack'), u = $('#snackUndo');
+  s.classList.toggle('ai', !!ai);  // the model's own news wears its mark
+  $('#snackMsg').textContent = msg; u.hidden = !undo; S.undo = undo || null;
+  s.classList.toggle('undoable', !!undo); s.classList.remove('show'); void s.offsetWidth; s.classList.add('show');
+  clearTimeout(s._h); s._h = setTimeout(() => { s.classList.remove('show'); S.undo = null; }, undo ? 5000 : 2200);
+}
+const toast = msg => snack(msg);
+function burst(el){  // confetti in the brand colours: thrown up, then gravity
+  if (REDUCED) return;
+  const r = el.getBoundingClientRect(), cols = ['var(--lime)','var(--pink)','var(--blue)','var(--yellow)'];
+  for (let i = 0; i < 12; i++){
+    const e = document.createElement('span'), sz = 7 + Math.random()*5, dx = Math.random()*240-120, dy = -60 - Math.random()*150, rot = Math.random()*540-270;
+    Object.assign(e.style, {left: r.left + r.width/2 + 'px', top: r.top + r.height/2 + 'px', width: sz+'px', height: sz+'px', background: cols[i%4], borderRadius: i%2 ? '50%' : '3px'});
+    e.className = 'burst'; document.body.appendChild(e);
+    e.animate([{transform:'translate(-50%,-50%) rotate(0)', opacity:1},
+               {transform:`translate(calc(-50% + ${dx*.65}px), calc(-50% + ${dy}px)) rotate(${rot/2}deg)`, opacity:1, offset:.42, easing:'cubic-bezier(.4,0,1,1)'},
+               {transform:`translate(calc(-50% + ${dx}px), calc(-50% + ${dy+190}px)) rotate(${rot}deg)`, opacity:0}],
+              {duration: 950, easing:'cubic-bezier(.15,.7,.4,1)'}).onfinish = () => e.remove();
+  }
+}
+/* ---------- hand-off: what you change here flies home to your island ---------- */
+let ISL = null;
+const islandSpot = () => fetch('/api/island').then(r => r.json()).then(j => ISL = j).catch(() => {});
+function islandPoint(){  // the island's inner edge, in this page's coordinates (usually just outside the page)
+  const g = ISL?.island, edge = g?.edge || ISL?.settings?.edge || 'top';
+  const [sx, sy, sw, sh] = g?.screen || [screen.availLeft || 0, screen.availTop || 0, screen.width, screen.height];
+  const k = Math.abs(screen.width / screen.height - sw / sh) < .02 ? screen.width / sw : 1;  // DIPs to this page's px
+  const [px, py] = g ? [g.x, g.y] : {top:[sx + sw/2, sy], bottom:[sx + sw/2, sy + sh], left:[sx, sy + sh/2], right:[sx + sw, sy + sh/2]}[edge];
+  const border = Math.max(0, (outerWidth - innerWidth) / 2);                             // the window frame
+  const ox = screenX + border, oy = screenY + outerHeight - innerHeight - border;         // the viewport's corner on screen
+  const x = px * k - ox, y = py * k - oy;
+  return {x, y, edge, k, ox, oy, live: !!g, inside: x >= 0 && x <= innerWidth && y >= 0 && y <= innerHeight};
+}
+const hex = c => /^#[0-9a-f]{6}$/i.test(c) ? c : '#9a9aa6';
+async function fly(r, text, color, islandText, kind){
+  /* It pops out of what you changed, then swoops along an arc to where your island really sits on screen, pulled
+     in faster and faster, shrinking and stretching along its path. The page draws it while it's inside the page;
+     the island gets the same path in screen coordinates and the same start time, and draws it everywhere outside
+     the page, so a small or off-to-the-side window hands it over at its edge without a seam. */
+  if (!r) return;
+  await islandSpot();
+  const I = islandPoint(), S = {x: r.left + r.width/2, y: r.top + r.height/2 - 4};
+  const dx = I.x - S.x, dy = I.y - S.y, dist = Math.hypot(dx, dy) || 1;
+  const post = body => fetch('/api/catch', {method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({text: islandText, color: hex(color), kind, ...body})}).catch(() => {});
+  if (REDUCED) return post({delay_ms: 0});
+  const lift = 260, dur = Math.min(1050, 520 + dist * .42), T = lift + dur, lead = 80;  // both halves start together, 80 ms out
+  const chip = document.createElement('div');
+  chip.className = 'fly'; chip.style.setProperty('--c', hex(color)); chip.innerHTML = `<i></i><span>${esc(text)}</span>`;
+  document.body.appendChild(chip);
+  const w = chip.offsetWidth, h = chip.offsetHeight, vertical = I.edge === 'top' || I.edge === 'bottom';
+  const at = (x, y, sx, sy, opacity = 1) => ({transform: `translate(${x - w/2}px, ${y - h/2}px) scale(${sx}, ${sy})`, opacity});
+  const swing = dx >= 0 ? 1 : -1, C = {x: S.x + dx/2 + dy * .2 * swing, y: S.y + dy/2 - dx * .2 * swing};  // bow the path into an arc
+  const frames = [{...at(S.x, S.y + 4, .2, .2, 0), offset: 0},
+                  {...at(S.x, S.y - 6, 1.14, 1.14), offset: lift * .55 / T},                         // pops up out of it
+                  {...at(S.x, S.y, 1, 1), offset: lift / T}];
+  for (let n = 1; n <= 60; n++){  // the same curve the island draws (island.flight_at), finely sampled
+    const t = n / 60, u = t ** 2.1, q = 1 - u;                                                       // slow to leave, quick to arrive
+    const x = q*q*S.x + 2*q*u*C.x + u*u*I.x, y = q*q*S.y + 2*q*u*C.y + u*u*I.y;
+    const size = 1 - .42 * u, st = Math.max(0, (u - .5) / .5), along = size * (1 + .55 * st), across = size * (1 - .4 * st);
+    frames.push({...at(x, y, vertical ? across : along, vertical ? along : across, I.inside && !I.live && n === 60 ? 0 : 1),
+                 offset: (lift + t * dur) / T});
+  }
+  const anim = chip.animate(frames, {duration: T, easing: 'linear', fill: 'both'});
+  anim.startTime = document.timeline.currentTime + lead;
+  anim.onfinish = () => chip.remove();
+  const scr = pt => [(pt.x + I.ox) / I.k, (pt.y + I.oy) / I.k];                                    // page px to screen DIPs
+  post({start_ms: lead, flight: {S: scr(S), C: scr(C), I: scr(I), vp: [I.ox / I.k, I.oy / I.k, innerWidth / I.k, innerHeight / I.k],
+        lift_ms: lift, dur_ms: dur, w: w / I.k, h: h / I.k, label: text, edge: I.edge}});
+}
+function placeThumb(seg){  // slide the ink thumb under the chosen option; no slide on first sight
+  const on = seg.querySelector('button.on'), th = seg.querySelector('.thumb');
+  if (!on || !th) return;
+  th.style.left = on.offsetLeft+'px'; th.style.width = on.offsetWidth+'px';
+  if (!seg.classList.contains('ready')) setTimeout(() => seg.classList.add('ready'), 50);
+}
+function showTip(el, html){
+  const t = $('#tip'), r = el.getBoundingClientRect();
+  t.innerHTML = html;
+  t.style.left = Math.min(innerWidth - 160, Math.max(160, r.left + r.width/2)) + 'px'; t.style.top = r.top + 'px';
+  t.classList.add('show');
+}
+const hideTip = () => $('#tip').classList.remove('show');
+function focusCard(i){  // focus, and bring it into view vertically only (never nudge the page sideways)
+  const el = document.querySelector(`.s[data-i="${i}"]`); if (!el) return;
+  el.focus({preventScroll:true});
+  const r = el.getBoundingClientRect(), dy = r.top < 90 ? r.top - 90 : r.bottom > innerHeight - 24 ? r.bottom - innerHeight + 24 : 0;
+  if (dy) scrollBy({top: dy, behavior: REDUCED ? 'auto' : 'smooth'});
+}
+
+/* ---------- data ---------- */
+async function boot(){
+  const st = await (await fetch('/api/state')).json();
+  S.config = st.config; S.days = st.days;
+  const pill = $('#modelPill');
+  S.model = st.model; S.modelOk = st.model_ok;
+  pill.classList.toggle('warn', !st.model_ok);
+  MIND.idle = st.model_ok ? `${st.model.split(':')[0]} · on this laptop` : `${st.model} offline · keyword mode`;
+  $('#mindTxt').textContent = MIND.idle;
+  $('#foot').innerHTML = `<b>0 bytes</b> of your screen time left this laptop. labels by <b>${st.model}</b> via ollama on 127.0.0.1${st.demo ? ' · <b>demo week</b>' : ''}<br>open source — read every line of what watches you.`;
+  S.day = S.days.at(-1) || iso(new Date());
+  await Promise.all([load(), loadFocus()]);
+  setTimeout(() => document.body.classList.remove('intro'), 1800);  // the entrance plays once
+  ({'#settings': () => settings(), '#wrapped': () => wrapped(), '#bill': () => bill(), '#review': review, '#intend': intend, '#clients': () => clients_()})[location.hash]?.();
+  if (location.hash.startsWith('#log')) {  // #log, or #log=what it was: the latest gap, picked and asking
+    logMissed();
+    const t = decodeURIComponent(location.hash.slice(5));
+    if (t) { $('#logIn').value = t; previewLog(); }
+  }  // deep links (island + docs)
+}
+
+async function load(){
+  const [from, to] = weekOf(S.day);
+  if (!S.week[S.day]) {
+    $('#grid').innerHTML = `<p class="sub" style="grid-column:1/-1;margin:0">the model is reading your day… only the first time</p>` +
+      Array.from({length:3}, () => `<div class="card skel"><i></i><i></i><i></i><i></i></div>`).join('');
+    S.week = await (await fetch(`/api/range?from=${from}&to=${to}`)).json();
+  }
+  S.focus = 0; render();
+  loadBrief();
+}
+
+function sessions(){ return S.week[S.day] || []; }
+
+function render(){
+  const d = new Date(S.day+'T00:00'), today = S.day === iso(new Date());
+  const wd = d.toLocaleDateString([], {weekday:'long'}).toLowerCase();
+  $('#dayLabel').textContent = d.toLocaleDateString([], {weekday:'short', day:'numeric', month:'short'}).toLowerCase();
+  $('#moneyLabel').textContent = today ? 'you made today' : `you made on ${wd}`;
+  $('#receiptsTitle').innerHTML = `${today ? 'today' : wd}'s <em>receipts</em>`;
+  const all = sessions();
+  const bill = all.filter(isBillable), side = all.filter(s => !isBillable(s));
+  roll($('#money'), money(bill.reduce((a,s)=>a+s.active_s/3600*rate(s.client),0)));
+  const bs = bill.reduce((a,s)=>a+s.active_s,0), ps = side.reduce((a,s)=>a+s.active_s,0);
+  $('#moneySub').textContent = all.length ? `${fmtH(bs)} billable across ${new Set(bill.map(s=>s.client)).size} clients` : 'nothing tracked yet — go touch some code';
+  const tot = bs+ps || 1;
+  $('#split').innerHTML = S.config.clients.map(c => { const v = bill.filter(s=>s.client===c.name).reduce((a,s)=>a+s.active_s,0);
+    return v ? `<div data-tip-html="<b>${esc(c.name)}</b><span>${fmtH(v)}</span>" style="width:${v/tot*100}%;background:${c.color}"></div>` : ''; }).join('') +
+    `<div class="stripes" style="flex:1" data-tip-html="<b>side quests</b><span>${fmtH(ps)}</span>"></div>`;
+  $('#split').querySelectorAll('div').forEach((b, k) => { b.style.setProperty('--i', k); b.onmouseenter = () => showTip(b, b.dataset.tipHtml); b.onmouseleave = hideTip; });
+  $('#splitSub').textContent = `${fmtH(bs)} work · ${fmtH(ps)} side quests (no judgement)`;
+  const pending = all.filter(s=>s.status==='pending').length;
+  if (pending) { roll($('#qn'), String(pending)); $('#qt').textContent = ' to review'; }
+  else { clearRoll($('#qn')); $('#qt').textContent = all.length ? 'all clear' : '—'; }
+  $('#queueSub').textContent = pending ? 'start reviewing →' : (all.length ? 'nothing waiting on you' : 'nothing tracked yet');
+
+  renderTimeline(all, today);
+  renderCards();
+  renderLife();
+}
+
+function renderCards(){
+  const all = sessions();
+  const n = {all: all.length, pending: all.filter(s=>s.status==='pending').length,
+             billed: all.filter(s=>s.status==='billed').length, personal: all.filter(s=>!isBillable(s)).length};
+  document.querySelectorAll('#filters button').forEach(b => { b.classList.toggle('on', b.dataset.f===S.filter);
+    const c = b.querySelector('b'); n[b.dataset.f] ? roll(c, String(n[b.dataset.f])) : clearRoll(c); });
+  placeThumb($('#filters'));
+  const shown = all.map((s,i)=>[s,i]).filter(([s])=> S.filter==='all' || (S.filter==='pending'&&s.status==='pending') || (S.filter==='billed'&&s.status==='billed') || (S.filter==='personal'&&!isBillable(s)));
+  if (!shown.length){ $('#grid').innerHTML = `<div class="card empty" style="grid-column:1/-1">${all.length ? 'nothing here bestie ✨' : 'no receipts yet. lowkey is watching (respectfully) 👀'}</div>`; return; }
+  const opts = n => [...S.config.clients.map(c=>c.name), PERSONAL].map(c=>`<option ${c===n?'selected':''}>${c}</option>`).join('');
+  $('#grid').innerHTML = shown.map(([s,i], k) => {
+    const billable = isBillable(s), pct = Math.round(s.confidence*100), done = s.status !== 'pending', id = tag(s.id);
+    const mine = (s.edited || []).includes('task');
+    const conf = s.manual ? `<span title="you added this one">added by you</span><i>·</i><a href="#" class="rmBtn" data-i="${i}">remove</a>`
+      : s.by==='rules' ? `<span title="labelled by your keyword rules, not the model">keyword guess</span>`
+      : (mine ? `<span title="you rewrote this line">your words</span><i>·</i>` : `<span class="ai" title="${esc(s.by)} wrote this line on your laptop">${SPARK}${esc(String(s.by).split(':')[0])}</span><i>·</i>`) +
+        (s.confidence < 0.6 ? `<span class="check" title="less than 60% of this line is backed by your windows">check me · ${pct}%</span>`
+        : `<span title="how much of this line your windows back up">${pct}% backed</span>`);
+    const verdict = s.status === 'billed'
+      ? `<span class="verdict billed vt-a ${S.fresh===s.id?'fresh':''}">${ICON.check} billed</span>`
+      : `<span class="verdict nah vt-b">off the invoice</span>`;
+    return `<article class="card s ${done?'done':''}" tabindex="0" data-i="${i}" style="--vt:s-${id};--va:a-${id};--vb:b-${id};--d:${5+Math.min(k,8)}">
+      <div class="top">
+        <label class="who ${billable?'':'side'}" style="--c:${billable?color(s.client):'var(--paper)'}" title="change client"><select data-i="${i}" aria-label="client">${opts(s.client)}</select></label>
+        <span class="t">${fmtT(s.start)} – ${fmtT(s.end)}</span>
+      </div>
+      <div class="body">
+        <div class="task ${S.writing?.has(s.id) ? 'writing' : ''}" data-i="${i}" title="click to edit  E" style="--len:${s.task.length}">${esc(s.task)}</div>
+        <div class="meta"><span>${fmtH(s.active_s)}</span>${billable?`<i>·</i><span>${money(s.active_s/3600*rate(s.client))}</span>`:''}<i>·</i>${conf}${s.manual ? '' : `<i>·</i><a href="#" class="whyBtn" data-i="${i}" title="the windows behind this line">why?</a>`}</div>
+        <div class="why" id="why${i}"><div>${s.manual ? '' : why(s)}</div></div>
+        <div class="actions">${done
+          ? `${verdict}<button class="link" data-act="undo" data-i="${i}">undo</button>`
+          : `<button class="btn lime vt-a" data-act="billed" data-i="${i}">bill it</button><button class="btn quiet vt-b" data-act="nah" data-i="${i}">nah</button>`}</div>
+      </div></article>`;
+  }).join('');
+  S.fresh = null; S.writing = null;
+  $('#grid').querySelectorAll('[data-act]').forEach(b => b.onclick = () => act(+b.dataset.i, b.dataset.act, b));
+  $('#grid').querySelectorAll('select').forEach(sel => sel.onchange = () => {
+    const s = sessions()[+sel.dataset.i];
+    update(+sel.dataset.i, {client: sel.value, billable: sel.value!==PERSONAL}, `moved to ${sel.value}`, true,
+      {from: sel.parentElement, at: '.who', text: `→ ${sel.value}`, island: `moved to ${sel.value}`, kind: 'move'});
+    if (!s.manual && sel.value !== PERSONAL) learn(s, sel.value);
+  });
+  $('#grid').querySelectorAll('.task').forEach(t => t.onclick = () => t.isContentEditable || act(+t.dataset.i, 'edit'));
+  $('#grid').querySelectorAll('.rmBtn').forEach(a => a.onclick = e => { e.preventDefault(); removeReceipt(+a.dataset.i); });
+  $('#grid').querySelectorAll('.whyBtn').forEach(a => a.onclick = e => { e.preventDefault(); $('#why'+a.dataset.i).classList.toggle('open'); });
+  $('#grid').querySelectorAll('.s').forEach(c => c.onfocus = () => S.focus = +c.dataset.i);
+}
+
+/* ---------- the mind: what the local model is doing, said while it happens ---------- */
+const MIND = {idle: '', rev: null};
+const PAST = {'writing the invoice line': 'wrote an invoice line',
+              'writing your day': 'wrote your day', 'working out whose it is': 'worked out whose it is', 'learning from your fix': 'looked for something to learn'};
+const secs = ms => ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
+function mind(p){  // a 0.3 s thought still shows long enough to see, then says what it did and how fast
+  const pill = $('#modelPill'), t = p.thought, ago = t ? Date.now() / 1000 - t.at : 99;
+  const busy = p.thinking || ago < 1.2, txt = busy ? `${p.thinking || t.what}…`
+    : ago < 4 ? `${PAST[t.what] || t.what.replace(/^sorting/, 'sorted').replace(/^reading (\d+) min of/, 'read $1 min of')} · ${secs(t.ms)}` : MIND.idle;
+  pill.classList.toggle('thinking', !!busy);
+  const el = $('#mindTxt');
+  if (el.textContent !== txt) swapText(el, txt);
+}
+async function pulse(){
+  if (document.hidden || !S.day) return;
+  const p = await fetch('/api/pulse').then(r => r.json()).catch(() => null);
+  if (!p) return;
+  if (S.modelOk) mind(p);
+  if (MIND.rev !== null && p.rev !== MIND.rev && S.day === iso(new Date())) {
+    const busyHere = document.activeElement?.closest?.('#grid, .modal.open, #logpop, #focus');
+    if (busyHere) return;  // never re-render under your hands: try again on the next beat
+    await freshDay();
+  }
+  MIND.rev = p.rev;
+}
+setInterval(pulse, 1500);
+async function freshDay(){  // new lines from the model arrive written in; lines it rewrote write themselves again
+  const day = S.day, before = new Map(sessions().map(s => [s.id, s.task]));
+  const got = (await fetch(`/api/range?from=${day}&to=${day}`).then(r => r.json()))[day];
+  if (S.day !== day || !got) return;
+  S.writing = new Set(got.filter(s => !s.manual && before.get(s.id) !== s.task).map(s => s.id));
+  S.week[day] = got;
+  transition('cards', () => render());
+}
+function write(el){
+  if (REDUCED) return;
+  el.style.setProperty('--len', el.textContent.length);
+  el.classList.remove('writing'); void el.offsetWidth; el.classList.add('writing');
+}
+async function loadBrief(){  // the day in the model's own words, from the receipts; no model, no brief
+  const day = S.day, el = $('#brief'), txt = $('#briefTxt');
+  if (!S.modelOk || !sessions().length) { el.hidden = true; return; }
+  el.hidden = false;
+  if (el.dataset.day !== day) { el.classList.add('thinking'); txt.textContent = 'reading your day…'; $('#briefBy').textContent = ''; }
+  const b = (await fetch(`/api/brief?day=${day}`).then(r => r.json()).catch(() => ({}))).brief;
+  if (S.day !== day) return;
+  el.classList.remove('thinking');
+  if (!b) { el.hidden = true; return; }
+  const changed = txt.textContent !== b.text || el.dataset.day !== day;
+  el.dataset.day = day;
+  txt.textContent = b.text;
+  if (changed) write(txt);
+  $('#briefBy').textContent = `${String(b.by).split(':')[0]} read ${b.lines} receipt${b.lines === 1 ? '' : 's'} and wrote this, on this laptop`;
+}
+function why(s){  // the reason, then the receipts behind it: the words that matched your hints are marked
+  const c = S.config.clients.find(c => c.name === s.client), hs = (c?.hints || []).filter(h => h.length >= 3);
+  const re = hs.length ? new RegExp(`(${hs.map(h => h.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})`, 'ig') : null;
+  const mark = t => re ? t.split(re).map((x, k) => k % 2 ? `<mark>${esc(x)}</mark>` : esc(x)).join('') : esc(t);
+  const hit = new Set(re ? s.evidence.flatMap(e => (`${e.app} ${e.title}`.match(re) || []).map(h => h.toLowerCase())) : []);
+  const who = s.client === PERSONAL ? 'side quests' : s.client, pct = Math.round(s.confidence * 100);
+  const lead = (s.edited || []).includes('client') ? `you moved this to <b>${esc(who)}</b>.`
+    : s.by === 'rules' ? `your keyword rules filed this under <b>${esc(who)}</b>.`
+    : `${SPARK}${esc(String(s.by).split(':')[0])} read these windows and filed them under <b>${esc(who)}</b>.`;
+  const backing = s.client === PERSONAL ? ' none of them belong to a client.'
+    : hit.size ? ` ${pct}% of the time mentions your hints: ${[...hit].map(h => `<mark>${esc(h)}</mark>`).join(' ')}.`
+    : ` nothing here mentions ${esc(who)}'s hints, so it waits for your vibe check.`;
+  return `<div class="lead">${lead}${backing}</div>` + s.evidence.map(e => `<p>${fmtH(e.s)} · ${esc(e.app.replace('.exe', ''))} — ${mark(e.title)}</p>`).join('');
+}
+async function learn(s, client){  // you corrected it: it picks what to remember, says so, and can forget it
+  const r = await call('/api/teach', {day: S.day, id: s.id, client}).catch(() => null);
+  if (!r?.hint) return;
+  const keep = c => { if (c) S.config.clients = S.config.clients.map(x => x.name === c.name ? c : x); };
+  const a = await call('/api/teach/apply', {client, hint: r.hint}).catch(() => null);
+  if (!a?.client) return;
+  keep(a.client);
+  snack(`learned: “${r.hint}” means ${client} from now on`, async () => {
+    keep((await call('/api/teach/apply', {client, hint: r.hint, forget: true}).catch(() => ({}))).client);
+    snack(`forgot “${r.hint}”`);
+  }, true);
+}
+
+/* optimistic: the change shows at once, saves in the background, and can be undone from the snackbar */
+function update(i, patch, msg, undoable = true, chip = null){
+  const s = sessions()[i], prev = Object.fromEntries(Object.keys(patch).map(k => [k, s[k]]));
+  s.edited = [...new Set([...(s.edited || []), ...Object.keys(patch).filter(k => k === 'client' || k === 'task')])];
+  const from = chip?.from?.getBoundingClientRect?.() || chip?.from;
+  if (patch.status === 'billed') S.fresh = s.id;
+  const done = transition('cards', () => { Object.assign(s, patch); render(); });
+  fetch('/api/edit', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:s.id, ...patch})})
+    .catch(() => snack("couldn't save that. is lowkey still running?"));
+  if (msg) snack(msg, undoable ? () => update(i, prev, 'undone', false, {from: $('#snackUndo'), text: 'undone', island: 'undone', kind: 'undo'}) : null);
+  if (chip) done.finished.then(() => {  // first it settles in place, then it flies home from where it now sits
+    const there = chip.at && document.querySelector(`.s[data-i="${i}"] ${chip.at}`);
+    fly(there?.getBoundingClientRect() || from, chip.text, isBillable(s) ? color(s.client) : '#9a9aa6', chip.island, chip.kind);
+  });
+  return done;
+}
+function act(i, what, el){
+  const s = sessions()[i];
+  if (what==='billed'){ if (!isBillable({...s,status:'billed'})) return snack('that one is a side quest — pick a client first');
+    const btn = el || document.querySelector(`.s[data-i="${i}"] [data-act="billed"]`), amt = money(s.active_s/3600*rate(s.client));
+    burst(btn || document.querySelector(`.s[data-i="${i}"]`));
+    update(i, {status:'billed'}, `billed · ${s.client} · ${amt}`, true,
+           {from: btn, at: '.verdict', text: `+${amt}`, island: `billed · ${s.client} · ${amt}`, kind: 'billed'}).then(() => nextPending(i)); }
+  if (what==='nah') update(i, {status:'nah'}, 'off the invoice', true,
+           {from: el || document.querySelector(`.s[data-i="${i}"] [data-act="nah"]`), at: '.verdict', text: 'off the invoice',
+            island: `off the invoice · ${s.client}`, kind: 'nah'}).then(() => nextPending(i));
+  if (what==='undo') update(i, {status:'pending'}, 'back in the queue', false,
+           {from: el, at: '[data-act="billed"]', text: 'back to review', island: 'back in the review queue', kind: 'undo'}).then(() => focusCard(i));
+  if (what==='edit'){ const t=document.querySelector(`.task[data-i="${i}"]`); if (!t) return; t.contentEditable=true; t.focus(); document.getSelection().selectAllChildren(t);
+    t.onkeydown = e => { if (e.key==='Enter'){ e.preventDefault(); t.blur(); } if (e.key==='Escape'){ t.textContent = s.task; t.blur(); } e.stopPropagation(); };
+    t.onblur = () => { t.contentEditable=false; const v=t.textContent.trim(); if (v && v!==s.task) update(i, {task:v}, 'line updated', true, {from: t, at: '.task', text: 'line updated', island: 'invoice line updated', kind: 'edit'}); }; }
+}
+function nextPending(i){ const a=sessions(); const j=a.findIndex((s,k)=>k>i&&s.status==='pending'); if (j>=0){ S.focus=j; focusCard(j); } }
+function review(){ transition('cards', () => { S.filter='pending'; renderCards(); }).then(() => { const first = document.querySelector('.s'); if (first) focusCard(+first.dataset.i); }); }
+
+function shiftDay(n){
+  const i = S.days.indexOf(S.day), j = Math.min(S.days.length-1, Math.max(0, i+n));
+  if (i<0||j===i) return snack(n<0?'no older receipts':'that\'s the latest day');
+  goDay(S.days[j]);
+}
+function goDay(day){
+  if (day === S.day || !S.days.includes(day)) return;
+  if (S.week[day]) transition(day < S.day ? 'back' : 'fwd', () => { S.day = day; S.focus = 0; render(); });
+  else { S.day = day; load(); }
+}
+
+/* ---------- intentions: one at a time, held to gently ---------- */
+const F = {data: null, aside: false};
+const RING = 2 * Math.PI * 24;
+const minutes = s => Math.round((s || 0) / 60);
+async function loadFocus(kind){
+  const data = await (await fetch('/api/intents')).json();
+  if (kind) await transition(kind, () => { F.data = data; renderFocus(); }); else { F.data = data; renderFocus(); }
+}
+const call = (url, body) => fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}).then(r => r.json());
+function renderFocus(){
+  const d = F.data || {next: [], done: []}, n = d.now;
+  $('#askWhat').classList.remove('vtf');  // it lent its name to the morph; the new state must not carry it too
+  $('#focus').classList.toggle('active', !!n);
+  if (n){
+    const spent = minutes(n.spent_s), est = n.est_min, frac = est ? Math.min(1, spent / est) : 0;
+    const status = d.drift_min >= 1 && d.what ? `<span class="drift">drifting · ${esc(d.what)} ${d.drift_min}m</span>`
+      : d.verdict === 'on' ? `<span class="onit" style="--c:${n.color}"><i></i>on it</span>` : '';
+    $('#fnow').innerHTML = `
+      <div class="ring ${frac >= 1 ? 'full' : ''}" style="--c:${n.color}" title="time on it, against your estimate"><svg viewBox="0 0 56 56">
+        <circle class="bg" cx="28" cy="28" r="24"/><circle class="fg" cx="28" cy="28" r="24" stroke-dasharray="${RING}" stroke-dashoffset="${RING * (1 - frac)}"/></svg><b>${spent}m</b></div>
+      <div class="what vtf" style="--vt:f-${tag(n.id)}">
+        <div class="kick">now</div>
+        <h3 title="${esc(n.text)}">${esc(n.text)}</h3>
+        <div class="fline">${n.client ? `<span class="tag2 ${n.client === PERSONAL ? 'side' : ''}" style="--c:${n.color}">${esc(n.client)}</span>` : ''}
+          <span>${est ? `${spent} of ${est} min` : `${spent} min on it`}</span><i>·</i><span>${esc(n.reason)}</span>${status ? '<i>·</i>' + status : ''}</div>
+      </div>
+      <div class="factions">${F.aside
+        ? `<div class="seg" id="howfar"><span class="thumb"></span><button data-p="10">just started</button><button data-p="50">halfway</button><button data-p="80">almost</button></div>
+           <button class="btn quiet" id="faCancel">cancel</button>`
+        : `<button class="ib bin" id="fDrop" data-tip="delete it (you can undo)" aria-label="delete it"><svg viewBox="0 0 24 24"><path class="lid" d="M4 6.5h16M9.5 6.5V4.5h5v2"/><path d="M6.5 6.5l.9 12.2a1.5 1.5 0 0 0 1.5 1.3h6.2a1.5 1.5 0 0 0 1.5-1.3l.9-12.2M10.2 10.5v6M13.8 10.5v6"/></svg></button><button class="btn quiet" id="fAside" title="put it back in line, and say how far you got">set aside</button><button class="btn lime" id="fDone">done</button>`}</div>`;
+    if (F.aside) { $('#howfar').querySelectorAll('button').forEach(b => b.onclick = () => setAside(n, +b.dataset.p, b)); $('#faCancel').onclick = () => { F.aside = false; renderFocus(); }; }
+    else { $('#fAside').onclick = () => { F.aside = true; renderFocus(); }; $('#fDone').onclick = e => finish(n, e.currentTarget); $('#fDrop').onclick = e => drop(n, e.currentTarget); }
+  } else $('#fnow').innerHTML = '';
+  askHint();
+  const shown = F.all ? d.next : d.next.slice(0, 3), more = d.next.length - shown.length;
+  $('#fnk').hidden = !d.next.length;
+  $('#thenBox').hidden = !n;
+  $('#fnext').innerHTML = shown.map(x => `<button class="nx vtf ${F.fresh === x.id ? 'fresh' : ''}" style="--c:${x.color};--vt:f-${tag(x.id)}" data-id="${x.id}" title="start it">
+      <i></i>${esc(x.text)} <small>${esc(x.reason)}</small><span class="x" data-drop="${x.id}" title="drop it" aria-label="drop">${ICON.x}</span></button>`).join('') +
+    (more ? `<button class="link" id="fMore" title="the rest of the queue">+${more} more</button>` : '');
+  F.fresh = null;
+  $('#fdone').textContent = d.done.length ? `${d.done.length} done today` : '';
+  $('#fdone').title = d.done.map(x => x.text).join(' · ');
+  $('#fnexts').hidden = !n && !d.next.length && !d.done.length;
+  if ($('#thenBox').classList.contains('open')) fitThen();  // the chips moved: re-measure its room
+  if (more) $('#fMore').onclick = () => transition('focus', () => { F.all = true; renderFocus(); });
+  $('#fnext').querySelectorAll('.nx').forEach(b => b.onclick = e => {
+    const x = d.next.find(i => i.id === b.dataset.id);
+    if (e.target.closest('[data-drop]')) return drop(x, b);
+    start(x, b);
+  });
+}
+async function start(x, el){
+  const r = el.getBoundingClientRect();
+  await call('/api/intents/act', {id: x.id, action: 'start'});
+  F.aside = false;
+  await loadFocus('focus');
+  fly(r, `now: ${x.text}`, x.color, `now: ${x.text}`, 'intend');
+}
+async function finish(n, el){
+  const r = el.getBoundingClientRect();
+  burst(el);
+  await call('/api/intents/act', {id: n.id, action: 'done'});
+  await loadFocus('focus');
+  const took = minutes(n.spent_s);
+  fly(r, `done · ${took}m`, n.color, `done · ${n.text} · ${took} min`, 'done');
+  snack(`done · ${n.text}`);
+}
+async function setAside(n, p, el){
+  const r = el.getBoundingClientRect(), how = {10: 'just started', 50: 'halfway', 80: 'almost there'}[p];
+  await call('/api/intents/act', {id: n.id, action: 'progress', value: p});
+  F.aside = false;
+  await loadFocus('focus');
+  fly(r, `set aside · ${how}`, n.color, `set aside · ${n.text} · ${how}`, 'aside');
+}
+async function drop(x, el){
+  await call('/api/intents/act', {id: x.id, action: 'drop'});
+  await loadFocus('focus');
+  snack(`deleted · ${x.text}`, async () => { await call('/api/intents/act', {id: x.id, action: 'restore'}); loadFocus('focus'); });  // back exactly as it was
+}
+/* saying it: the headline asks (idle), or "then…" lines up what's after (busy). Chips show what lowkey understood */
+const EXAMPLES = ["acme login fix by 5, about an hour", "nimbus invoice tomorrow, 30m", "chai banner by friday, 2h", "reply to client emails ~20 min"];
+let exampleI = 0;
+const estTxt = m => m >= 60 ? (m / 60).toFixed(m % 60 ? 1 : 0) + 'h' : m + 'm';
+function askHint(){  // the line under the question: an example while you think, the keys once you've typed
+  const i = $('#intend'), v = i.value.trim(), ring = $('#askRing');
+  $('#fask').classList.toggle('typed', !!v);
+  if (v) return $('#askHint').innerHTML = `<kbd>↵</kbd> start · <kbd>⇧↵</kbd> later`;
+  $('#askToks').innerHTML = ''; ring.classList.remove('has', 'est'); $('#askEst').textContent = '—';
+  $('#askHint').innerHTML = document.activeElement === i ? `like: ${EXAMPLES[exampleI]}`
+    : `say it your way and lowkey keeps you on it${F.data?.next?.length ? ' · or start one below' : ''} · <kbd>I</kbd>`;
+}
+async function previewIntent(input, box){
+  const v = input.value.trim(), seq = input._seq = (input._seq || 0) + 1, hero = input.id === 'intend';
+  if (!v) { box.innerHTML = ''; return hero && askHint(); }
+  const p = await call('/api/intents/parse', {text: v});
+  if (seq !== input._seq || input.value.trim() !== v) return;  // a newer keystroke already won
+  const have = new Set([...box.children].map(c => c.dataset.k));
+  const due = p.due ? new Date(p.due * 1000) : null, today = due && due.toDateString() === new Date().toDateString();
+  const col = p.client && client(p.client)?.color;
+  box.innerHTML = [p.client && `<span class="tok c" style="--c:${col || 'var(--paper)'}" data-k="c:${esc(p.client)}">${esc(p.client)}</span>`,
+    due && `<span class="tok" data-k="d:${p.due}">${today ? '' : due.toLocaleDateString([], {weekday:'short'}).toLowerCase() + ' '}${due.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}).toLowerCase()}</span>`,
+    !hero && p.est_min && `<span class="tok" data-k="e:${p.est_min}">${estTxt(p.est_min)}</span>`].filter(Boolean).join('');
+  [...box.children].forEach(c => { if (have.has(c.dataset.k)) c.style.animation = 'none'; });  // only new chips pop
+  box.classList.toggle('clip', box.scrollWidth > box.clientWidth + 1);                              // more than fits: fade, don't cut
+  if (!hero) return;
+  const ring = $('#askRing');  // the ring rehearses: the client's colour, and the estimate it will hold you to
+  ring.classList.toggle('has', !!col); col ? ring.style.setProperty('--c', col) : ring.style.removeProperty('--c');
+  ring.classList.toggle('est', !!p.est_min); $('#askEst').textContent = p.est_min ? estTxt(p.est_min) : '—';
+}
+function shake(el){ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+async function say(input, box, startIt, from){
+  const text = input.value.trim(), hero = input.id === 'intend';
+  if (!text) { input.focus(); return shake(from); }
+  if (input._busy) return;
+  input._busy = true; input.readOnly = true;
+  const wrap = hero ? $('#fask') : $('#thenBox'), slow = setTimeout(() => {  // only if it takes a moment (the model guessing the client)
+    wrap.classList.add('pending'); if (hero) $('#askHint').textContent = 'working out whose it is…'; }, 250);
+  try {
+    const it = await call('/api/intents', {text, start: startIt});
+    if (it.error) { shake(from); return snack("couldn't read that one"); }
+    const r = from.getBoundingClientRect(), data = await (await fetch('/api/intents')).json();
+    if (hero) { $('#askWhat').style.setProperty('--vt', `f-${tag(it.id)}`); $('#askWhat').classList.add('vtf'); }  // the words become the title
+    else if (!document.startViewTransition) F.fresh = it.id;  // a new chip arrives (the view transition fades it in; without one, it pops)
+    await transition('focus', () => { input.value = ''; box.innerHTML = ''; F.data = data; renderFocus(); });
+    if (hero) input.blur();
+    const where = it.state === 'now' ? 'now' : 'next up';
+    fly({left: r.left + r.width / 2 - 40, top: r.top, width: 80, height: r.height}, `${where}: ${it.text}`,
+        it.client ? client(it.client)?.color || '#9a9aa6' : '#9a9aa6', `${where}: ${it.text}`, 'intend');
+  } finally { clearTimeout(slow); wrap.classList.remove('pending'); input._busy = false; input.readOnly = false; if (hero) askHint(); }
+}
+for (const [input, box, from] of [[$('#intend'), $('#askToks'), () => $('#askWhat')], [$('#then'), $('#thenToks'), () => $('#thenBox')]]) {
+  const hero = input.id === 'intend';
+  input.oninput = () => {
+    clearTimeout(input._t);
+    if (hero) askHint(); else if (!$('#thenBox').classList.contains('open')) { fitThen(); $('#thenBox').classList.add('open'); }
+    input._t = setTimeout(() => previewIntent(input, box), 120);
+  };
+  input.onfocus = input.onblur = () => hero && askHint();
+  input.onkeydown = e => {
+    e.stopPropagation();
+    if (e.isComposing) return;  // Enter that picks a word in an IME isn't a submit
+    if (e.key === 'Escape') { input.value = ''; box.innerHTML = ''; if (hero) askHint(); return input.blur(); }  // blur also folds "then…" back
+    if (e.key === 'Enter') { e.preventDefault(); say(input, box, hero && !e.shiftKey, from()); }
+  };
+}
+function fitThen(){  // how much room "then…" has on its line once it opens; too little, and it takes a line of its own
+  const row = $('#fnexts'), rr = row.getBoundingClientRect(), done = $('#fdone');
+  const prev = $('#fnext').lastElementChild || (!$('#fnk').hidden && $('#fnk'));
+  const room = rr.right - (prev ? prev.getBoundingClientRect().right + 8 : rr.left) - (done.textContent ? done.offsetWidth + 8 : 0);
+  $('#thenBox').style.setProperty('--room', Math.min(room < 220 ? rr.width : room, 560) + 'px');
+}
+$('#then').addEventListener('focus', () => { fitThen(); $('#thenBox').classList.add('open'); });
+$('#then').addEventListener('blur', () => !$('#then').value && $('#thenBox').classList.remove('open'));
+addEventListener('resize', () => $('#thenBox').classList.contains('open') && fitThen());
+$('#askGo').onclick = () => say($('#intend'), $('#askToks'), true, $('#askWhat'));
+$('#askLater').onclick = () => say($('#intend'), $('#askToks'), false, $('#askWhat'));
+function intend(){  // I, /, the island's "intend": the question when nothing's on, "then…" when something is
+  scrollTo({top: 0, behavior: REDUCED ? 'auto' : 'smooth'});
+  ($('#focus').classList.contains('active') ? $('#then') : $('#intend')).focus({preventScroll: true});
+}
+setInterval(() => {  // while you think, the example under the question changes, softly
+  const i = $('#intend'); if (document.activeElement !== i || i.value) return;
+  exampleI = (exampleI + 1) % EXAMPLES.length; swapText($('#askHint'), `like: ${EXAMPLES[exampleI]}`);
+}, 4000);
+setInterval(() => { if (!document.hidden && !F.aside) loadFocus(); }, 20000);  // time and drift, live (the inputs stay put)
+
+/* ---------- sheets ---------- */
+function openSheet(modal, from){  // the button you pressed grows into the sheet (when the browser can morph)
+  if (modal.classList.contains('open')) return;
+  const card = modal.querySelector('.card');
+  const go = morph => { closeOthers(modal); modal.classList.remove('closing'); modal.classList.toggle('morphed', morph);
+                        modal.classList.add('open'); document.body.classList.add('sheeted'); };
+  modal._from = from;
+  if (!from || !document.startViewTransition || REDUCED || document.hidden) return go(false);
+  from.style.viewTransitionName = 'sheet';
+  transition('sheet', () => { from.style.viewTransitionName = ''; card.style.viewTransitionName = 'sheet'; go(true); })
+    .then(() => setTimeout(() => card.style.viewTransitionName = '', 700));
+}
+const closeOthers = keep => document.querySelectorAll('.modal.open').forEach(m => m !== keep && m.classList.remove('open', 'morphed'));
+function closeM(){
+  const m = document.querySelector('.modal.open:not(.leaving)'); if (!m) return;
+  const card = m.querySelector('.card'), from = m._from;
+  const go = () => { m.classList.remove('open', 'closing', 'leaving', 'morphed'); document.body.classList.remove('sheeted'); };
+  if (m.classList.contains('morphed') && from?.isConnected && document.startViewTransition && !document.hidden) {
+    // it shrinks back into its button while the backdrop fades and the page springs back
+    card.style.viewTransitionName = 'sheet';
+    transition('sheet', () => { card.style.viewTransitionName = ''; from.style.viewTransitionName = 'sheet';
+                                m.classList.add('leaving'); document.body.classList.remove('sheeted'); })
+      .then(() => setTimeout(() => { from.style.viewTransitionName = ''; go(); }, 680));
+  } else { document.body.classList.remove('sheeted'); m.classList.add('closing'); setTimeout(go, REDUCED ? 0 : 200); }
+}
+
+/* ---------- wrapped ---------- */
+function wrapped(from = $('#openWrapped')){
+  const days = Object.entries(S.week).filter(([,a])=>a.length);
+  const all = days.flatMap(([,a])=>a);
+  const bill = all.filter(isBillable), side = all.filter(s=>!isBillable(s));
+  const by = {}; bill.forEach(s=> by[s.client]=(by[s.client]||0)+s.active_s);
+  const top = Object.entries(by).sort((a,b)=>b[1]-a[1])[0];
+  const apps = {}; all.forEach(s=>s.evidence.forEach(e=> apps[e.app]=(apps[e.app]||0)+e.s));
+  const mainApp = Object.entries(apps).sort((a,b)=>b[1]-a[1])[0];
+  const flow = bill.reduce((m,s)=> s.active_s>m.active_s?s:m, {active_s:0});
+  const earned = bill.reduce((a,s)=>a+s.active_s/3600*rate(s.client),0);
+  const bestDay = days.map(([d,a])=>[d,a.filter(isBillable).reduce((x,s)=>x+s.active_s,0)]).sort((a,b)=>b[1]-a[1])[0];
+  const [from_,to] = weekOf(S.day);
+  $('#wrappedCard').innerHTML = `${CLOSE}
+    <div class="label" style="color:#111">your week, wrapped · ${from_} → ${to}</div>
+    <h1>you <em>secured</em><br>${money(earned)} 💅</h1>
+    <div class="wgrid">
+      <div class="card"><div class="label">billable</div><div class="big">${fmtH(bill.reduce((a,s)=>a+s.active_s,0))}</div><div class="sub">across ${days.length} days</div></div>
+      <div class="card"><div class="label">main character client</div><div class="big">${top?top[0]:'—'}</div><div class="sub">${top?fmtH(top[1]):''} of your life</div></div>
+      <div class="card"><div class="label">longest flow state</div><div class="big">${flow.active_s?fmtH(flow.active_s):'—'}</div><div class="sub">${flow.task?esc(flow.task.slice(0,48)):''}</div></div>
+      <div class="card"><div class="label">most-used app</div><div class="big">${mainApp?esc(mainApp[0].replace('.exe','')):'—'}</div><div class="sub">${mainApp?fmtH(mainApp[1]):''} together 🫶</div></div>
+      <div class="card"><div class="label">side quests</div><div class="big">${fmtH(side.reduce((a,s)=>a+s.active_s,0))}</div><div class="sub">youtube & chill, unbilled</div></div>
+      <div class="card"><div class="label">peak day</div><div class="big">${bestDay?new Date(bestDay[0]+'T00:00').toLocaleDateString([], {weekday:'long'}).toLowerCase():'—'}</div><div class="sub">${bestDay?fmtH(bestDay[1])+' billable':''}</div></div>
+    </div>
+    <p style="font-weight:800;margin:16px 0 0">screenshot this. it never left your laptop either 🔒</p>`;
+  openSheet($('#wrappedModal'), from);
+}
+
+/* ---------- bill ---------- */
+function bill(from = $('#openBill')){
+  const opts = S.config.clients.map(c=>`<option>${c.name}</option>`).join('');
+  const [from_,to] = weekOf(S.day);
+  $('#billCard').innerHTML = `${CLOSE}
+    <h2 class="mtitle">send the <em>bill</em></h2>
+    <div class="row"><select id="bClient">${opts}</select><span class="sub">${from_} → ${to}</span>
+      <label class="sub"><input type="checkbox" id="bPending"> include unreviewed</label></div>
+    <div id="receipt" class="receipt"></div>
+    <div class="row" style="margin-top:18px"><button class="btn lime" onclick="window.print()">save as PDF</button><button class="btn quiet" id="csv">copy CSV</button></div>`;
+  const draw = () => {
+    const c = client($('#bClient').value), inc = $('#bPending').checked;
+    const rows = Object.entries(S.week).flatMap(([d,a])=>a.map(s=>({...s,d}))).filter(s=>s.client===c.name && isBillable(s) && (s.status==='billed' || (inc && s.status==='pending')));
+    const hrs = rows.reduce((a,s)=>a+s.active_s/3600,0);
+    const pend = Object.values(S.week).flat().filter(s=>s.client===c.name&&s.status==='pending'&&isBillable(s)).length;
+    $('#receipt').innerHTML = `<h3>INVOICE</h3><div>${esc(S.config.me.name)} · ${esc(S.config.me.email)}</div><div>bill to: <b>${esc(c.name)}</b> · ${from_} → ${to}</div>
+      <table>${rows.map(s=>`<tr><td>${s.d.slice(5)}</td><td>${esc(s.task)}</td><td class="n">${(s.active_s/3600).toFixed(2)}h</td><td class="n">${money(s.active_s/3600*c.rate)}</td></tr>`).join('') || '<tr><td>no billed sessions yet — hit "bill it" on some cards</td></tr>'}</table>
+      <div>${hrs.toFixed(2)}h × ${money(c.rate)}/h</div><div class="tot">TOTAL ${money(hrs*c.rate)}</div>
+      ${pend && !inc ? `<div style="margin-top:8px">⚠ ${pend} session(s) still waiting for a vibe check</div>` : ''}
+      <div style="margin-top:10px;font-size:11px">generated locally by lowkey · every line backed by activity receipts</div>`;
+    $('#csv').onclick = () => { navigator.clipboard.writeText(['date,task,hours,amount', ...rows.map(s=>`${s.d},"${s.task.replace(/"/g,'""')}",${(s.active_s/3600).toFixed(2)},${Math.round(s.active_s/3600*c.rate)}`)].join('\n')); snack('CSV copied'); };
+  };
+  $('#bClient').onchange = draw; $('#bPending').onchange = draw; draw();
+  openSheet($('#billModal'), from);
+}
+
+/* ---------- off the clock ---------- */
+const LIFE = {'watching': '#A78BFA', 'gaming': '#F59E0B', 'social': '#38BDF8', 'messaging': '#34D399', 'music': '#F472B6',
+              'shopping & food': '#FB923C', 'reading & learning': '#22D3EE', 'browsing': '#94A3B8', 'other': '#CBD5E1'};
+const LIFE_ICON = {
+  'watching': '<rect x="3" y="4.5" width="18" height="12.5" rx="3"/><path d="M10.5 8.4v4.9l4.2-2.45z"/><path d="M9 20.5h6"/>',
+  'gaming': '<path d="M6.5 8h11a4 4 0 0 1 3.9 4.8l-.6 3a2.3 2.3 0 0 1-3.9 1.1L15 15H9l-1.9 1.9a2.3 2.3 0 0 1-3.9-1.1l-.6-3A4 4 0 0 1 6.5 8z"/><path d="M8 10.3v3.4M6.3 12h3.4"/><path d="M15.6 11h.01M17.4 13h.01" stroke-width="3"/>',
+  'social': '<path d="M12 19.5s-7.5-4.6-7.5-10.1A4.1 4.1 0 0 1 12 7.2a4.1 4.1 0 0 1 7.5 2.2c0 5.5-7.5 10.1-7.5 10.1z"/>',
+  'messaging': '<path d="M4 6.5A2.5 2.5 0 0 1 6.5 4h11A2.5 2.5 0 0 1 20 6.5v7a2.5 2.5 0 0 1-2.5 2.5H11l-4.5 3.5V16A2.5 2.5 0 0 1 4 13.5z"/>',
+  'music': '<path d="M9 17.5V6l10-2v11.5"/><circle cx="6.5" cy="17.5" r="2.5"/><circle cx="16.5" cy="15.5" r="2.5"/>',
+  'shopping & food': '<path d="M5 8.5h14l-1.2 11.5H6.2z"/><path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"/>',
+  'reading & learning': '<path d="M12 7C10 5.6 7 5 4 5.5v13c3-.5 6 .1 8 1.5 2-1.4 5-2 8-1.5v-13C17 5 14 5.6 12 7z"/><path d="M12 7v13"/>',
+  'browsing': '<circle cx="12" cy="12" r="8.5"/><path d="M15.2 8.8l-1.9 4.5-4.5 1.9 1.9-4.5z"/>',
+  'other': '<path d="M6.5 12h.01M12 12h.01M17.5 12h.01" stroke-width="3.4"/>'};
+const lc = name => LIFE[name] || LIFE.other;
+const L = {day: null, sig: '', d: null, hl: -1, t: 0, open: new Set()};
+const dayWord = () => S.day === iso(new Date()) ? 'today' : new Date(S.day + 'T00:00').toLocaleDateString([], {weekday: 'long'}).toLowerCase();
+function swapText(el, text){ if (el.textContent === text) return; el.textContent = text; el.classList.remove('swap'); void el.offsetWidth; el.classList.add('swap'); }
+
+async function renderLife(){
+  const day = S.day, d = await (await fetch(`/api/life?day=${day}`)).json();
+  if (day !== S.day) return;  // you moved on to another day meanwhile
+  const sig = JSON.stringify(d), fresh = day !== L.day;
+  if (!fresh && sig === L.sig) return;  // nothing new: leave it be, open rows and all
+  L.day = day; L.sig = sig; L.d = d; L.hl = -1;
+  lifeRing(d); lifeRows(d, fresh); lifeWeek(d);
+  $('#donut').classList.remove('hl');
+  roll($('#dtot'), fmtH(d.total_s)); swapText($('#dlab'), dayWord());
+}
+
+function lifeRing(d){  // arcs keyed by kind: on another day they glide to their new share; a new kind fans out from the top
+  const svg = $('#donut svg'), gap = d.cats.length > 1 ? 1.4 : 0, keep = new Set();
+  $('#donut').classList.toggle('has', d.total_s > 0);
+  $('#donut').setAttribute('aria-label', d.total_s ? `${fmtH(d.total_s)} off the clock: ` + d.cats.map(c => `${c.name} ${fmtH(c.s)}`).join(', ') : 'nothing off the clock');
+  let at = 0;
+  d.cats.forEach((c, k) => {
+    let el = [...svg.querySelectorAll('.dseg')].find(e => e.dataset.n === c.name);
+    if (!el) {
+      el = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+      for (const [a, v] of Object.entries({cx: 60, cy: 60, r: 50, pathLength: 100, class: 'dseg'})) el.setAttribute(a, v);
+      el.dataset.n = c.name; el.style.cssText = `--c:${lc(c.name)};stroke-dasharray:0 100;stroke-dashoffset:0`;
+      el.onmouseenter = () => lifeHl(+el.dataset.k); el.onmouseleave = () => lifeHl(-1);
+      el.onclick = () => document.querySelector(`#lrows button.lrow[data-k="${el.dataset.k}"]`)?.click();
+      svg.appendChild(el); el.getBoundingClientRect();
+    }
+    const len = c.s / d.total_s * 100;
+    el.dataset.k = k; keep.add(el);
+    el.style.strokeDasharray = `${Math.max(.01, len - gap)} 100`;
+    el.style.strokeDashoffset = -(at + gap / 2);
+    at += len;
+  });
+  svg.querySelectorAll('.dseg').forEach(el => { if (keep.has(el)) return;  // a kind this day doesn't have: it closes up, then goes
+    el.dataset.k = -1; el.style.strokeDasharray = '0 100';
+    setTimeout(() => el.dataset.k === '-1' && el.remove(), 950); });
+}
+
+function lifeRows(d, fresh){
+  const box = $('#lrows'), top = d.cats[0]?.s || 1;
+  box.classList.remove('fresh');
+  if (!d.total_s) return box.innerHTML = `<div class="lempty"><b>all work ${dayWord() === 'today' ? 'today' : 'on ' + dayWord()}</b>
+    <span>anything the model calls personal lands here, by kind and by app: watching, gaming, messaging…</span></div>`;
+  box.innerHTML = d.cats.map((c, k) => {
+    const many = c.sources.length > 1, open = many && L.open.has(c.name), tag = many ? 'button' : 'div';
+    return `<${tag} class="lrow" data-k="${k}" style="--c:${lc(c.name)};--i:${k}"${many ? ` aria-expanded="${open}"` : ''}>
+      <span class="lic"><svg viewBox="0 0 24 24">${LIFE_ICON[c.name] || LIFE_ICON.other}</svg></span>
+      <span class="lname"><b>${esc(c.name)}</b><small>${esc(c.sources.map(x => x.name).join(', '))}</small></span>
+      <span class="ltime">${fmtH(c.s)}</span>${many ? '<svg class="lchev" viewBox="0 0 24 24"><path d="M9 6l6 6-6 6"/></svg>' : ''}
+      <span class="lmeter"><i style="--w:${c.s / top}"></i></span></${tag}>` + (many ? `<div class="lmore${open ? ' open' : ''}" style="--c:${lc(c.name)}"><div>` +
+      c.sources.map((x, j) => `<div class="lsrc" style="--i:${j}"><span>${esc(x.name)}</span><i style="--w:${x.s / c.sources[0].s}"></i><b>${fmtH(x.s)}</b></div>`).join('') + '</div></div>' : '');
+  }).join('');
+  if (fresh && !REDUCED) { void box.offsetWidth; box.classList.add('fresh'); }
+  box.querySelectorAll('.lrow').forEach(r => { const k = +r.dataset.k, name = d.cats[k].name;
+    r.onmouseenter = r.onfocus = () => lifeHl(k); r.onmouseleave = r.onblur = () => lifeHl(-1);
+    if (r.tagName === 'BUTTON') r.onclick = () => { const m = r.nextElementSibling, open = !m.classList.contains('open');
+      m.classList.toggle('open', open); r.setAttribute('aria-expanded', open); L.open[open ? 'add' : 'delete'](name); }; });
+}
+
+function lifeHl(k){  // point at a kind (its row or its arc): the arc lifts, the centre says what it is. Leaving waits a beat,
+  clearTimeout(L.t);  // so sliding from one row to the next never flashes the total in between
+  if (k < 0) return L.t = setTimeout(() => lifeShow(-1), 90);
+  lifeShow(k);
+}
+function lifeShow(k){
+  const d = L.d, c = d?.cats[k];
+  if (!d || L.hl === k) return;
+  L.hl = k;
+  $('#donut').classList.toggle('hl', !!c);
+  document.querySelectorAll('#donut .dseg').forEach(e => e.classList.toggle('on', +e.dataset.k === k));
+  document.querySelectorAll('#lrows .lrow').forEach(e => e.classList.toggle('on', +e.dataset.k === k));
+  roll($('#dtot'), fmtH(c ? c.s : d.total_s)); swapText($('#dlab'), c ? c.name : dayWord());
+}
+
+function lifeWeek(d){  // seven columns that stay put while you move through the week: bars regrow, the ink thumb slides
+  const wk = $('#lweek'), today = iso(new Date()), w = d.week;
+  if (wk.dataset.mon !== w[0].day) {
+    wk.dataset.mon = w[0].day;
+    wk.innerHTML = `<i class="lwavg none"></i><i class="lwthumb" style="--k:${w.findIndex(x => x.day === S.day)}"></i>` + w.map((x, k) =>  // the thumb starts on your day
+      `<button class="lwd" style="--k:${k}"><span class="lwbar"></span><span class="lwl">${'MTWTFSS'[k]}</span></button>`).join('');
+    void wk.offsetWidth;  // bars start flat and grow in
+  }
+  $('#lwk').textContent = w.some(x => x.day === today) ? 'this week'
+    : 'week of ' + new Date(w[0].day + 'T00:00').toLocaleDateString([], {day: 'numeric', month: 'short'}).toLowerCase();
+  const done = w.filter(x => x.has && x.day !== today), avg = done.length >= 2 ? done.reduce((a, x) => a + x.s, 0) / done.length : null;
+  const max = Math.max(1, avg || 0, ...w.map(x => x.s));
+  wk.querySelectorAll('.lwd').forEach((b, k) => { const x = w[k], name = new Date(x.day + 'T00:00').toLocaleDateString([], {weekday: 'long'}).toLowerCase();
+    b.disabled = !S.days.includes(x.day); b.classList.toggle('on', x.day === S.day); b.classList.toggle('off', !x.has);
+    b.setAttribute('aria-label', `${name}: ${x.has ? fmtH(x.s) + ' off the clock' : 'not tracked'}`);
+    b.firstElementChild.style.setProperty('--h', x.s / max);
+    b.firstElementChild.innerHTML = x.cats.map(c => `<i style="flex-grow:${c.s};background:${lc(c.name)}"></i>`).join('');
+    b.onmouseenter = () => x.has && showTip(b, `<b>${x.day === today ? 'today' : name}</b><span>${fmtH(x.s)}</span>` +
+      (x.cats.length ? `<div>${x.cats.slice(0, 3).map(c => `${esc(c.name)} ${fmtH(c.s)}`).join(' · ')}</div>` : ''));
+    b.onmouseleave = hideTip;
+    b.onclick = () => { hideTip(); goDay(x.day); }; });
+  wk.querySelector('.lwthumb').style.setProperty('--k', w.findIndex(x => x.day === S.day));
+  const line = wk.querySelector('.lwavg');
+  line.classList.toggle('none', avg == null); if (avg != null) line.style.setProperty('--a', avg / max);
+  $('#lavg').textContent = avg == null ? '' : `avg ${fmtH(avg)}`;
+  // against your other days, never a score. One finished day so far? Then against that day, by name
+  const one = !avg && done.length === 1 && done[0].day !== S.day && done[0];
+  const base = avg ?? (one ? one.s : null), cmp = $('#lcmp'), so = S.day === today ? ' so far' : '';
+  if (base == null) { cmp.classList.add('near'); return cmp.lastElementChild.textContent = ''; }
+  const prev = new Date(S.day + 'T00:00'); prev.setDate(prev.getDate() - 1);
+  const ref = avg ? 'your daily average' : one.day === iso(prev) ? 'yesterday' : new Date(one.day + 'T00:00').toLocaleDateString([], {weekday: 'long'}).toLowerCase();
+  const diff = d.total_s - base, near = Math.abs(diff) < Math.max(120, base * .1);
+  cmp.classList.toggle('near', near); cmp.classList.toggle('up', diff > 0);
+  swapText(cmp.lastElementChild, near ? `about the same as ${ref}${so}` : `${fmtH(Math.abs(diff))} ${diff > 0 ? 'more' : 'less'} than ${ref}${so}`);
+}
+
+/* ---------- log what lowkey didn't see: the gaps in your day ---------- */
+const SNAP = 300;  // five minutes
+const TL = {t0: 0, span: 1, gaps: [], fresh: null};
+const LG = {open: false, a: null, b: null, lo: 0, hi: 0, day: null, busy: false};
+const snapT = t => Math.round(t / SNAP) * SNAP;
+const fmtSpan = (a, b) => { const x = fmtT(a), y = fmtT(b); return /[ap]m$/.test(x) && x.slice(-2) === y.slice(-2) ? `${x.slice(0, -3)} – ${y}` : `${x} – ${y}`; };
+const HINT = {start: "that's not on this day", length: 'up to 16h at a time'};
+function renderTimeline(all, today){
+  const tr = $('#track'), hrs = $('#hours'), nowS = Date.now() / 1000, day0 = new Date(S.day + 'T00:00').getTime() / 1000;
+  let h0, h1, live;
+  if (all.length) {
+    live = today && nowS - all.at(-1).end < 4 * 3600;  // "now" (and the gap up to it) while it's the same stretch of day
+    const endS = live ? Math.max(all.at(-1).end, nowS) : all.at(-1).end, e = new Date(endS * 1000);
+    h0 = new Date(all[0].start * 1000).getHours(); h1 = e.getHours() + (e.getMinutes() || e.getSeconds() ? 1 : 0);
+  } else {  // nothing seen yet: a plain working day to log into (up to now, today)
+    const nh = new Date().getHours();
+    live = today; h0 = today ? Math.min(9, nh) : 9; h1 = today ? nh + 1 : 18;
+  }
+  h1 = Math.max(h1, h0 + 1);
+  const t0 = day0 + h0 * 3600, span = (h1 - h0) * 3600, end = today ? Math.min(t0 + span, nowS) : t0 + span;
+  const gaps = []; let cur = t0;  // untracked stretches of five minutes or more, never past now
+  for (const s of all) { const b = Math.min(s.start, end); if (b - cur >= SNAP) gaps.push([cur, b]); cur = Math.max(cur, s.end); }
+  if (end - cur >= SNAP) gaps.push([cur, end]);
+  Object.assign(TL, {t0, span, gaps});
+  const pct = t => (t - t0) / span * 100;
+  tr.innerHTML = gaps.map(([a, b], g) => `<button class="gap" data-g="${g}" style="left:${pct(a)}%;width:${pct(b) - pct(a)}%" aria-label="log ${fmtSpan(a, b)}, ${fmtH(b - a)} lowkey didn't see"><span>+ ${fmtH(b - a)}</span></button>`).join('') +
+    all.map((s, i) => `<div class="block ${isBillable(s) ? '' : 'stripes'} ${s.manual ? 'byyou' : ''} ${TL.fresh === s.id ? 'fill' : ''}" data-i="${i}" style="--i:${i};left:${pct(s.start)}%;width:${pct(s.end) - pct(s.start)}%;${isBillable(s) ? `background-color:${color(s.client)}` : ''}"></div>`).join('') +
+    (live && nowS < t0 + span ? `<div class="now" style="left:${pct(nowS)}%"></div>` : '');
+  TL.fresh = null;
+  hrs.innerHTML = Array.from({length: h1 - h0 + 1}, (_, k) => `<span>${((h0 + k + 11) % 12) + 1}${h0 + k < 12 ? 'a' : 'p'}</span>`).join('');
+  tr.querySelectorAll('.block').forEach(b => { const s = all[+b.dataset.i];
+    b.onmouseenter = () => showTip(b, `<b>${esc(s.client)}</b><span>${fmtT(s.start)}–${fmtT(s.end)}</span><div>${esc(s.task)}${s.manual ? ' · added by you' : ''}</div>`);
+    b.onmouseleave = hideTip;
+    b.onclick = () => { hideTip(); S.focus = +b.dataset.i; transition('cards', () => { S.filter = 'all'; renderCards(); }).then(() => focusCard(S.focus)); }; });
+  tr.querySelectorAll('.gap').forEach(bindGap);
+  if (LG.open || pickEl.isConnected) { if (LG.day !== S.day) closeLog(); else if (LG.a != null) drawPick(); }
+}
+const tAt = x => { const tr = $('#track'), r = tr.getBoundingClientRect(); return TL.t0 + (x - r.left - tr.clientLeft) / tr.clientWidth * TL.span; };
+const clampT = (t, lo, hi) => Math.max(lo, Math.min(hi, t));
+function bindGap(btn){  // press and drag across part of a gap, or just click it
+  const [lo, hi] = TL.gaps[+btn.dataset.g];
+  btn.onpointerdown = e => {
+    if (e.button) return;
+    e.preventDefault(); btn.setPointerCapture(e.pointerId); hideTip();
+    const x0 = e.clientX, from = clampT(snapT(tAt(x0)), lo, hi);
+    if (LG.open && LG.a != null && tAt(x0) >= LG.a && tAt(x0) <= LG.b) { btn.releasePointerCapture(e.pointerId); return $('#logIn').focus(); }
+    let moved = false;
+    if (LG.open) closeLog(true);
+    btn.onpointermove = m => {
+      if (!moved && Math.abs(m.clientX - x0) < 4) return;
+      moved = true;
+      const t = clampT(snapT(tAt(m.clientX)), lo, hi);
+      setPick(Math.min(from, t), Math.max(from, t), lo, hi);
+    };
+    btn.onpointerup = btn.onpointercancel = u => {
+      btn.onpointermove = btn.onpointerup = btn.onpointercancel = null;
+      if (u.type === 'pointercancel') return closeLog();
+      moved ? openLog() : pickAround(tAt(u.clientX), lo, hi);
+    };
+  };
+  btn.onclick = e => { if (e.detail === 0) pickAround(null, lo, hi); };  // Enter or Space on a focused gap
+}
+function pickAround(t, lo, hi){  // a click takes the whole gap, or the hour around the click when the gap is long
+  let a = lo, b = hi;
+  if (hi - lo > 2 * 3600) { b = Math.min(hi, snapT((t ?? hi) + (t == null ? 0 : 1800))); a = Math.max(lo, b - 3600); b = Math.min(hi, a + 3600); }
+  setPick(a, b, lo, hi); openLog();
+}
+function setPick(a, b, lo, hi){
+  if (b - a < SNAP) { b = Math.min(hi, a + SNAP); a = Math.max(lo, b - SNAP); }
+  Object.assign(LG, {a, b, lo, hi, day: S.day});
+  drawPick();
+}
+const pickEl = document.createElement('div');
+pickEl.className = 'pick'; pickEl.innerHTML = '<b></b><i class="h0" title="drag to change the start"></i><i class="h1" title="drag to change the end"></i>';
+function drawPick(){
+  const tr = $('#track'), pct = t => (t - TL.t0) / TL.span * 100;
+  if (pickEl.parentNode !== tr) { pickEl.classList.remove('bye'); tr.appendChild(pickEl); }
+  pickEl.style.left = pct(LG.a) + '%'; pickEl.style.width = (pct(LG.b) - pct(LG.a)) + '%';
+  pickEl.firstChild.textContent = LG.b - LG.a >= 40 * 60 ? fmtSpan(LG.a, LG.b) : fmtH(LG.b - LG.a);
+  pickEl.classList.toggle('ready', LG.open);
+  if (LG.open) placePop();
+}
+pickEl.querySelectorAll('i').forEach(h => h.onpointerdown = e => {  // the handles: pull either end, five minutes at a time
+  e.preventDefault(); e.stopPropagation(); h.setPointerCapture(e.pointerId);
+  const left = h.classList.contains('h0');
+  h.onpointermove = m => {
+    const t = snapT(tAt(m.clientX));
+    if (left) LG.a = clampT(t, LG.lo, LG.b - SNAP); else LG.b = clampT(t, LG.a + SNAP, LG.hi);
+    drawPick(); clearTimeout(LG.t); LG.t = setTimeout(previewLog, 90);
+  };
+  h.onpointerup = () => { h.onpointermove = h.onpointerup = null; $('#logIn').focus({preventScroll: true}); };
+});
+function openLog(){
+  LG.open = true; LG.day = S.day;
+  const pop = $('#logpop');
+  pop.hidden = false; pop.classList.remove('closing');
+  if (LG.a != null) drawPick(); else { pickEl.remove(); placePop(); }
+  previewLog();
+  $('#logIn').focus({preventScroll: true});
+}
+function closeLog(quick){
+  const was = LG.open; LG.open = false; LG.a = null;
+  $('#logIn').value = ''; $('#lpToks').innerHTML = ''; $('#logIn').blur();  // so Ctrl+Z (undo) reaches the page again
+  const pop = $('#logpop');
+  if (was && !quick && !REDUCED) { pop.classList.add('closing'); setTimeout(() => { if (!LG.open) pop.hidden = true; }, 160); } else pop.hidden = true;
+  if (pickEl.isConnected) { if (quick || REDUCED) pickEl.remove(); else { pickEl.classList.add('bye'); setTimeout(() => LG.a == null && pickEl.remove(), 150); } }
+}
+function placePop(){  // under what you picked (or under the button), its arrow pointing at the middle of it
+  const pop = $('#logpop'), cr = $('#timeline').getBoundingClientRect();
+  const r = (LG.a != null ? pickEl : $('#logBtn')).getBoundingClientRect(), ax = r.left + r.width / 2 - cr.left;
+  const w = pop.offsetWidth, left = Math.max(10, Math.min(cr.width - w - 10, ax - w / 2));
+  pop.style.left = left + 'px';
+  pop.style.top = (LG.a != null ? $('#track').getBoundingClientRect().bottom : r.bottom) - cr.top + 12 + 'px';
+  pop.style.setProperty('--ax', Math.max(18, Math.min(w - 18, ax - left)) + 'px');
+}
+async function previewLog(){  // what will be logged: the span, the client and what it's worth, and anything in the way
+  const v = $('#logIn').value.trim(), seq = LG.seq = (LG.seq || 0) + 1;
+  const span = LG.a != null ? {start: LG.a, dur_min: Math.round((LG.b - LG.a) / 60)} : {};
+  const p = v ? await call('/api/manual/parse', {text: v, day: S.day, ...span}) : null;
+  if (seq !== LG.seq || !LG.open) return;
+  const ok = p && !p.hint;
+  let a = LG.a, b = LG.b;
+  if (ok) { if (p.start != null) a = p.start; if (a != null) b = a + p.dur_min * 60; }
+  $('#lpSpan').textContent = a != null ? `${fmtSpan(a, b)} · ${fmtH(b - a)}`
+    : ok ? `${fmtH(p.dur_min * 60)}, after your last session` : 'when, and for how long? like “1h at 3pm”';
+  const c = ok ? p.client : null, col = c ? client(c)?.color : null, secs = ok ? p.dur_min * 60 : 0;
+  $('#logpop').style.setProperty('--pc', col || 'var(--grey)');
+  pickEl.style.setProperty('--pc', col || 'var(--lime)');
+  pickEl.classList.toggle('moved', LG.a != null && (a !== LG.a || b !== LG.b));
+  const over = a != null ? sessions().filter(s => s.start < b && s.end > a) : [];
+  $('#lpToks').innerHTML = ok ? [c ? `<span class="tok c" style="--c:${col}">${esc(c)}</span>`
+      : `<span class="tok auto" title="no client named: the local model picks one, or it's personal">client: auto</span>`,
+    c && rate(c) ? `<span class="tok">${money(secs / 3600 * rate(c))}</span>` : '',
+    over.length ? `<span class="tok warn">overlaps ${esc(over[0].client)}</span>` : ''].join('') : '';
+  $('#lpHint').innerHTML = p?.hint ? esc(HINT[p.hint] || p.hint) : v ? '<kbd>↵</kbd> log it' : 'say what it was';
+}
+async function logIt(){
+  const inp = $('#logIn'), text = inp.value.trim(), pop = $('#logpop');
+  if (!text) return shake(pop);
+  if (LG.busy) return;
+  LG.busy = true;
+  const span = LG.a != null ? {start: LG.a, dur_min: Math.round((LG.b - LG.a) / 60)} : {};
+  const r = (LG.a != null ? pickEl : pop).getBoundingClientRect();
+  inp.readOnly = true;
+  const slow = setTimeout(() => { pop.classList.add('pending'); $('#lpHint').textContent = 'working out whose it is…'; }, 250);
+  try {
+    const m = await call('/api/manual', {text, day: S.day, ...span});
+    if (m.error) { shake(pop); return $('#lpHint').textContent = HINT[m.error] || m.error; }
+    closeLog(true);
+    TL.fresh = m.id;  // the gap fills in, left to right
+    await refreshDay();
+    await transition('cards', () => render());
+    const col = m.client !== PERSONAL ? color(m.client) : '#9a9aa6';
+    fly(r, `logged · ${fmtH(m.active_s)}`, col, `logged · ${m.task} · ${fmtH(m.active_s)}`, 'logged');
+    snack(`logged · ${m.task}`, async () => { await call('/api/manual/delete', {id: m.id}); await refreshDay(); transition('cards', () => render()); });
+  } finally { clearTimeout(slow); pop.classList.remove('pending'); inp.readOnly = false; LG.busy = false; }
+}
+function logMissed(){  // the button, or L: the most recent gap (its last hour if it's long); no gap, then say when in words
+  const g = TL.gaps.at(-1);
+  if (LG.open) return closeLog();
+  if (g) pickAround(null, g[0], g[1]); else { Object.assign(LG, {a: null, b: null, day: S.day}); openLog(); }
+}
+$('#logBtn').onclick = logMissed;
+$('#lpX').onclick = () => closeLog();
+$('#logIn').oninput = () => { clearTimeout(LG.t); LG.t = setTimeout(previewLog, 120); };
+$('#logIn').onkeydown = e => {
+  e.stopPropagation();
+  if (e.isComposing) return;
+  if (e.key === 'Escape') return closeLog();
+  if (e.key === 'Enter') { e.preventDefault(); logIt(); }
+};
+document.addEventListener('pointerdown', e => { if (LG.open && !e.target.closest('#logpop, .pick, .gap, #logBtn')) closeLog(); });
+addEventListener('resize', () => LG.open && placePop());
+async function refreshDay(){  // re-read this week from the server (a receipt changed the day's sessions)
+  const [from, to] = weekOf(S.day);
+  S.week = await (await fetch(`/api/range?from=${from}&to=${to}`)).json();
+}
+async function removeReceipt(i){
+  const s = sessions()[i], at = new Date(s.start * 1000);
+  await call('/api/manual/delete', {id: s.id});
+  await refreshDay();
+  await transition('cards', () => render());
+  snack(`removed · ${s.task}`, async () => {
+    await call('/api/manual', {text: `${Math.round(s.active_s / 60)}m ${s.task} at ${at.getHours()}:${String(at.getMinutes()).padStart(2, '0')}`, day: S.day});
+    await refreshDay(); transition('cards', () => render());
+  });
+}
+
+/* ---------- your clients: one row each, saved as you go ---------- */
+async function clients_(from = $('#openClients')){
+  const st = await (await fetch('/api/state')).json(), cfg = st.config, me = cfg.me, ro = st.demo ? 'disabled' : '';
+  const row = c => `<div class="crow" data-orig="${esc(c.name)}">
+      <label class="swatch" style="--c:${c.color}" title="colour"><input type="color" value="${c.color}" ${ro}></label>
+      <input class="cname" value="${esc(c.name)}" placeholder="client name" ${ro}>
+      <label class="crate"><span>${esc(me.currency)}</span><input class="crt" type="number" min="0" step="50" value="${c.rate}" ${ro}></label>
+      <input class="chints" value="${esc(c.hints.join(', '))}" placeholder="words in their window titles" title="repo names, domains, project names" ${ro}>
+      <button class="ib" data-rm aria-label="remove client" ${ro}>${ICON.x}</button></div>`;
+  $('#cliCard').innerHTML = `${CLOSE}
+    <h2 class="mtitle">your <em>clients</em></h2>
+    <p class="says" id="csays" style="text-align:left;margin:0 0 14px">${st.demo ? "the demo's clients are fixed. run lowkey for real to edit yours" : 'changes save as you go. hints are words from their window titles: repos, domains, project names'}</p>
+    <div class="chead"><span></span><span>name</span><span>rate / hour</span><span>hints</span><span></span></div>
+    <div id="clist">${cfg.clients.map(row).join('')}</div>
+    <button class="btn quiet" id="addClient" ${ro}>+ add a client</button>
+    <h3 class="sec" style="margin-top:22px">you</h3>
+    <div class="me">
+      <label>name<input id="meName" value="${esc(me.name)}" ${ro}></label>
+      <label>email<input id="meEmail" value="${esc(me.email)}" ${ro}></label>
+      <label>currency<select id="meCur" ${ro}>${['₹', '$', '€', '£', '¥'].map(c => `<option ${c === me.currency ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+      <label>daily goal<input id="meGoal" type="number" min="1" max="16" value="${me.daily_goal_h || 6}" ${ro}></label>
+    </div>`;
+  openSheet($('#cliModal'), from);
+  if (st.demo) return;
+  const say = t => { const e = $('#csays'); e.textContent = t; if (!REDUCED) e.animate([{opacity: 0}, {opacity: 1}], {duration: 200}); };
+  let saveT;
+  const save = () => { clearTimeout(saveT); saveT = setTimeout(async () => {
+    const rows = [...$('#clist').children].filter(r => r.querySelector('.cname').value.trim());
+    const renames = {};
+    rows.forEach(r => { const o = r.dataset.orig, n = r.querySelector('.cname').value.trim(); if (o && o !== n) renames[o] = n; });
+    const body = {renames, me: {name: $('#meName').value, email: $('#meEmail').value, currency: $('#meCur').value, daily_goal_h: +$('#meGoal').value},
+      clients: rows.map(r => ({name: r.querySelector('.cname').value.trim(), rate: +r.querySelector('.crt').value || 0,
+        color: r.querySelector('input[type=color]').value, hints: r.querySelector('.chints').value.split(',').map(h => h.trim()).filter(Boolean)}))};
+    const res = await call('/api/config', body);
+    if (res.error) return say(`couldn't save: ${res.error.includes('ValueError') ? 'names must be unique (and not "Personal"), rates 0 or more' : res.error}`);
+    S.config = res.config;
+    rows.forEach(r => r.dataset.orig = r.querySelector('.cname').value.trim());
+    say('saved'); S.week = {}; await Promise.all([load(), loadFocus()]);  // names, colours and rates show everywhere at once
+  }, 600); };
+  const wire = r => {
+    r.querySelectorAll('input').forEach(i => i.oninput = () => { if (i.type === 'color') r.querySelector('.swatch').style.setProperty('--c', i.value); save(); });
+    r.querySelector('[data-rm]').onclick = () => { const html = r.outerHTML, next = r.nextSibling; r.remove(); save();
+      snack(`removed · ${r.dataset.orig || 'client'}`, () => { const t = document.createElement('div'); t.innerHTML = html; const n = t.firstChild;
+        $('#clist').insertBefore(n, next); wire(n); save(); }); };
+  };
+  [...$('#clist').children].forEach(wire);
+  $('#addClient').onclick = () => { const t = document.createElement('div');
+    t.innerHTML = row({name: '', rate: 1000, color: ['#B8FF3B', '#FF7AD9', '#7AA2FF', '#FFD23F', '#FF8A3D'][$('#clist').children.length % 5], hints: []});
+    const n = t.firstChild; n.dataset.orig = ''; $('#clist').appendChild(n); wire(n); n.querySelector('.cname').focus(); };
+  ['#meName', '#meEmail', '#meCur', '#meGoal'].forEach(k => $(k).oninput = save);
+}
+
+/* ---------- settings: the same four rows as the island's own settings, with one live preview ---------- */
+const SAYS = {
+  edge: {top:['top','hangs from the top edge, like a MacBook notch'], bottom:['bottom','sits on the bottom edge, by your taskbar'],
+         left:['left','peeks out from the left side of your screen'], right:['right','peeks out from the right side of your screen']},
+  taskbar: {below:['below it','hangs below the taskbar, never covers it'], over:['over it','sits over the taskbar: the true notch look']},
+  rest: {lip:['tucked','just a glowing lip until you hover'], pill:['pill','client, timer and money always in view']},
+  slot: {5:['5 min','the model reads 5 minutes of windows at a time: the sharpest, the default'],
+         10:['10 min','reads 10 minutes at a time: fewer, broader labels'],
+         15:['15 min','reads 15 minutes at a time: quick switches blur into one block']}};
+const ROWS = [['edge','lives on'], ['taskbar','taskbar'], ['rest','at rest'], ['slot','reads every']];
+const thick = tb => tb==='top'||tb==='bottom' ? 9 : 6.5;
+const offOf = l => l.tb===l.edge && !l.over ? thick(l.tb) : 0;   // "below" pushes the island inward by the taskbar's size
+async function settings(from = $('#openSettings')){
+  const r = await (await fetch('/api/settings')).json(), st = r.settings, mac = r.platform === 'darwin';
+  const tb = ['top','bottom','left','right'].includes(r.taskbar) ? r.taskbar : 'none';
+  const hint = `hover an option to preview it. changes apply instantly${r.island ? '' : ' · the island is off in the demo'}`;
+  const look = (k, v) => { const l = {edge:st.edge, tb, over:st.taskbar==='over', rest:st.rest};
+    if (k==='edge') l.edge = v; if (k==='taskbar'){ l.over = v==='over'; l.tb = l.edge; } if (k==='rest') l.rest = v; return l; };
+  const now = look();
+  $('#setCard').innerHTML = `${CLOSE}
+    <h2 class="mtitle">island <em>settings</em></h2>
+    <div class="stage"><div class="scr"><div class="tb tb-${now.tb}"></div><div class="isl isl-${now.edge} ${now.rest==='pill'?'pill':''}" style="--off:${offOf(now)}%"><i></i><b></b></div></div></div>
+    <p class="says" id="says">${hint}</p>
+    ${ROWS.map(([k,label]) => `<div class="srow"><span class="slabel">${label}</span><div class="seg" data-k="${k}"><span class="thumb"></span>${
+      Object.entries(SAYS[k]).map(([v,[t]]) => `<button data-v="${v}" class="${st[k]===v?'on':''}" ${k==='taskbar'&&v==='over'&&mac?'disabled':''}>${t}</button>`).join('')}</div></div>`).join('')}`;
+  openSheet($('#setModal'), from);
+  const isl = $('#setCard .isl'), tbEl = $('#setCard .tb'), says = $('#says');
+  let shown = now, intent;
+  const paint = l => { isl.className = `isl isl-${l.edge} ${l.rest==='pill'?'pill':''}`; isl.style.setProperty('--off', offOf(l)+'%'); tbEl.className = `tb tb-${l.tb}`; shown = l; };
+  const show = l => {  // same edge: glide there; a new edge: tuck into the old one, then bloom out of the new one
+    clearTimeout(show.t);
+    if (l.edge === shown.edge) return paint(l);
+    isl.classList.add('tuck');
+    show.t = setTimeout(() => {  // jump to the new edge already tucked (no transition), then let it bloom
+      isl.style.transition = 'none'; paint(l); isl.classList.add('tuck'); void isl.offsetWidth;
+      isl.style.transition = ''; isl.classList.remove('tuck');
+    }, 210);
+  };
+  const say = t => { if (says.textContent === t) return; says.textContent = t;
+    if (!REDUCED) says.animate([{opacity:0, transform:'translateY(4px)'}, {opacity:1, transform:'none'}], {duration:220, easing:'cubic-bezier(.2,0,0,1)'}); };
+  const later = v => r.slot_locked && String(r.slot_today) !== v;  // today is reviewed: a new length starts tomorrow
+  const caption = (k, v, b) => b.disabled ? 'macOS keeps its menu bar on top, so it hangs below'
+    : k==='slot' && later(v) ? `today is already reviewed, so it stays at ${r.slot_today} min. this starts tomorrow`
+    : k==='taskbar' && r.taskbar !== st.edge ? (tb==='none' ? 'your taskbar is hidden, so this changes nothing' : `only matters on the ${r.taskbar} edge, where your taskbar is`)
+    : SAYS[k][v][1];
+  $('#setCard').querySelectorAll('.seg').forEach(seg => {
+    const k = seg.dataset.k; placeThumb(seg);
+    seg.querySelectorAll('button').forEach(b => {
+      b.onmouseenter = () => { clearTimeout(intent); intent = setTimeout(() => { show(look(k, b.dataset.v)); say(caption(k, b.dataset.v, b)); }, 80); };
+      b.onclick = async () => {
+        if (b.disabled || st[k]===b.dataset.v) return;
+        st[k] = b.dataset.v; seg.querySelectorAll('button').forEach(x => x.classList.toggle('on', x===b)); placeThumb(seg);
+        await fetch('/api/settings', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({[k]: b.dataset.v})});
+        say(k==='slot' && later(b.dataset.v) ? `saved · ${b.dataset.v} min from tomorrow. today's reviews stay put` : `saved · ${SAYS[k][b.dataset.v][0]}`);
+      };
+    });
+    seg.onmouseleave = () => { clearTimeout(intent); intent = setTimeout(() => { show(look()); say(hint); }, 120); };
+  });
+}
+
+/* ---------- wiring ---------- */
+$('#prev').onclick = () => shiftDay(-1); $('#next').onclick = () => shiftDay(1);
+$('#openClients').onclick = () => clients_();
+$('#openWrapped').onclick = () => wrapped(); $('#openBill').onclick = () => bill(); $('#openSettings').onclick = () => settings();
+$('#queueCard').onclick = review;
+$('#snackUndo').onclick = () => { const f = S.undo; S.undo = null; $('#snack').classList.remove('show'); f && f(); };
+document.querySelectorAll('.modal').forEach(m => m.onclick = e => { if (e.target===m) closeM(); });
+document.querySelectorAll('#filters button').forEach(b => b.onclick = () => { if (S.filter !== b.dataset.f) transition('cards', () => { S.filter = b.dataset.f; renderCards(); }); });
+addEventListener('resize', () => document.querySelectorAll('.seg').forEach(placeThumb));
+const SYS = matchMedia('(prefers-color-scheme: dark)'), sysTheme = () => SYS.matches ? 'dark' : 'light';
+function applyTheme(t){  // no choice = follow the system (dark when your OS is dark); a choice overrides it
+  const root = document.documentElement;
+  if (t) { root.dataset.theme = t; root.style.colorScheme = t; } else { delete root.dataset.theme; root.style.colorScheme = ''; }
+  const cur = root.dataset.theme || sysTheme();
+  $('#theme').dataset.tip = root.dataset.theme ? `follow your system (${sysTheme()})` : `switch to ${cur === 'dark' ? 'light' : 'dark'}`;
+}
+SYS.addEventListener('change', () => applyTheme(document.documentElement.dataset.theme));
+$('#theme').onclick = e => {  // the new theme spreads out from the switch as a circle
+  const root = document.documentElement, cur = root.dataset.theme || sysTheme(), next = cur === 'dark' ? 'light' : 'dark';
+  const pick = next === sysTheme() ? null : next;  // landing on the system's own theme means "automatic" again
+  const flip = () => { applyTheme(pick); try { pick ? localStorage.setItem('lowkey.theme', pick) : localStorage.removeItem('lowkey.theme'); } catch {} };
+  if (!document.startViewTransition || REDUCED) return flip();
+  const r = e.currentTarget.getBoundingClientRect(), x = r.left + r.width/2, y = r.top + r.height/2;
+  const R = Math.hypot(Math.max(x, innerWidth - x), Math.max(y, innerHeight - y));
+  root.classList.add('vt-theme');
+  const t = document.startViewTransition(flip);
+  t.ready.then(() => root.animate({clipPath:[`circle(0 at ${x}px ${y}px)`, `circle(${R}px at ${x}px ${y}px)`]},
+                                   {duration:620, easing:'cubic-bezier(.2,0,0,1)', pseudoElement:'::view-transition-new(root)'}));
+  t.finished.finally(() => root.classList.remove('vt-theme'));
+};
+try { applyTheme(localStorage.getItem('lowkey.theme')); } catch { applyTheme(null); }
+document.addEventListener('keydown', e => {
+  if (e.target.isContentEditable || ['INPUT','SELECT'].includes(e.target.tagName)) return;
+  if ((e.ctrlKey || e.metaKey) && e.key==='z' && S.undo) { e.preventDefault(); return $('#snackUndo').click(); }
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  const n = sessions().length;
+  if (e.key==='Escape') return closeM();
+  if (e.key==='ArrowLeft') return shiftDay(-1);
+  if (e.key==='ArrowRight') return shiftDay(1);
+  if (e.key==='w') return wrapped();
+  if (e.key==='b') return bill();
+  if (e.key==='s') return settings();
+  if (e.key==='c') return clients_();
+  if (e.key==='i' || e.key==='/') { e.preventDefault(); return intend(); }
+  if (e.key==='l') { e.preventDefault(); return logMissed(); }
+  if (!n) return;
+  if (e.key==='j'||e.key==='k'){ S.focus = (S.focus + (e.key==='j'?1:-1) + n) % n; focusCard(S.focus); }
+  if (e.key==='y') act(S.focus,'billed');
+  if (e.key==='n') act(S.focus,'nah');
+  if (e.key==='e') { e.preventDefault(); act(S.focus,'edit'); }
+});
+boot();
+</script>
+</body>
+</html>
