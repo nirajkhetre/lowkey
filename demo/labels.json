@@ -1117,5 +1117,10 @@
  "life:instagram": "social",
  "life:reddit": "social",
  "life:youtube": "watching",
- "life:spotify": "music"
+ "life:spotify": "music",
+ "brief:b3a341d1de36aaa9": "you nailed the auth logic and redirect fixes for acme-website. then you spent time previewing products at chai & co and working on nimbus-api tasks.",
+ "brief:5478aa132a3ce6c7": "you nailed the oauth fix for acme-website and got the dev server running. then you tackled nimbus-api testing and worked on the chai & co theme.",
+ "brief:e58c1337f1d8b1ad": "you nailed the nimbus-api handler modifications and v2 spec documentation. then you wrapped up with some liquid theme reviews and design work for acme studio.",
+ "brief:4f8e478df37bf73a": "you nailed the login. then you spent time on nimbus-api handlers and chai & co previews.",
+ "brief:72c3ab7868d327c6": "you nailed the auth logic and fixed the oauth redirect for acme-website. then you spent time on chai & co, nimbus labs, and some personal stuff."
 }
