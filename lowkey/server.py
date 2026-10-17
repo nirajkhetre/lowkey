@@ -75,7 +75,7 @@ class Handler(SimpleHTTPRequestHandler):
         self.wfile.write(body)
 
     def body(self):
-        return json.loads(self.rfile.read(int(self.headers["Content-Length"])))
+        return json.loads(self.raw)
 
     def allowed(self):
         """Only this machine's own pages get an answer. A foreign Host header means DNS rebinding (a website
@@ -100,6 +100,10 @@ class Handler(SimpleHTTPRequestHandler):
             self.guard(self.get)
 
     def do_POST(self):
+        n = int(self.headers.get("Content-Length") or 0) if (self.headers.get("Content-Length") or "0").isdigit() else -1
+        if not 0 <= n <= 1 << 20:
+            return self.send_json({"error": "bad length"}, 413)
+        self.raw = self.rfile.read(n)  # read it all before any answer: replying over unread bytes resets the connection
         if not self.allowed():
             return
         if not (self.headers.get("Content-Type") or "").startswith("application/json"):
@@ -179,15 +183,16 @@ class Handler(SimpleHTTPRequestHandler):
                 rename_client(old, new)
             WAKE.set()
             return self.send_json({"config": CONFIG})
-        if self.path == "/api/manual":  # a receipt you add yourself: "1h call with acme at 3pm"
-            e = self.body()
-            return self.send_json(add_manual(str(e["text"])[:200], datetime.fromisoformat(e["day"]).strftime("%Y-%m-%d")))
-        if self.path == "/api/manual/parse":  # live chips for the receipt line; a missing length is a hint, not an error
-            e = self.body()
+        if self.path in ("/api/manual", "/api/manual/parse"):  # time you log yourself: a span picked on the timeline,
+            e = self.body()                                       # or one line, "1h call with acme at 3pm"
+            day = datetime.fromisoformat(e["day"]).strftime("%Y-%m-%d")
+            span = (float(e["start"]) if e.get("start") is not None else None, int(e["dur_min"]) if e.get("dur_min") else None)
             try:
-                return self.send_json(focus.entry(str(e["text"])[:200], datetime.fromisoformat(e["day"]).strftime("%Y-%m-%d")))
-            except ValueError as x:
-                return self.send_json({"hint": str(x)})
+                if self.path == "/api/manual/parse":
+                    return self.send_json(focus.entry(str(e["text"])[:200], day, *span))
+                return self.send_json(add_manual(str(e["text"])[:200], day, *span))
+            except ValueError as x:  # what's missing, in words the dashboard can show as is
+                return self.send_json({"hint": str(x)} if self.path.endswith("parse") else {"error": str(x)}, 200 if self.path.endswith("parse") else 400)
         if self.path == "/api/manual/delete":
             delete_manual(str(self.body()["id"]))
             return self.send_json({"ok": True})

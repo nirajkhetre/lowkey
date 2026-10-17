@@ -123,16 +123,21 @@ def parse(text, now=None):
     return {"text": _clean(t), "client": client["name"] if client else None, "due": due, "est_min": est}
 
 
-def entry(text, day):
+def entry(text, day, start=None, dur_min=None):
     """Time lowkey couldn't see, logged after the fact: '1h call with acme at 3pm' on the day you're looking at.
-    It needs a length; the start is optional (None: the caller puts it after the day's last session). Nothing rolls
+    A span picked on the timeline (start, dur_min) means the words only have to say what it was; a length or a time
+    in the words still wins. With no start at all, the caller puts it after the day's last session. Nothing rolls
     forward to tomorrow here: a receipt is about the past."""
     t = " " + str(text)[:200] + " "
     m = re.search(LENGTH, t, re.I)
-    if not m:
+    if m:
+        dur_min, t = _minutes(m[1], m[2]), _cut(t, m)
+    elif not dur_min:
         raise ValueError("how long was it? add a length, like 1h or 30m")
-    dur, t = _minutes(m[1], m[2]), _cut(t, m)
-    start = None
+    dur = int(dur_min)
+    day0 = datetime.fromisoformat(day).timestamp()
+    if start is not None and not day0 <= start < day0 + 86400:
+        raise ValueError("start")
     m = (re.search(r"\b(?:at|from|since|by)\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)?\b", t, re.I)
          or re.search(r"\b(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b", t, re.I))
     if m and int(m[1]) <= 23:
@@ -141,6 +146,8 @@ def entry(text, day):
     client = _client(t.lower())
     if not 0 < dur <= 16 * 60:
         raise ValueError("length")
+    if start is not None and start + dur * 60 > time.time() + 60:
+        raise ValueError("that hasn't happened yet")
     return {"text": _clean(t), "client": client["name"] if client else None, "start": start, "dur_min": dur}
 
 

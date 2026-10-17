@@ -185,11 +185,11 @@ def day_sessions(day):
 
 
 # ---------- receipts you add yourself ----------
-def add_manual(text, day):
+def add_manual(text, day, start=None, dur_min=None):
     """'1h call with acme at 3pm': a session lowkey couldn't see (a call, a meeting, work on paper). With no start
     time it goes right after the day's last session, or ends now if that would be in the future."""
-    from .focus import entry
-    e = entry(text, day)
+    from .focus import entry, guess_client
+    e = entry(text, day, start, dur_min)
     if not e["text"]:
         raise ValueError("what was it?")
     dur = e["dur_min"] * 60
@@ -198,7 +198,7 @@ def add_manual(text, day):
         ends = [s["end"] for s in day_sessions(day)]
         start = max(ends) if ends else datetime.fromisoformat(day).replace(hour=9).timestamp()
         start = min(start, time.time() - dur)
-    client = e["client"] or PERSONAL
+    client = e["client"] or guess_client(e["text"]) or PERSONAL  # no client named: the local model guesses, like intentions
     m = {"id": f"m-{day}-{int(start)}-{int(time.time() * 1000) % 100000}", "day": day, "start": start, "end": start + dur,
          "active_s": dur, "client": client, "task": e["text"][0].upper() + e["text"][1:], "billable": client != PERSONAL,
          "by": "you", "confidence": 1.0, "evidence": [], "status": "pending", "manual": True}

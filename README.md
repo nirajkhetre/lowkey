@@ -108,7 +108,7 @@ Every client gets its own little blob: a shape picked from the client's name, in
 
 ### 🎯 Intentions
 
-Say what you're about to do, in one line: *"acme login fix by 5, about an hour"*. lowkey reads it as you type (client, deadline, length pop in as chips; plain parsing, so it's predictable), and then holds you to it, gently.
+When nothing's on, the top of the dashboard just asks: **what are you working on?** Answer in your own words, *"acme login fix by 5, about an hour"*. lowkey reads it as you type (client, deadline and length pop in as chips, and the ring takes the client's colour and your estimate; plain parsing, so it's predictable). `Enter` starts it, `Shift+Enter` lines it up for later. While something is on, **then…** at the end of the next-up line opens in place for what comes after. It's not a to-do list: there's one thing now, and lowkey holds you to it, gently.
 
 - **It knows when you've drifted, because it already sees what you're on.** Your own words or your client's hints in the window: on it. Another client's window, or a known distraction (YouTube, Instagram…): drifting. Everything else (a terminal, some docs) is neutral, because research is part of the work.
 - **Drifting earns a nudge, rarely.** After 8 minutes on a distraction the island peeks out: *"8 min on YouTube · back to acme login fix?"* At most three an hour, never while you're away or off the record, and an ignored nudge just counts as "later".
@@ -136,7 +136,8 @@ Say what you're about to do, in one line: *"acme login fix by 5, about an hour"*
 | ◔ **today** | island, open card | Billable time today. The ring fills up towards your daily goal (`daily_goal_h`). Click to open the dashboard. |
 | ₹ **earned today** | island, open card | Earned today at your client rates; it glows when it ticks up. Click to make the invoice. |
 | ● **to review** | island, open card | Sessions you haven't approved yet. Its dot pulses while something waits; click to review them. |
-| **what's next?** | dashboard, top | One line for your next intention. Chips show what lowkey understood; `Enter` sends it to the island. `I` jumps here. |
+| **what are you working on?** | dashboard, top (nothing on) | The headline is the question: type the answer. Chips show what lowkey understood; `Enter` starts it, `Shift+Enter` saves it for later. `I` jumps here. |
+| **then…** | dashboard, next up (something on) | Opens in place to line up what's after this one. `Enter` adds it to next up, in its place by deadline and rate. |
 | **done · set aside** | dashboard, now | Finish the current intention, or put it back in line and say how far you got. |
 | **next up** | dashboard, now | Your queue, in order, each with its reason. Click one to start it (it grows into "now"); × drops it. |
 | **back on it · later · switch** | island, after a nudge | Back to what you said you'd do, snooze it, or say you've moved on. |
@@ -145,7 +146,7 @@ Say what you're about to do, in one line: *"acme login fix by 5, about an hour"*
 | **the client sticker** | dashboard card | Click it to move the session to another client. |
 | **the line itself** | dashboard card | Click it to edit the invoice line (`Enter` saves, `Esc` cancels). |
 | **why?** | dashboard card | Unfolds the exact windows behind the line: your receipts. |
-| **+ add** | dashboard, receipts | Log time lowkey couldn't see, in one line: *"1h call with acme at 3pm"*. Chips show the client, length and start; `Enter` adds it to the day you're looking at. Added cards say "added by you" and can be removed (with undo). |
+| **log missed time** | dashboard, your day | The gaps in your day are time lowkey didn't see. Click one (or drag across part of it, then pull either end), say what it was, `Enter`. Chips show the client and what it's worth; a time or length in your words wins. `L` picks your latest gap. Logged blocks are dotted, their cards say "added by you", and both can be undone. |
 | 👥 **your clients** | dashboard header | Add, rename, recolour and re-rate clients, edit their hints, and set your name, email, currency and daily goal. Saves as you go; renaming a client carries its history (labels, edits, receipts, intentions) to the new name. |
 | **off the clock** | dashboard | Your personal time by kind (watching, gaming, social, messaging, music…) and by app (YouTube, Valorant, WhatsApp…). Point at a kind to lift its arc in the ring; click a row for its apps; click a day in the week strip to go there. |
 | **all · to review · billed · side quests** | dashboard | Filters, with counts. The cards re-flow on springs. |
@@ -155,7 +156,7 @@ Say what you're about to do, in one line: *"acme login fix by 5, about an hour"*
 | **send the bill** | dashboard header | The one filled button: a receipt-style invoice per client from approved sessions → PDF or CSV. |
 | **undo** | snackbar | Every change shows what happened with an undo while the line runs out (5 s). `Ctrl`/`⌘` + `Z` works too. |
 
-**Keyboard in the dashboard:** `I` what's next · `C` clients · `J`/`K` move · `Y` bill it · `N` nah · `E` edit · `←`/`→` day · `B` bill · `W` wrapped · `S` settings · `Ctrl+Z` undo · `Esc` close.
+**Keyboard in the dashboard:** `I` what are you working on · `L` log missed time · `C` clients · `J`/`K` move · `Y` bill it · `N` nah · `E` edit · `←`/`→` day · `B` bill · `W` wrapped · `S` settings · `Ctrl+Z` undo · `Esc` close.
 
 ### 🧾 The dashboard
 
@@ -168,7 +169,9 @@ Your day as colour blocks, one card per work session, each with an invoice line 
 - **why?** unfolds the exact windows behind every line. If a client ever asks what they paid for, you have receipts.
 - **"% backed"** is computed by plain code, not by the model: the share of the session's time whose window titles match that client. A low score shows up as *"check me"*.
 - **Off the clock.** The time the model called personal, broken down the way Screen Time would: watching, gaming, social, messaging, music, shopping & food, reading & learning. Each source (Netflix, YouTube, Valorant, Swiggy…) is categorized once, by plain hints where they're obvious and by the local model where they aren't, and remembered. A client's window inside a personal slot still counts as work, and a session you move to a client stops counting here. Beside it, the week: a bar a day, your daily average dashed across, and one plain line on how the day compares (*"11m less than your daily average"*). No scores, no scolding.
-- **Add what it couldn't see.** A phone call, an offline meeting, work on paper: *"+ add"* and one line like *"1h call with acme at 3pm"*. It's billed like any other session.
+- **Log what it couldn't see, where it happened.** A phone call, an offline meeting, work on paper: they show up as gaps in your day. Click the gap, say *"call with acme"*, and it fills in, billed like any other session. No client named? The local model picks one, the same way it does for intentions.
+
+<p align="center"><img src="docs/images/log-time.png" alt="Click a gap in your day, say what it was: the client and what it's worth show up before you press Enter" width="100%"></p>
 - **Your clients, in the dashboard.** No more editing JSON: name, rate, colour and hints, saved as you go.
 
 <p align="center"><img src="docs/images/clients.png" alt="Your clients: name, rate, colour and hints, saved as you go" width="80%"></p>

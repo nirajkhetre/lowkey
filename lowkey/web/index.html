@@ -124,13 +124,51 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22p
 .drift{background:var(--yellow);color:#111;border:1.5px solid var(--ink);border-radius:999px;padding:1px 9px;font:800 12.5px var(--display)}
 .factions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
 .factions .seg{animation:pop .4s var(--spring) both}
-.capture{display:flex;align-items:center;gap:10px;border:var(--line);border-radius:14px;background:var(--bg);padding:6px 8px 6px 14px;transition:box-shadow .3s var(--spring),transform .3s var(--spring)}
-.capture:focus-within{box-shadow:var(--shadow-sm);transform:translate(-1px,-1px)}
-.capture svg{width:18px;height:18px;flex:none;stroke:var(--muted);fill:none;stroke-width:2.2;stroke-linecap:round}
-.capture input{flex:1;min-width:0;border:0;background:none;font:700 16px var(--display);outline:none;color:var(--ink);padding:6px 0}
-.capture input::placeholder{color:var(--muted);opacity:.8;transition:opacity .3s}
-.capture input.swap::placeholder{opacity:0}
-.capture kbd{opacity:.6}
+[hidden]{display:none!important}
+#askHint{display:inline-block}
+#askHint.swap{animation:swap .3s var(--enter)}
+/* idle: the headline is the question. No box and no plus: you're starting something, not filing it away */
+.focus.active .fask,.focus:not(.active) .fnow{display:none}
+.fask{display:flex;align-items:center;gap:14px;min-height:58px}
+.fask .what{flex:1;min-width:0}
+.askf{display:block;position:relative;margin:2px 0 7px}
+.askf::after{content:"";position:absolute;left:0;right:0;bottom:-3px;height:2.5px;border-radius:2px;background:var(--ink);opacity:0;transform:scaleX(.35);transform-origin:left;transition:transform .5s var(--spring),opacity .2s}
+.askf:hover::after{opacity:.15;transform:none}
+.fask:focus-within .askf::after{opacity:1;transform:none}
+.askin{display:block;width:100%;border:0;background:none;outline:none;padding:0;font:700 22px/1.25 var(--display);letter-spacing:-.5px;color:var(--ink);caret-color:var(--pink);text-overflow:ellipsis}
+.askin::placeholder{color:var(--muted);opacity:.55}
+.fask .fline{min-height:22px}
+.fask .fline kbd{font-size:.85em}
+/* the ring waits as a dotted circle; it turns over while you type, takes the client's colour, and shows your estimate */
+.ring.ask .bg{stroke-dasharray:1.6 8.45;stroke-linecap:round;transition:stroke .3s}
+.ring.ask.has .bg{stroke:var(--c)}
+.fask:focus-within .ring.ask .bg{animation:orbit 9s linear infinite}
+@keyframes orbit{to{stroke-dashoffset:-150.8}}
+.fask.pending .ring.ask .bg{animation:orbit 1.1s linear infinite}  /* the model is placing it: the ring hurries, the words wait */
+.fask.pending .askin,.then.pending input{opacity:.5;transition:opacity .2s}
+.then.pending svg{animation:spin 1s linear infinite}
+@keyframes spin{to{rotate:360deg}}
+.ring.ask b{color:var(--muted)}
+.ring.ask.est b{color:var(--ink)}
+.btn.appear{scale:.7;opacity:0;pointer-events:none;transition:transform .45s var(--spring),box-shadow .45s var(--spring),scale .45s var(--spring),opacity .18s}
+.fask.typed .btn.appear{scale:1;opacity:1;pointer-events:auto}
+.fask.typed .btn.appear+.btn.appear{transition-delay:40ms}
+/* while something is on: "then…" is one more chip at the end of the line, and it opens in place */
+#fnext{display:contents}
+.then{display:inline-flex;align-items:center;gap:6px;min-height:34px;border:2px dashed color-mix(in srgb,var(--ink) 40%,transparent);border-radius:999px;padding:3px 12px 3px 10px;cursor:text;color:var(--muted);
+  width:auto;max-width:100%;interpolate-size:allow-keywords;transition:border-color .2s,background .2s,color .2s,box-shadow .4s var(--spring),transform .4s var(--spring),width .55s var(--spring)}
+.then.open{width:var(--room,320px)}  /* it opens into the room left on its line (measured), so nothing jumps to the next one */
+.then:hover{border-color:var(--ink);color:var(--ink)}
+.then:focus-within{border-style:solid;border-color:var(--ink);background:var(--paper);color:var(--ink);box-shadow:var(--shadow-sm);transform:translate(-1px,-1px)}
+.then svg{width:15px;height:15px;flex:none;stroke:currentColor;fill:none;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.then input{flex:1 1 44px;width:44px;min-width:44px;border:0;background:none;outline:none;padding:3px 0;font:700 14px var(--display);color:var(--ink);text-overflow:ellipsis}
+.then input::placeholder{color:inherit;opacity:1}
+.then .toks{flex:0 1 auto;min-width:0;max-width:55%;flex-wrap:nowrap;overflow:hidden}
+.toks.clip{-webkit-mask-image:linear-gradient(90deg,#000 78%,transparent);mask-image:linear-gradient(90deg,#000 78%,transparent)}
+.then .toks:empty{display:none}
+.nx.fresh{animation:pop .45s var(--spring) both}
+.shake{animation:shake .42s cubic-bezier(.36,.07,.19,.97) both}
+@keyframes shake{20%,80%{translate:-2px}30%,70%{translate:4px}40%,60%{translate:-6px}50%{translate:6px}}
 .toks{display:flex;gap:6px;flex-wrap:wrap}
 .tok{border:1.5px solid var(--ink);border-radius:999px;padding:2px 9px;font:800 12.5px var(--display);background:var(--paper);white-space:nowrap;animation:pop .35s var(--spring) both}
 .tok.c{background:var(--c);color:#111}
@@ -163,6 +201,54 @@ html.vt-focus .vtf{view-transition-name:var(--vt)}
 .now::after{content:"";position:absolute;top:50%;left:50%;width:10px;height:10px;border-radius:50%;background:var(--pink);border:2px solid var(--ink);transform:translate(-50%,-50%);animation:beat 2s ease-in-out infinite}
 @keyframes beat{50%{transform:translate(-50%,-50%) scale(1.25)}}
 .hours{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--muted);margin-top:6px}
+.block.byyou:not(.stripes){background-image:radial-gradient(rgba(17,17,17,.3) 1px,transparent 1.5px);background-size:7px 7px}  /* time you logged yourself */
+.block.fill{animation:fill .8s var(--spring-soft) both}
+@keyframes fill{from{clip-path:inset(0 100% 0 0)}}
+/* the gaps in your day are time lowkey didn't see: point at one, click (or drag across part of it), say what it was */
+.timeline{position:relative}
+.thead{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.tlog{display:inline-flex;align-items:center;gap:7px;margin:-6px -8px -6px auto;padding:6px 8px;border:0;border-radius:999px;background:none;font:700 13px var(--display);color:var(--muted);cursor:pointer;transition:background .15s,color .15s}
+.tlog:hover,.tlog:focus-visible{background:var(--bg);color:var(--ink)}
+.tlog svg{width:17px;height:17px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.tlog svg .hand{transform-origin:12px 13px;transition:transform .6s var(--spring)}
+.tlog:hover svg .hand{transform:rotate(-50deg)}
+.tlog kbd{opacity:.65}
+.tlog{white-space:nowrap}
+@media (max-width:540px){.tlog kbd,.tlog .wide{display:none}}  /* a phone: no keyboard to hint at, less room to say it in */
+.gap{position:absolute;top:0;bottom:0;z-index:1;display:grid;place-items:center;padding:0;border:0;background:none;color:var(--ink);cursor:crosshair;touch-action:none}
+.gap::before{content:"";position:absolute;inset:5px 2px;border:2px dashed var(--ink);border-radius:8px;opacity:0;transition:opacity .15s}
+.gap span{position:relative;font:700 12px var(--mono);white-space:nowrap;opacity:0;scale:.85;transition:opacity .15s,scale .4s var(--spring)}
+.gap:hover::before,.gap:focus-visible::before{opacity:.4}
+.gap:hover span,.gap:focus-visible span{opacity:1;scale:1}
+.gap:focus-visible{outline:none}
+.track:has(.pick) .gap::before,.track:has(.pick) .gap span{opacity:0}  /* one thing at a time: the pick, not the hint */
+.pick{position:absolute;top:4px;bottom:4px;z-index:3;display:grid;place-items:center;border:2px solid var(--ink);border-radius:9px;background:color-mix(in srgb,var(--pc,var(--lime)) 72%,var(--paper));
+  color:#111;font:700 12px var(--mono);pointer-events:none;animation:pickin .3s var(--spring) both;transition:background .3s,opacity .25s}
+.pick b{max-width:100%;overflow:hidden;white-space:nowrap;padding:0 9px}
+.pick i{position:absolute;top:50%;width:9px;height:24px;margin-top:-12px;border:2px solid var(--ink);border-radius:5px;background:var(--paper);cursor:ew-resize;pointer-events:auto;scale:0;transition:scale .35s var(--spring)}
+.pick .h0{left:-1px}.pick .h1{right:-1px}
+.pick.ready i{scale:1}
+.pick.moved{opacity:.35}  /* the words named another time: what you picked steps back */
+.pick.bye{animation:pickin .15s var(--exit) reverse both}
+@keyframes pickin{from{opacity:0;transform:scaleY(.55)}}
+.logpop{position:absolute;z-index:12;width:min(400px,calc(100% - 20px));padding:12px 14px;background:var(--paper);border:var(--line);border-radius:16px;box-shadow:var(--shadow);
+  transform-origin:var(--ax,50%) -8px;animation:popin .4s var(--spring) both}
+.logpop::before{content:"";position:absolute;top:-8.5px;left:var(--ax,50%);width:14px;height:14px;margin-left:-8px;background:var(--paper);border-left:var(--line);border-top:var(--line);border-radius:4px 0 0 0;transform:rotate(45deg)}
+.logpop.closing{animation:popin .16s var(--exit) reverse both;pointer-events:none}
+@keyframes popin{from{opacity:0;transform:translateY(-6px) scale(.94)}}
+.lpt{display:flex;align-items:center;gap:8px;font:700 13px var(--mono)}
+.lpt>i{width:10px;height:10px;flex:none;border-radius:50%;background:var(--pc,var(--grey));border:1.5px solid var(--ink);transition:background .3s}
+.lpt .ib{width:28px;height:28px;margin:-6px -8px -6px auto}
+.lpt .ib svg{width:15px;height:15px}
+.lpin{display:block;width:100%;margin:6px 0 10px;padding:6px 0;border:0;border-bottom:2.5px solid var(--grey);background:none;outline:none;font:700 19px var(--display);color:var(--ink);caret-color:var(--pink);transition:border-color .25s}
+.lpin:focus{border-bottom-color:var(--ink)}
+.lpin::placeholder{color:var(--muted);opacity:.6}
+.lpf{display:flex;align-items:center;gap:8px;min-height:26px}
+.lpf .toks{flex:1;min-width:0}
+.lph{margin-left:auto;font:600 12.5px var(--mono);color:var(--muted);text-align:right}
+.tok.warn{background:var(--yellow);color:#111}
+.tok.auto{border-style:dashed;color:var(--muted)}
+.logpop.pending .lpin{opacity:.5}
 
 /* segmented controls: one ink thumb springs to the chosen option */
 .seg{position:relative;display:flex;border:var(--line);border-radius:999px;background:var(--paper);padding:3px}
@@ -373,9 +459,6 @@ button.lrow{cursor:pointer}
 .lwavg.none{opacity:0}
 @media (max-width:900px){.lbody{grid-template-columns:148px minmax(0,1fr)}.lweek{grid-column:1/-1;padding:14px 0 0;border-left:0;border-top:1.5px dashed var(--grey)}}
 @media (max-width:540px){.lbody{grid-template-columns:1fr;gap:18px}.donut{justify-self:center}.lname small{display:none}}
-.mline{margin:-4px 0 16px}
-.mline .capture{background:var(--paper)}
-.hint2{font:600 12.5px var(--mono);color:var(--muted);white-space:nowrap}
 .stage{max-width:440px;margin:4px auto 0}
 .says{min-height:20px;text-align:center;font-weight:700;color:var(--muted);margin:12px 0 18px}
 .srow{display:flex;align-items:center;gap:12px;margin:0 0 10px}
@@ -487,12 +570,20 @@ html.still *,html.still *::before,html.still *::after{transition:none!important;
 
   <section class="card focus" id="focus" style="--d:0">
     <div class="fnow" id="fnow"></div>
-    <label class="capture" for="intend">
-      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-      <input id="intend" autocomplete="off" spellcheck="false" aria-label="what's next" placeholder="what's next? acme login fix by 5, about an hour">
-      <span class="toks" id="toks"></span><kbd>↵</kbd>
-    </label>
-    <div class="nexts" id="fnext"></div>
+    <div class="fask" id="fask">
+      <div class="ring ask" id="askRing"><svg viewBox="0 0 56 56"><circle class="bg" cx="28" cy="28" r="24"/></svg><b id="askEst">—</b></div>
+      <div class="what" id="askWhat">
+        <div class="kick">now</div>
+        <label class="askf"><input id="intend" class="askin" autocomplete="off" spellcheck="false" placeholder="what are you working on?" aria-label="what are you working on?"></label>
+        <div class="fline"><span class="toks" id="askToks"></span><span id="askHint"></span></div>
+      </div>
+      <div class="factions"><button class="btn quiet appear" id="askLater" title="line it up without starting it (Shift+Enter)">later</button><button class="btn lime appear" id="askGo">start</button></div>
+    </div>
+    <div class="nexts" id="fnexts">
+      <span class="kick" id="fnk">next up</span><span id="fnext"></span>
+      <label class="then" id="thenBox" title="what comes after this"><svg viewBox="0 0 24 24"><path d="M6 4v7a4 4 0 0 0 4 4h9"/><path d="M15 11l4 4-4 4"/></svg><input id="then" autocomplete="off" spellcheck="false" placeholder="then…" aria-label="what comes after this"><span class="toks" id="thenToks"></span></label>
+      <span class="donecount" id="fdone"></span>
+    </div>
   </section>
 
   <main>
@@ -515,10 +606,16 @@ html.still *,html.still *::before,html.still *::after{transition:none!important;
       </button>
     </section>
 
-    <section class="card timeline" style="--d:3">
-      <div class="label" style="margin-bottom:8px">your day, in blocks</div>
+    <section class="card timeline" id="timeline" style="--d:3">
+      <div class="thead"><div class="label">your day, in blocks</div>
+        <button class="tlog" id="logBtn" data-tip="or click any gap in your day"><svg viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path class="hand" d="M12 9v4l2.5 1.5"/><path d="M9.5 2.5h5"/></svg><span>log <span class="wide">missed </span>time</span><kbd>L</kbd></button></div>
       <div class="track" id="track"></div>
       <div class="hours" id="hours"></div>
+      <div class="logpop" id="logpop" role="dialog" aria-label="log time lowkey didn't see" hidden>
+        <div class="lpt"><i></i><span id="lpSpan"></span><button class="ib" id="lpX" aria-label="close"><svg viewBox="0 0 24 24"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+        <input id="logIn" class="lpin" autocomplete="off" spellcheck="false" placeholder="what was it? call with acme" aria-label="what was it?">
+        <div class="lpf"><span class="toks" id="lpToks"></span><span class="lph" id="lpHint"></span></div>
+      </div>
     </section>
 
     <section class="card life" id="life" style="--d:4">
@@ -535,20 +632,12 @@ html.still *,html.still *::before,html.still *::after{transition:none!important;
 
     <div class="bar" style="--d:4">
       <h2 id="receiptsTitle">today's <em>receipts</em></h2>
-      <button class="btn quiet" id="addReceipt" title="log time lowkey couldn't see: a call, a meeting">+ add</button>
       <div class="seg filters" id="filters"><span class="thumb"></span>
         <button data-f="all">all <b class="roll"></b></button>
         <button data-f="pending">to review <b class="roll"></b></button>
         <button data-f="billed">billed <b class="roll"></b></button>
         <button data-f="personal">side quests <b class="roll"></b></button>
       </div>
-    </div>
-    <div class="mline" id="mline" hidden>
-      <label class="capture" for="receipt">
-        <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
-        <input id="receipt" autocomplete="off" spellcheck="false" aria-label="add a receipt" placeholder="what did lowkey miss? 1h call with acme at 3pm">
-        <span class="toks" id="mtoks"></span><kbd>↵</kbd>
-      </label>
     </div>
     <div class="grid" id="grid"></div>
   </main>
@@ -596,6 +685,7 @@ function transition(kind, update){  // run a DOM update as a View Transition whe
   const t = document.startViewTransition(update);
   const guard = setTimeout(() => t.skipTransition(), 1000);  // no frame to animate in (window hidden)? just apply it
   t.updateCallbackDone.finally(() => clearTimeout(guard));
+  t.ready.catch(() => {});  // a skipped transition rejects "ready"; the update itself still landed
   t.finished.finally(() => { if (!--running[kind]) html.classList.remove('vt-' + kind); });
   const p = t.updateCallbackDone.catch(() => {}); p.finished = t.finished.catch(() => {});
   return p;
@@ -715,8 +805,12 @@ async function boot(){
   S.day = S.days.at(-1) || iso(new Date());
   await Promise.all([load(), loadFocus()]);
   setTimeout(() => document.body.classList.remove('intro'), 1800);  // the entrance plays once
-  const intend = () => { scrollTo({top: 0, behavior: REDUCED ? 'auto' : 'smooth'}); $('#intend').focus({preventScroll: true}); };
-  ({'#settings': () => settings(), '#wrapped': () => wrapped(), '#bill': () => bill(), '#review': review, '#intend': intend, '#clients': () => clients_()})[location.hash]?.();  // deep links (island + docs)
+  ({'#settings': () => settings(), '#wrapped': () => wrapped(), '#bill': () => bill(), '#review': review, '#intend': intend, '#clients': () => clients_()})[location.hash]?.();
+  if (location.hash.startsWith('#log')) {  // #log, or #log=what it was: the latest gap, picked and asking
+    logMissed();
+    const t = decodeURIComponent(location.hash.slice(5));
+    if (t) { $('#logIn').value = t; previewLog(); }
+  }  // deep links (island + docs)
 }
 
 async function load(){
@@ -753,21 +847,7 @@ function render(){
   else { clearRoll($('#qn')); $('#qt').textContent = all.length ? 'all clear' : '—'; }
   $('#queueSub').textContent = pending ? 'start reviewing →' : (all.length ? 'nothing waiting on you' : 'nothing tracked yet');
 
-  // timeline: blocks for sessions, a live "now" line on today
-  const tr = $('#track'), hrs = $('#hours');
-  if (all.length){
-    const nowS = Date.now()/1000, live = today && nowS - all.at(-1).end < 7200;  // "now" only matters while you're still at it
-    const endS = live ? Math.max(all.at(-1).end, nowS) : all.at(-1).end;
-    const h0 = new Date(all[0].start*1000).getHours(), e = new Date(endS*1000), h1 = e.getHours() + (e.getMinutes() || e.getSeconds() ? 1 : 0);
-    const t0 = new Date(S.day+'T00:00').getTime()/1000 + h0*3600, span = (h1-h0)*3600;
-    tr.innerHTML = all.map((s,i)=>`<div class="block ${isBillable(s)?'':'stripes'}" data-i="${i}" style="--i:${i};left:${(s.start-t0)/span*100}%;width:${(s.end-s.start)/span*100}%;${isBillable(s)?`background:${color(s.client)}`:''}"></div>`).join('') +
-      (live && nowS < t0 + span ? `<div class="now" style="left:${(nowS-t0)/span*100}%"></div>` : '');
-    hrs.innerHTML = Array.from({length:h1-h0+1},(_,k)=>`<span>${((h0+k+11)%12)+1}${h0+k<12?'a':'p'}</span>`).join('');
-    tr.querySelectorAll('.block').forEach(b => { const s = all[+b.dataset.i];
-      b.onmouseenter = () => showTip(b, `<b>${esc(s.client)}</b><span>${fmtT(s.start)}–${fmtT(s.end)}</span><div>${esc(s.task)}</div>`);
-      b.onmouseleave = hideTip;
-      b.onclick = () => { hideTip(); S.focus = +b.dataset.i; transition('cards', () => { S.filter = 'all'; renderCards(); }).then(() => focusCard(S.focus)); }; });
-  } else { tr.innerHTML=''; hrs.innerHTML=''; }
+  renderTimeline(all, today);
   renderCards();
   renderLife();
 }
@@ -871,6 +951,8 @@ async function loadFocus(kind){
 const call = (url, body) => fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}).then(r => r.json());
 function renderFocus(){
   const d = F.data || {next: [], done: []}, n = d.now;
+  $('#askWhat').classList.remove('vtf');  // it lent its name to the morph; the new state must not carry it too
+  $('#focus').classList.toggle('active', !!n);
   if (n){
     const spent = minutes(n.spent_s), est = n.est_min, frac = est ? Math.min(1, spent / est) : 0;
     const status = d.drift_min >= 1 && d.what ? `<span class="drift">drifting · ${esc(d.what)} ${d.drift_min}m</span>`
@@ -890,20 +972,19 @@ function renderFocus(){
         : `<button class="btn quiet" id="fAside" title="put it back in line, and say how far you got">set aside</button><button class="btn lime" id="fDone">done</button>`}</div>`;
     if (F.aside) { $('#howfar').querySelectorAll('button').forEach(b => b.onclick = () => setAside(n, +b.dataset.p, b)); $('#faCancel').onclick = () => { F.aside = false; renderFocus(); }; }
     else { $('#fAside').onclick = () => { F.aside = true; renderFocus(); }; $('#fDone').onclick = e => finish(n, e.currentTarget); }
-  } else {
-    const top = d.next[0];
-    $('#fnow').innerHTML = `<div class="ring" style="--c:var(--grey)"><svg viewBox="0 0 56 56"><circle class="bg" cx="28" cy="28" r="24"/></svg><b>—</b></div>
-      <div class="what"><div class="kick">now</div><h3>${top ? 'nothing on.' : 'nothing on yet.'}</h3>
-        <div class="fline">${top ? `next up is <b style="color:var(--ink)">${esc(top.text)}</b> · ${esc(top.reason)}` : 'say what you\'re about to do, and lowkey keeps you on it'}</div></div>
-      ${top ? `<div class="factions"><button class="btn lime" id="fStart">start it</button></div>` : ''}`;
-    if (top) $('#fStart').onclick = e => start(top, e.currentTarget);
-  }
+  } else $('#fnow').innerHTML = '';
+  askHint();
   const shown = F.all ? d.next : d.next.slice(0, 3), more = d.next.length - shown.length;
-  $('#fnext').innerHTML = (d.next.length ? `<span class="kick">next up</span>` : '') +
-    shown.map(x => `<button class="nx vtf" style="--c:${x.color};--vt:f-${tag(x.id)}" data-id="${x.id}" title="start it">
+  $('#fnk').hidden = !d.next.length;
+  $('#thenBox').hidden = !n;
+  $('#fnext').innerHTML = shown.map(x => `<button class="nx vtf ${F.fresh === x.id ? 'fresh' : ''}" style="--c:${x.color};--vt:f-${tag(x.id)}" data-id="${x.id}" title="start it">
       <i></i>${esc(x.text)} <small>${esc(x.reason)}</small><span class="x" data-drop="${x.id}" title="drop it" aria-label="drop">${ICON.x}</span></button>`).join('') +
-    (more ? `<button class="link" id="fMore" title="the rest of the queue">+${more} more</button>` : '') +
-    (d.done.length ? `<span class="donecount" title="${esc(d.done.map(x => x.text).join(' · '))}">${d.done.length} done today</span>` : '');
+    (more ? `<button class="link" id="fMore" title="the rest of the queue">+${more} more</button>` : '');
+  F.fresh = null;
+  $('#fdone').textContent = d.done.length ? `${d.done.length} done today` : '';
+  $('#fdone').title = d.done.map(x => x.text).join(' · ');
+  $('#fnexts').hidden = !n && !d.next.length && !d.done.length;
+  if ($('#thenBox').classList.contains('open')) fitThen();  // the chips moved: re-measure its room
   if (more) $('#fMore').onclick = () => transition('focus', () => { F.all = true; renderFocus(); });
   $('#fnext').querySelectorAll('.nx').forEach(b => b.onclick = e => {
     const x = d.next.find(i => i.id === b.dataset.id);
@@ -939,39 +1020,92 @@ async function drop(x, el){
   await loadFocus('focus');
   snack(`dropped · ${x.text}`, async () => { await call('/api/intents', {text: x.text, start: false}); loadFocus('focus'); });
 }
-/* the one line: chips pop in as you type (plain parsing, instant); Enter sends it to the island */
+/* saying it: the headline asks (idle), or "then…" lines up what's after (busy). Chips show what lowkey understood */
 const EXAMPLES = ["acme login fix by 5, about an hour", "nimbus invoice tomorrow, 30m", "chai banner by friday, 2h", "reply to client emails ~20 min"];
-let parseT, exampleI = 0;
-$('#intend').oninput = () => { clearTimeout(parseT); parseT = setTimeout(previewIntent, 120); };
-async function previewIntent(){
-  const v = $('#intend').value.trim();
-  if (!v) return $('#toks').innerHTML = '';
-  const p = await call('/api/intents/parse', {text: v}), have = new Set([...$('#toks').children].map(c => c.dataset.k));
-  const due = p.due ? new Date(p.due * 1000) : null, today = due && due.toDateString() === new Date().toDateString();
-  const toks = [p.client && ['c', `<span class="tok c" style="--c:${client(p.client)?.color || 'var(--paper)'}" data-k="c:${esc(p.client)}">${esc(p.client)}</span>`],
-                due && ['d', `<span class="tok" data-k="d:${p.due}">${today ? '' : due.toLocaleDateString([], {weekday:'short'}).toLowerCase() + ' '}${due.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}).toLowerCase()}</span>`],
-                p.est_min && ['e', `<span class="tok" data-k="e:${p.est_min}">${p.est_min >= 60 ? (p.est_min / 60).toFixed(p.est_min % 60 ? 1 : 0) + 'h' : p.est_min + 'm'}</span>`]].filter(Boolean);
-  $('#toks').innerHTML = toks.map(([, h]) => h).join('');
-  [...$('#toks').children].forEach(c => { if (have.has(c.dataset.k)) c.style.animation = 'none'; });  // only new chips pop
+let exampleI = 0;
+const estTxt = m => m >= 60 ? (m / 60).toFixed(m % 60 ? 1 : 0) + 'h' : m + 'm';
+function askHint(){  // the line under the question: an example while you think, the keys once you've typed
+  const i = $('#intend'), v = i.value.trim(), ring = $('#askRing');
+  $('#fask').classList.toggle('typed', !!v);
+  if (v) return $('#askHint').innerHTML = `<kbd>↵</kbd> start · <kbd>⇧↵</kbd> later`;
+  $('#askToks').innerHTML = ''; ring.classList.remove('has', 'est'); $('#askEst').textContent = '—';
+  $('#askHint').innerHTML = document.activeElement === i ? `like: ${EXAMPLES[exampleI]}`
+    : `say it your way and lowkey keeps you on it${F.data?.next?.length ? ' · or start one below' : ''} · <kbd>I</kbd>`;
 }
-$('#intend').onkeydown = async e => {
-  e.stopPropagation();
-  if (e.key === 'Escape') { e.target.value = ''; $('#toks').innerHTML = ''; return e.target.blur(); }
-  if (e.key !== 'Enter' || !e.target.value.trim()) return;
-  const r = $('.capture').getBoundingClientRect(), text = e.target.value.trim();
-  e.target.value = ''; $('#toks').innerHTML = '';
-  const it = await call('/api/intents', {text});
-  if (it.error) return snack("couldn't read that one");
-  await loadFocus('focus');
-  const where = it.state === 'now' ? 'now' : 'next up';
-  fly({left: r.left + r.width / 2 - 40, top: r.top, width: 80, height: r.height}, `${where}: ${it.text}`,
-      it.client ? client(it.client)?.color || '#9a9aa6' : '#9a9aa6', `${where}: ${it.text}`, 'intend');
-};
-setInterval(() => {  // rotate the examples, softly
-  const i = $('#intend'); if (document.activeElement === i || i.value) return;
-  i.classList.add('swap'); setTimeout(() => { exampleI = (exampleI + 1) % EXAMPLES.length; i.placeholder = `what's next? ${EXAMPLES[exampleI]}`; i.classList.remove('swap'); }, 300);
-}, 4500);
-setInterval(() => { if (!document.hidden && !F.aside && document.activeElement !== $('#intend')) loadFocus(); }, 20000);  // time and drift, live
+async function previewIntent(input, box){
+  const v = input.value.trim(), seq = input._seq = (input._seq || 0) + 1, hero = input.id === 'intend';
+  if (!v) { box.innerHTML = ''; return hero && askHint(); }
+  const p = await call('/api/intents/parse', {text: v});
+  if (seq !== input._seq || input.value.trim() !== v) return;  // a newer keystroke already won
+  const have = new Set([...box.children].map(c => c.dataset.k));
+  const due = p.due ? new Date(p.due * 1000) : null, today = due && due.toDateString() === new Date().toDateString();
+  const col = p.client && client(p.client)?.color;
+  box.innerHTML = [p.client && `<span class="tok c" style="--c:${col || 'var(--paper)'}" data-k="c:${esc(p.client)}">${esc(p.client)}</span>`,
+    due && `<span class="tok" data-k="d:${p.due}">${today ? '' : due.toLocaleDateString([], {weekday:'short'}).toLowerCase() + ' '}${due.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}).toLowerCase()}</span>`,
+    !hero && p.est_min && `<span class="tok" data-k="e:${p.est_min}">${estTxt(p.est_min)}</span>`].filter(Boolean).join('');
+  [...box.children].forEach(c => { if (have.has(c.dataset.k)) c.style.animation = 'none'; });  // only new chips pop
+  box.classList.toggle('clip', box.scrollWidth > box.clientWidth + 1);                              // more than fits: fade, don't cut
+  if (!hero) return;
+  const ring = $('#askRing');  // the ring rehearses: the client's colour, and the estimate it will hold you to
+  ring.classList.toggle('has', !!col); col ? ring.style.setProperty('--c', col) : ring.style.removeProperty('--c');
+  ring.classList.toggle('est', !!p.est_min); $('#askEst').textContent = p.est_min ? estTxt(p.est_min) : '—';
+}
+function shake(el){ el.classList.remove('shake'); void el.offsetWidth; el.classList.add('shake'); }
+async function say(input, box, startIt, from){
+  const text = input.value.trim(), hero = input.id === 'intend';
+  if (!text) { input.focus(); return shake(from); }
+  if (input._busy) return;
+  input._busy = true; input.readOnly = true;
+  const wrap = hero ? $('#fask') : $('#thenBox'), slow = setTimeout(() => {  // only if it takes a moment (the model guessing the client)
+    wrap.classList.add('pending'); if (hero) $('#askHint').textContent = 'working out whose it is…'; }, 250);
+  try {
+    const it = await call('/api/intents', {text, start: startIt});
+    if (it.error) { shake(from); return snack("couldn't read that one"); }
+    const r = from.getBoundingClientRect(), data = await (await fetch('/api/intents')).json();
+    if (hero) { $('#askWhat').style.setProperty('--vt', `f-${tag(it.id)}`); $('#askWhat').classList.add('vtf'); }  // the words become the title
+    else if (!document.startViewTransition) F.fresh = it.id;  // a new chip arrives (the view transition fades it in; without one, it pops)
+    await transition('focus', () => { input.value = ''; box.innerHTML = ''; F.data = data; renderFocus(); });
+    if (hero) input.blur();
+    const where = it.state === 'now' ? 'now' : 'next up';
+    fly({left: r.left + r.width / 2 - 40, top: r.top, width: 80, height: r.height}, `${where}: ${it.text}`,
+        it.client ? client(it.client)?.color || '#9a9aa6' : '#9a9aa6', `${where}: ${it.text}`, 'intend');
+  } finally { clearTimeout(slow); wrap.classList.remove('pending'); input._busy = false; input.readOnly = false; if (hero) askHint(); }
+}
+for (const [input, box, from] of [[$('#intend'), $('#askToks'), () => $('#askWhat')], [$('#then'), $('#thenToks'), () => $('#thenBox')]]) {
+  const hero = input.id === 'intend';
+  input.oninput = () => {
+    clearTimeout(input._t);
+    if (hero) askHint(); else if (!$('#thenBox').classList.contains('open')) { fitThen(); $('#thenBox').classList.add('open'); }
+    input._t = setTimeout(() => previewIntent(input, box), 120);
+  };
+  input.onfocus = input.onblur = () => hero && askHint();
+  input.onkeydown = e => {
+    e.stopPropagation();
+    if (e.isComposing) return;  // Enter that picks a word in an IME isn't a submit
+    if (e.key === 'Escape') { input.value = ''; box.innerHTML = ''; if (hero) askHint(); return input.blur(); }  // blur also folds "then…" back
+    if (e.key === 'Enter') { e.preventDefault(); say(input, box, hero && !e.shiftKey, from()); }
+  };
+}
+function fitThen(){  // how much room "then…" has on its line once it opens; too little, and it takes a line of its own
+  const row = $('#fnexts'), rr = row.getBoundingClientRect(), done = $('#fdone');
+  const prev = $('#fnext').lastElementChild || (!$('#fnk').hidden && $('#fnk'));
+  const room = rr.right - (prev ? prev.getBoundingClientRect().right + 8 : rr.left) - (done.textContent ? done.offsetWidth + 8 : 0);
+  $('#thenBox').style.setProperty('--room', Math.min(room < 220 ? rr.width : room, 560) + 'px');
+}
+$('#then').addEventListener('focus', () => { fitThen(); $('#thenBox').classList.add('open'); });
+$('#then').addEventListener('blur', () => !$('#then').value && $('#thenBox').classList.remove('open'));
+addEventListener('resize', () => $('#thenBox').classList.contains('open') && fitThen());
+$('#askGo').onclick = () => say($('#intend'), $('#askToks'), true, $('#askWhat'));
+$('#askLater').onclick = () => say($('#intend'), $('#askToks'), false, $('#askWhat'));
+function intend(){  // I, /, the island's "intend": the question when nothing's on, "then…" when something is
+  scrollTo({top: 0, behavior: REDUCED ? 'auto' : 'smooth'});
+  ($('#focus').classList.contains('active') ? $('#then') : $('#intend')).focus({preventScroll: true});
+}
+setInterval(() => {  // while you think, the example under the question changes, softly
+  const i = $('#intend'); if (document.activeElement !== i || i.value) return;
+  exampleI = (exampleI + 1) % EXAMPLES.length; swapText($('#askHint'), `like: ${EXAMPLES[exampleI]}`);
+}, 4000);
+setInterval(() => { if (!document.hidden && !F.aside) loadFocus(); }, 20000);  // time and drift, live (the inputs stay put)
 
 /* ---------- sheets ---------- */
 function openSheet(modal, from){  // the button you pressed grows into the sheet (when the browser can morph)
@@ -1180,38 +1314,183 @@ function lifeWeek(d){  // seven columns that stay put while you move through the
   swapText(cmp.lastElementChild, near ? `about the same as ${ref}${so}` : `${fmtH(Math.abs(diff))} ${diff > 0 ? 'more' : 'less'} than ${ref}${so}`);
 }
 
-/* ---------- receipts you add yourself ---------- */
-$('#addReceipt').onclick = () => { const m = $('#mline'); m.hidden = !m.hidden; if (!m.hidden) $('#receipt').focus(); };
-let mT;
-$('#receipt').oninput = () => { clearTimeout(mT); mT = setTimeout(previewReceipt, 120); };
-async function previewReceipt(){
-  const v = $('#receipt').value.trim();
-  if (!v) return $('#mtoks').innerHTML = '';
-  const p = await call('/api/manual/parse', {text: v, day: S.day});
-  if (p.hint) return $('#mtoks').innerHTML = `<span class="hint2">${esc(p.hint.split('?')[0])}?</span>`;
-  const t = p.start ? new Date(p.start * 1000).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}).toLowerCase() : 'after your last session';
-  $('#mtoks').innerHTML = [p.client && `<span class="tok c" style="--c:${client(p.client)?.color || 'var(--paper)'}">${esc(p.client)}</span>`,
-    `<span class="tok">${p.dur_min >= 60 ? (p.dur_min / 60).toFixed(p.dur_min % 60 ? 1 : 0) + 'h' : p.dur_min + 'm'}</span>`,
-    `<span class="tok">${t}</span>`].filter(Boolean).join('');
+/* ---------- log what lowkey didn't see: the gaps in your day ---------- */
+const SNAP = 300;  // five minutes
+const TL = {t0: 0, span: 1, gaps: [], fresh: null};
+const LG = {open: false, a: null, b: null, lo: 0, hi: 0, day: null, busy: false};
+const snapT = t => Math.round(t / SNAP) * SNAP;
+const fmtSpan = (a, b) => { const x = fmtT(a), y = fmtT(b); return /[ap]m$/.test(x) && x.slice(-2) === y.slice(-2) ? `${x.slice(0, -3)} – ${y}` : `${x} – ${y}`; };
+const HINT = {start: "that's not on this day", length: 'up to 16h at a time'};
+function renderTimeline(all, today){
+  const tr = $('#track'), hrs = $('#hours'), nowS = Date.now() / 1000, day0 = new Date(S.day + 'T00:00').getTime() / 1000;
+  let h0, h1, live;
+  if (all.length) {
+    live = today && nowS - all.at(-1).end < 4 * 3600;  // "now" (and the gap up to it) while it's the same stretch of day
+    const endS = live ? Math.max(all.at(-1).end, nowS) : all.at(-1).end, e = new Date(endS * 1000);
+    h0 = new Date(all[0].start * 1000).getHours(); h1 = e.getHours() + (e.getMinutes() || e.getSeconds() ? 1 : 0);
+  } else {  // nothing seen yet: a plain working day to log into (up to now, today)
+    const nh = new Date().getHours();
+    live = today; h0 = today ? Math.min(9, nh) : 9; h1 = today ? nh + 1 : 18;
+  }
+  h1 = Math.max(h1, h0 + 1);
+  const t0 = day0 + h0 * 3600, span = (h1 - h0) * 3600, end = today ? Math.min(t0 + span, nowS) : t0 + span;
+  const gaps = []; let cur = t0;  // untracked stretches of five minutes or more, never past now
+  for (const s of all) { const b = Math.min(s.start, end); if (b - cur >= SNAP) gaps.push([cur, b]); cur = Math.max(cur, s.end); }
+  if (end - cur >= SNAP) gaps.push([cur, end]);
+  Object.assign(TL, {t0, span, gaps});
+  const pct = t => (t - t0) / span * 100;
+  tr.innerHTML = gaps.map(([a, b], g) => `<button class="gap" data-g="${g}" style="left:${pct(a)}%;width:${pct(b) - pct(a)}%" aria-label="log ${fmtSpan(a, b)}, ${fmtH(b - a)} lowkey didn't see"><span>+ ${fmtH(b - a)}</span></button>`).join('') +
+    all.map((s, i) => `<div class="block ${isBillable(s) ? '' : 'stripes'} ${s.manual ? 'byyou' : ''} ${TL.fresh === s.id ? 'fill' : ''}" data-i="${i}" style="--i:${i};left:${pct(s.start)}%;width:${pct(s.end) - pct(s.start)}%;${isBillable(s) ? `background-color:${color(s.client)}` : ''}"></div>`).join('') +
+    (live && nowS < t0 + span ? `<div class="now" style="left:${pct(nowS)}%"></div>` : '');
+  TL.fresh = null;
+  hrs.innerHTML = Array.from({length: h1 - h0 + 1}, (_, k) => `<span>${((h0 + k + 11) % 12) + 1}${h0 + k < 12 ? 'a' : 'p'}</span>`).join('');
+  tr.querySelectorAll('.block').forEach(b => { const s = all[+b.dataset.i];
+    b.onmouseenter = () => showTip(b, `<b>${esc(s.client)}</b><span>${fmtT(s.start)}–${fmtT(s.end)}</span><div>${esc(s.task)}${s.manual ? ' · added by you' : ''}</div>`);
+    b.onmouseleave = hideTip;
+    b.onclick = () => { hideTip(); S.focus = +b.dataset.i; transition('cards', () => { S.filter = 'all'; renderCards(); }).then(() => focusCard(S.focus)); }; });
+  tr.querySelectorAll('.gap').forEach(bindGap);
+  if (LG.open || pickEl.isConnected) { if (LG.day !== S.day) closeLog(); else if (LG.a != null) drawPick(); }
 }
+const tAt = x => { const tr = $('#track'), r = tr.getBoundingClientRect(); return TL.t0 + (x - r.left - tr.clientLeft) / tr.clientWidth * TL.span; };
+const clampT = (t, lo, hi) => Math.max(lo, Math.min(hi, t));
+function bindGap(btn){  // press and drag across part of a gap, or just click it
+  const [lo, hi] = TL.gaps[+btn.dataset.g];
+  btn.onpointerdown = e => {
+    if (e.button) return;
+    e.preventDefault(); btn.setPointerCapture(e.pointerId); hideTip();
+    const x0 = e.clientX, from = clampT(snapT(tAt(x0)), lo, hi);
+    if (LG.open && LG.a != null && tAt(x0) >= LG.a && tAt(x0) <= LG.b) { btn.releasePointerCapture(e.pointerId); return $('#logIn').focus(); }
+    let moved = false;
+    if (LG.open) closeLog(true);
+    btn.onpointermove = m => {
+      if (!moved && Math.abs(m.clientX - x0) < 4) return;
+      moved = true;
+      const t = clampT(snapT(tAt(m.clientX)), lo, hi);
+      setPick(Math.min(from, t), Math.max(from, t), lo, hi);
+    };
+    btn.onpointerup = btn.onpointercancel = u => {
+      btn.onpointermove = btn.onpointerup = btn.onpointercancel = null;
+      if (u.type === 'pointercancel') return closeLog();
+      moved ? openLog() : pickAround(tAt(u.clientX), lo, hi);
+    };
+  };
+  btn.onclick = e => { if (e.detail === 0) pickAround(null, lo, hi); };  // Enter or Space on a focused gap
+}
+function pickAround(t, lo, hi){  // a click takes the whole gap, or the hour around the click when the gap is long
+  let a = lo, b = hi;
+  if (hi - lo > 2 * 3600) { b = Math.min(hi, snapT((t ?? hi) + (t == null ? 0 : 1800))); a = Math.max(lo, b - 3600); b = Math.min(hi, a + 3600); }
+  setPick(a, b, lo, hi); openLog();
+}
+function setPick(a, b, lo, hi){
+  if (b - a < SNAP) { b = Math.min(hi, a + SNAP); a = Math.max(lo, b - SNAP); }
+  Object.assign(LG, {a, b, lo, hi, day: S.day});
+  drawPick();
+}
+const pickEl = document.createElement('div');
+pickEl.className = 'pick'; pickEl.innerHTML = '<b></b><i class="h0" title="drag to change the start"></i><i class="h1" title="drag to change the end"></i>';
+function drawPick(){
+  const tr = $('#track'), pct = t => (t - TL.t0) / TL.span * 100;
+  if (pickEl.parentNode !== tr) { pickEl.classList.remove('bye'); tr.appendChild(pickEl); }
+  pickEl.style.left = pct(LG.a) + '%'; pickEl.style.width = (pct(LG.b) - pct(LG.a)) + '%';
+  pickEl.firstChild.textContent = LG.b - LG.a >= 40 * 60 ? fmtSpan(LG.a, LG.b) : fmtH(LG.b - LG.a);
+  pickEl.classList.toggle('ready', LG.open);
+  if (LG.open) placePop();
+}
+pickEl.querySelectorAll('i').forEach(h => h.onpointerdown = e => {  // the handles: pull either end, five minutes at a time
+  e.preventDefault(); e.stopPropagation(); h.setPointerCapture(e.pointerId);
+  const left = h.classList.contains('h0');
+  h.onpointermove = m => {
+    const t = snapT(tAt(m.clientX));
+    if (left) LG.a = clampT(t, LG.lo, LG.b - SNAP); else LG.b = clampT(t, LG.a + SNAP, LG.hi);
+    drawPick(); clearTimeout(LG.t); LG.t = setTimeout(previewLog, 90);
+  };
+  h.onpointerup = () => { h.onpointermove = h.onpointerup = null; $('#logIn').focus({preventScroll: true}); };
+});
+function openLog(){
+  LG.open = true; LG.day = S.day;
+  const pop = $('#logpop');
+  pop.hidden = false; pop.classList.remove('closing');
+  if (LG.a != null) drawPick(); else { pickEl.remove(); placePop(); }
+  previewLog();
+  $('#logIn').focus({preventScroll: true});
+}
+function closeLog(quick){
+  const was = LG.open; LG.open = false; LG.a = null;
+  $('#logIn').value = ''; $('#lpToks').innerHTML = ''; $('#logIn').blur();  // so Ctrl+Z (undo) reaches the page again
+  const pop = $('#logpop');
+  if (was && !quick && !REDUCED) { pop.classList.add('closing'); setTimeout(() => { if (!LG.open) pop.hidden = true; }, 160); } else pop.hidden = true;
+  if (pickEl.isConnected) { if (quick || REDUCED) pickEl.remove(); else { pickEl.classList.add('bye'); setTimeout(() => LG.a == null && pickEl.remove(), 150); } }
+}
+function placePop(){  // under what you picked (or under the button), its arrow pointing at the middle of it
+  const pop = $('#logpop'), cr = $('#timeline').getBoundingClientRect();
+  const r = (LG.a != null ? pickEl : $('#logBtn')).getBoundingClientRect(), ax = r.left + r.width / 2 - cr.left;
+  const w = pop.offsetWidth, left = Math.max(10, Math.min(cr.width - w - 10, ax - w / 2));
+  pop.style.left = left + 'px';
+  pop.style.top = (LG.a != null ? $('#track').getBoundingClientRect().bottom : r.bottom) - cr.top + 12 + 'px';
+  pop.style.setProperty('--ax', Math.max(18, Math.min(w - 18, ax - left)) + 'px');
+}
+async function previewLog(){  // what will be logged: the span, the client and what it's worth, and anything in the way
+  const v = $('#logIn').value.trim(), seq = LG.seq = (LG.seq || 0) + 1;
+  const span = LG.a != null ? {start: LG.a, dur_min: Math.round((LG.b - LG.a) / 60)} : {};
+  const p = v ? await call('/api/manual/parse', {text: v, day: S.day, ...span}) : null;
+  if (seq !== LG.seq || !LG.open) return;
+  const ok = p && !p.hint;
+  let a = LG.a, b = LG.b;
+  if (ok) { if (p.start != null) a = p.start; if (a != null) b = a + p.dur_min * 60; }
+  $('#lpSpan').textContent = a != null ? `${fmtSpan(a, b)} · ${fmtH(b - a)}`
+    : ok ? `${fmtH(p.dur_min * 60)}, after your last session` : 'when, and for how long? like “1h at 3pm”';
+  const c = ok ? p.client : null, col = c ? client(c)?.color : null, secs = ok ? p.dur_min * 60 : 0;
+  $('#logpop').style.setProperty('--pc', col || 'var(--grey)');
+  pickEl.style.setProperty('--pc', col || 'var(--lime)');
+  pickEl.classList.toggle('moved', LG.a != null && (a !== LG.a || b !== LG.b));
+  const over = a != null ? sessions().filter(s => s.start < b && s.end > a) : [];
+  $('#lpToks').innerHTML = ok ? [c ? `<span class="tok c" style="--c:${col}">${esc(c)}</span>`
+      : `<span class="tok auto" title="no client named: the local model picks one, or it's personal">client: auto</span>`,
+    c && rate(c) ? `<span class="tok">${money(secs / 3600 * rate(c))}</span>` : '',
+    over.length ? `<span class="tok warn">overlaps ${esc(over[0].client)}</span>` : ''].join('') : '';
+  $('#lpHint').innerHTML = p?.hint ? esc(HINT[p.hint] || p.hint) : v ? '<kbd>↵</kbd> log it' : 'say what it was';
+}
+async function logIt(){
+  const inp = $('#logIn'), text = inp.value.trim(), pop = $('#logpop');
+  if (!text) return shake(pop);
+  if (LG.busy) return;
+  LG.busy = true;
+  const span = LG.a != null ? {start: LG.a, dur_min: Math.round((LG.b - LG.a) / 60)} : {};
+  const r = (LG.a != null ? pickEl : pop).getBoundingClientRect();
+  inp.readOnly = true;
+  const slow = setTimeout(() => { pop.classList.add('pending'); $('#lpHint').textContent = 'working out whose it is…'; }, 250);
+  try {
+    const m = await call('/api/manual', {text, day: S.day, ...span});
+    if (m.error) { shake(pop); return $('#lpHint').textContent = HINT[m.error] || m.error; }
+    closeLog(true);
+    TL.fresh = m.id;  // the gap fills in, left to right
+    await refreshDay();
+    await transition('cards', () => render());
+    const col = m.client !== PERSONAL ? color(m.client) : '#9a9aa6';
+    fly(r, `logged · ${fmtH(m.active_s)}`, col, `logged · ${m.task} · ${fmtH(m.active_s)}`, 'logged');
+    snack(`logged · ${m.task}`, async () => { await call('/api/manual/delete', {id: m.id}); await refreshDay(); transition('cards', () => render()); });
+  } finally { clearTimeout(slow); pop.classList.remove('pending'); inp.readOnly = false; LG.busy = false; }
+}
+function logMissed(){  // the button, or L: the most recent gap (its last hour if it's long); no gap, then say when in words
+  const g = TL.gaps.at(-1);
+  if (LG.open) return closeLog();
+  if (g) pickAround(null, g[0], g[1]); else { Object.assign(LG, {a: null, b: null, day: S.day}); openLog(); }
+}
+$('#logBtn').onclick = logMissed;
+$('#lpX').onclick = () => closeLog();
+$('#logIn').oninput = () => { clearTimeout(LG.t); LG.t = setTimeout(previewLog, 120); };
+$('#logIn').onkeydown = e => {
+  e.stopPropagation();
+  if (e.isComposing) return;
+  if (e.key === 'Escape') return closeLog();
+  if (e.key === 'Enter') { e.preventDefault(); logIt(); }
+};
+document.addEventListener('pointerdown', e => { if (LG.open && !e.target.closest('#logpop, .pick, .gap, #logBtn')) closeLog(); });
+addEventListener('resize', () => LG.open && placePop());
 async function refreshDay(){  // re-read this week from the server (a receipt changed the day's sessions)
   const [from, to] = weekOf(S.day);
   S.week = await (await fetch(`/api/range?from=${from}&to=${to}`)).json();
 }
-$('#receipt').onkeydown = async e => {
-  e.stopPropagation();
-  if (e.key === 'Escape') { e.target.value = ''; $('#mtoks').innerHTML = ''; $('#mline').hidden = true; return; }
-  if (e.key !== 'Enter' || !e.target.value.trim()) return;
-  const r = $('#mline .capture').getBoundingClientRect();
-  const m = await call('/api/manual', {text: e.target.value.trim(), day: S.day});
-  if (m.error) return snack('add a length, like 1h or 30m');
-  e.target.value = ''; $('#mtoks').innerHTML = '';
-  await refreshDay();
-  await transition('cards', () => render());
-  const col = m.client !== PERSONAL ? color(m.client) : '#9a9aa6';
-  fly({left: r.left + r.width / 2 - 40, top: r.top, width: 80, height: r.height}, `logged · ${fmtH(m.active_s)}`, col,
-      `logged · ${m.task} · ${fmtH(m.active_s)}`, 'logged');
-};
 async function removeReceipt(i){
   const s = sessions()[i], at = new Date(s.start * 1000);
   await call('/api/manual/delete', {id: s.id});
@@ -1373,7 +1652,8 @@ document.addEventListener('keydown', e => {
   if (e.key==='b') return bill();
   if (e.key==='s') return settings();
   if (e.key==='c') return clients_();
-  if (e.key==='i' || e.key==='/') { e.preventDefault(); return $('#intend').focus(); }
+  if (e.key==='i' || e.key==='/') { e.preventDefault(); return intend(); }
+  if (e.key==='l') { e.preventDefault(); return logMissed(); }
   if (!n) return;
   if (e.key==='j'||e.key==='k'){ S.focus = (S.focus + (e.key==='j'?1:-1) + n) % n; focusCard(S.focus); }
   if (e.key==='y') act(S.focus,'billed');

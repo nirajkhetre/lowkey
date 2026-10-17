@@ -3,6 +3,7 @@ import json
 import os
 import sys
 import tempfile
+import time
 from collections import defaultdict
 from pathlib import Path
 
@@ -173,6 +174,20 @@ def test_receipts_renames_and_off_the_clock():
         m = labeler.add_manual("1h call with acme at 3pm", "2026-10-16")
         assert (m["client"], m["task"], m["active_s"]) == ("Acme Studio", "Call with acme", 3600)
         assert [s["id"] for s in labeler.day_sessions("2026-10-16")] == [m["id"]]           # merged into its day
+        from datetime import datetime
+        ten = datetime(2026, 10, 16, 10, 0).timestamp()
+        g = labeler.add_manual("call with nimbus", "2026-10-16", start=ten, dur_min=45)   # a gap picked on the timeline
+        assert (g["client"], g["start"], g["active_s"]) == ("Nimbus Labs", ten, 2700)
+        assert focus.entry("2h call at 9am", "2026-10-16", ten, 45)["dur_min"] == 120       # the words win
+        soon = time.time() - 60  # a minute ago, for half an hour: not over yet
+        for day, start, dur in (("2026-10-16", None, None), ("2026-10-16", ten + 86400, 30),
+                                (datetime.fromtimestamp(soon).strftime("%Y-%m-%d"), soon, 30)):
+            try:
+                focus.entry("call", day, start, dur)
+                raise AssertionError(f"accepted {day} {start} {dur}")
+            except ValueError as x:
+                assert str(x) in ("how long was it? add a length, like 1h or 30m", "start", "that hasn't happened yet")
+        labeler.delete_manual(g["id"])
         config.save("edits.json", {m["id"]: {"status": "billed"}})
         labeler.rename_client("Acme Studio", "Acme Labs")                                     # history follows the name
         assert labeler.day_sessions("2026-10-16")[0]["client"] == "Acme Labs"
