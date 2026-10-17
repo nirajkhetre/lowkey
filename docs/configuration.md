@@ -45,6 +45,19 @@ Restart lowkey after editing `clients.json`. Settings apply live.
 
 Any app or window whose name or title contains one of these strings (case-insensitive) is **never written to disk**. Add your bank, your messaging apps, anything you'd rather not even have locally.
 
+### `focus` and `distractions` (optional)
+
+```json
+"focus": { "nudge_after_min": 8, "ask_after_min": 10 },
+"distractions": ["Hacker News", "Discord"]
+```
+
+| Key | What it does |
+|---|---|
+| `focus.nudge_after_min` | Minutes on a distraction before the island nudges you back to your intention. Default `8`. At most three nudges an hour. |
+| `focus.ask_after_min` | Minutes on another client's work before the island asks how far you got. Default `10`. |
+| `distractions` | Extra window-title words that count as drifting, on top of the built-in list (YouTube, Netflix, Instagram, Reddit, X, Facebook, WhatsApp, TikTok, Prime Video, Hotstar, Twitch, Steam). |
+
 ## Island settings (`settings.json`)
 
 Change these in the dashboard. Every option has a live preview.
@@ -82,7 +95,8 @@ $env:LOWKEY_MODEL="qwen3:4b"; python -m lowkey         # Windows PowerShell
 data/
 ├── activity-2026-10-16.jsonl   one line per 5-second sample: {"ts", "dur", "app", "title"}
 ├── labels.json                 cached model labels, so each slot is labelled once
-└── edits.json                  your approvals, rejections and edits
+├── edits.json                  your approvals, rejections and edits
+└── intents.json                your intentions: what you said, time on each, how far you got
 ```
 
 Delete `labels.json` to relabel everything, for example after switching models. Delete the whole folder to start fresh.

@@ -9,6 +9,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
+from . import focus
 from .config import CONFIG, DATA, DEMO, LIVE, MODEL, PORT, load, lock, save, update_settings
 from .labeler import WAKE, day_sessions, model_ok
 
@@ -87,6 +88,8 @@ class Handler(SimpleHTTPRequestHandler):
                                    "platform": sys.platform, "island": not DEMO})
         if url.path == "/api/island":  # where the island sits on screen, so the dashboard can send things home to it
             return self.send_json({"island": LIVE.get("island"), "settings": LIVE["settings"]})
+        if url.path == "/api/intents":  # now, what's next (with the reason), what got done today
+            return self.send_json(focus.listing())
         if url.path == "/api/range":
             d, end = datetime.fromisoformat(q["from"]), datetime.fromisoformat(q["to"])
             if not timedelta(0) <= end - d <= timedelta(days=62):
@@ -135,6 +138,15 @@ class Handler(SimpleHTTPRequestHandler):
             return self.send_json({"ok": True})
         if self.path == "/api/settings":
             return self.send_json({"ok": True, "settings": update_settings(self.body())})
+        if self.path == "/api/intents/parse":  # live chips while you type: plain parsing only, instant
+            p = focus.parse(str(self.body()["text"])[:200])
+            return self.send_json({**p, "reason": focus.reason({**p, "created": time.time()}, time.time()) if p["text"] else ""})
+        if self.path == "/api/intents":
+            e = self.body()
+            return self.send_json(focus.add(str(e["text"])[:200], e.get("start") if isinstance(e.get("start"), bool) else None))
+        if self.path == "/api/intents/act":
+            e = self.body()
+            return self.send_json(focus.act(str(e["id"]), str(e["action"]), e.get("value")))
         self.send_json({"error": "not found"}, 404)
 
 

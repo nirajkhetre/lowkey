@@ -114,6 +114,55 @@ def test_api_answers_only_this_machines_pages():
         LIVE.pop("catches", None)
 
 
+def test_intentions_parse_order_and_watch():
+    from datetime import datetime
+    from lowkey import config, focus
+    real, w = config.DATA, dict(focus.W)
+    config.DATA, focus._xs = Path(tempfile.mkdtemp()), []
+    try:
+        now = datetime(2026, 10, 16, 14, 0).timestamp()  # a Friday, 2 pm
+        p = focus.parse("acme login fix by 5, about an hour", now)
+        assert (p["text"], p["client"], p["est_min"], datetime.fromtimestamp(p["due"]).hour) == ("acme login fix", "Acme Studio", 60, 17)
+        assert focus.parse("sat down to fix the sun icon", now)["due"] is None                 # "sat" is not Saturday here
+        assert datetime.fromtimestamp(focus.parse("ship it by 5", now + 5 * 3600)["due"]).day == 17  # 5 pm passed: tomorrow
+
+        a = focus.add("acme login fix by 5, about an hour", now=now)                           # nothing on yet: it starts
+        b = focus.add("nimbus invoice by friday", now=now + 1)
+        c = focus.add("chai & co banner", now=now + 2)
+        assert a["state"] == "now" and [x["id"] for x in focus.order(focus._xs, now)] == [b["id"], c["id"]]
+        assert focus.reason(b, now) == "due in 4h" and focus.reason(c, now) == "₹900/h"
+
+        t = now
+        for _ in range(12):                                                                     # a minute on it
+            t += 5
+            focus.watch("Code.exe", "auth.ts - acme-website", True, t)
+        assert a["spent_s"] == 60 and focus.W["prompt"] is None
+        for _ in range(focus.NUDGE_S // 5):                                                     # then YouTube
+            t += 5
+            focus.watch("chrome.exe", "lofi beats - YouTube", True, t)
+        assert focus.W["prompt"]["kind"] == "nudge" and focus.W["prompt"]["what"] == "YouTube" and a["spent_s"] == 60
+        focus.respond("back", now=t)
+        assert focus.W["prompt"] is None and focus.W["snooze"] > t
+
+        for _ in range(focus.SWITCH_S // 5 + 1):                                               # clearly on Nimbus now
+            t += 5
+            focus.watch("Code.exe", "handlers.py - nimbus-api", True, t + focus.BACK_S)
+        assert focus.W["prompt"]["kind"] == "ask"
+        focus.respond("progress", 50, now=t)                                                    # "halfway"
+        assert a["state"] == "next" and a["progress"] == 50
+        assert focus.W["prompt"]["kind"] == "next" and focus.W["prompt"]["id"] == b["id"]      # due soonest goes next
+        focus.respond("start", now=t)
+        assert b["state"] == "now" and focus.W["prompt"] is None
+        focus.act(b["id"], "done", now=t + 60)
+        assert b["state"] == "done" and focus.listing(t + 60)["done"][0]["id"] == b["id"]
+    finally:
+        config.DATA, focus._xs = real, None
+        focus.W.clear()
+        focus.W.update(w)
+        LIVE.pop("focus", None)
+        LIVE.pop("focus_verdict", None)
+
+
 def test_merge_joins_consecutive_same_client_slots():
     lab = lambda c: {"client": c, "task": f"work for {c}", "billable": c != "Personal", "by": "test"}
     w = lambda: defaultdict(float, {("a", "b"): 300})

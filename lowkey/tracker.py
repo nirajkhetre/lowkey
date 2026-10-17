@@ -11,6 +11,7 @@ import sys
 import time
 from datetime import datetime
 
+from . import focus
 from .config import AFK_S, CONFIG, DATA, LIVE, SAMPLE_S
 
 try:
@@ -84,7 +85,9 @@ def track():
         try:
             app, title, idle, pid = foreground()
             LIVE["idle"] = idle
-            if should_record(app, title, idle, pid, never):
+            recorded = should_record(app, title, idle, pid, never)
+            focus.watch(app, title, recorded)  # are you on what you said you'd do?
+            if recorded:
                 ev = {"ts": round(time.time()), "dur": SAMPLE_S, "app": app, "title": title[:200]}
                 minutes = LIVE.setdefault("minutes", {})  # feeds the island's activity bars
                 m = int(time.time() // 60)

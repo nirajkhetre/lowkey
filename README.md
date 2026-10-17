@@ -106,6 +106,17 @@ Every client gets its own little blob: a shape picked from the client's name, in
 
 <p align="center"><img src="docs/images/mascot-moods.png" alt="The creature's nine moods" width="80%"></p>
 
+### 🎯 Intentions
+
+Say what you're about to do, in one line: *"acme login fix by 5, about an hour"*. lowkey reads it as you type (client, deadline, length pop in as chips; plain parsing, so it's predictable), and then holds you to it, gently.
+
+- **It knows when you've drifted, because it already sees what you're on.** Your own words or your client's hints in the window: on it. Another client's window, or a known distraction (YouTube, Instagram…): drifting. Everything else (a terminal, some docs) is neutral, because research is part of the work.
+- **Drifting earns a nudge, rarely.** After 8 minutes on a distraction the island peeks out: *"8 min on YouTube · back to acme login fix?"* At most three an hour, never while you're away or off the record, and an ignored nudge just counts as "later".
+- **Moved on to another client? It asks how far you got.** One tap: just started, halfway, almost, done. lowkey can't see how *finished* something is, so it never guesses a percentage: the ring is time against your estimate, and the progress is your word.
+- **Then it tells you what's next, and why.** The rule is readable, not a black box: overdue first, then due soon, then the better-paid client, then whatever has waited longest.
+
+<p align="center"><img src="docs/images/island-focus.png" alt="A nudge when you drift, one-tap progress when you move on, and what's next with its reason" width="100%"></p>
+
 ### 🎛️ Every control, explained
 
 **Hover anything on the island and it tells you what it does,** in the line under the client name.
@@ -125,6 +136,11 @@ Every client gets its own little blob: a shape picked from the client's name, in
 | ◔ **today** | island, open card | Billable time today. The ring fills up towards your daily goal (`daily_goal_h`). Click to open the dashboard. |
 | ₹ **earned today** | island, open card | Earned today at your client rates; it glows when it ticks up. Click to make the invoice. |
 | ● **to review** | island, open card | Sessions you haven't approved yet. Its dot pulses while something waits; click to review them. |
+| **what's next?** | dashboard, top | One line for your next intention. Chips show what lowkey understood; `Enter` sends it to the island. `I` jumps here. |
+| **done · set aside** | dashboard, now | Finish the current intention, or put it back in line and say how far you got. |
+| **next up** | dashboard, now | Your queue, in order, each with its reason. Click one to start it (it grows into "now"); × drops it. |
+| **back on it · later · switch** | island, after a nudge | Back to what you said you'd do, snooze it, or say you've moved on. |
+| **just started · halfway · almost · done** | island, when you move on | How far you got, in one tap. Then it suggests what's next. |
 | **bill it / nah** | dashboard card | The two buttons on a session waiting for review: approve it for the invoice, or leave it off. Either way it settles into a sticker, flies home to the island, and **undo** stays on offer. |
 | **the client sticker** | dashboard card | Click it to move the session to another client. |
 | **the line itself** | dashboard card | Click it to edit the invoice line (`Enter` saves, `Esc` cancels). |
@@ -136,7 +152,7 @@ Every client gets its own little blob: a shape picked from the client's name, in
 | **send the bill** | dashboard header | The one filled button: a receipt-style invoice per client from approved sessions → PDF or CSV. |
 | **undo** | snackbar | Every change shows what happened with an undo while the line runs out (5 s). `Ctrl`/`⌘` + `Z` works too. |
 
-**Keyboard in the dashboard:** `J`/`K` move · `Y` bill it · `N` nah · `E` edit · `←`/`→` day · `B` bill · `W` wrapped · `S` settings · `Ctrl+Z` undo · `Esc` close.
+**Keyboard in the dashboard:** `I` what's next · `J`/`K` move · `Y` bill it · `N` nah · `E` edit · `←`/`→` day · `B` bill · `W` wrapped · `S` settings · `Ctrl+Z` undo · `Esc` close.
 
 ### 🧾 The dashboard
 

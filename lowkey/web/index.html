@@ -98,6 +98,52 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22p
 .queue:hover .qfoot .sub:first-child{opacity:0;transform:translateY(-5px)}
 .queue:hover .qfoot .keys{opacity:1;transform:none}            /* the shortcuts show up when you reach for the queue */
 
+
+/* focus: one intention at a time. Now (with an honest ring: time against your estimate), one line to say what's
+   next, and the queue with its reasons. Not a list app: there's no list screen. */
+.focus{padding:16px 18px;margin-bottom:22px;display:grid;gap:14px}
+.fnow{display:flex;align-items:center;gap:14px;min-height:58px}
+.ring{width:56px;height:56px;flex:none;position:relative;--c:var(--lime)}
+.ring svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible}
+.ring circle{fill:none;stroke-width:6}
+.ring .bg{stroke:var(--grey)}
+.ring .fg{stroke:var(--c);stroke-linecap:round;transition:stroke-dashoffset .9s var(--spring-soft),stroke .3s}
+.ring b{position:absolute;inset:0;display:grid;place-items:center;font:700 12px/1 var(--mono)}
+.ring.full .fg{filter:drop-shadow(0 0 4px var(--c))}
+.fnow .what{flex:1;min-width:0}
+.kick{font-size:12px;font-weight:800;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted)}
+.fnow h3{margin:2px 0 4px;font-size:22px;letter-spacing:-.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font:600 12.5px var(--mono);color:var(--muted)}
+.tag2{display:inline-flex;align-items:center;gap:6px;border:1.5px solid var(--ink);border-radius:999px;padding:1px 9px;font:800 12.5px var(--display);background:var(--c,var(--paper));color:#111}
+.tag2.side{background:var(--paper);color:var(--ink)}
+.onit i{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--c);margin-right:5px;animation:beat 2.4s ease-in-out infinite}
+.drift{background:var(--yellow);color:#111;border:1.5px solid var(--ink);border-radius:999px;padding:1px 9px;font:800 12.5px var(--display)}
+.factions{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.factions .seg{animation:pop .4s var(--spring) both}
+.capture{display:flex;align-items:center;gap:10px;border:var(--line);border-radius:14px;background:var(--bg);padding:6px 8px 6px 14px;transition:box-shadow .3s var(--spring),transform .3s var(--spring)}
+.capture:focus-within{box-shadow:var(--shadow-sm);transform:translate(-1px,-1px)}
+.capture svg{width:18px;height:18px;flex:none;stroke:var(--muted);fill:none;stroke-width:2.2;stroke-linecap:round}
+.capture input{flex:1;min-width:0;border:0;background:none;font:700 16px var(--display);outline:none;color:var(--ink);padding:6px 0}
+.capture input::placeholder{color:var(--muted);opacity:.8;transition:opacity .3s}
+.capture input.swap::placeholder{opacity:0}
+.capture kbd{opacity:.6}
+.toks{display:flex;gap:6px;flex-wrap:wrap}
+.tok{border:1.5px solid var(--ink);border-radius:999px;padding:2px 9px;font:800 12.5px var(--display);background:var(--paper);white-space:nowrap;animation:pop .35s var(--spring) both}
+.tok.c{background:var(--c);color:#111}
+@keyframes pop{from{transform:scale(.6);opacity:0}}
+.nexts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.nx{display:inline-flex;align-items:center;gap:8px;border:var(--line);border-radius:999px;padding:5px 6px 5px 12px;background:var(--paper);cursor:pointer;font:700 14px var(--display);color:inherit;
+  transition:transform .4s var(--spring),box-shadow .4s var(--spring)}
+.nx:hover{transform:translate(-1px,-1px);box-shadow:3px 3px 0 var(--ink)}
+.nx:active{transform:translate(1px,1px);box-shadow:none;transition-duration:.06s}
+.nx>i{width:9px;height:9px;border-radius:50%;background:var(--c);border:1.5px solid var(--ink)}
+.nx small{font:600 11.5px var(--mono);color:var(--muted)}
+.nx .x{width:22px;height:22px;border-radius:50%;display:grid;place-items:center;opacity:0;transition:opacity .2s,background .2s}
+.nx:hover .x{opacity:.7}.nx .x:hover{opacity:1;background:var(--bg)}
+.nx .x svg{width:12px;height:12px;stroke:currentColor;stroke-width:2.6;fill:none;stroke-linecap:round}
+.donecount{font:600 12.5px var(--mono);color:var(--muted);margin-left:auto}
+html.vt-focus .vtf{view-transition-name:var(--vt)}
+
 /* rolling digits: each digit is a column that rolls to its new value (Apple's numeric text transition) */
 .roll{display:inline-flex;line-height:1}
 .dg{display:inline-block;height:1em;overflow:hidden}
@@ -170,7 +216,7 @@ header{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22p
 @keyframes shimmer{from{background-position:100% 50%}to{background-position:0 50%}}
 
 /* first load: sections rise in on a stagger, the day's blocks grow out of the timeline */
-body.intro main>:not(.hero),body.intro .hero>*,body.intro #grid>*{animation:rise .8s var(--spring-soft) both;animation-delay:calc(var(--d,0) * 55ms)}
+body.intro .focus,body.intro main>:not(.hero),body.intro .hero>*,body.intro #grid>*{animation:rise .8s var(--spring-soft) both;animation-delay:calc(var(--d,0) * 55ms)}
 body.intro .block,body.intro .split>div{animation:grow .9s var(--spring-soft) both;animation-delay:calc(260ms + var(--i,0) * 45ms)}
 @keyframes rise{from{opacity:0;transform:translateY(16px)}}
 @keyframes grow{from{transform:scaleX(0)}}
@@ -271,10 +317,10 @@ footer b{color:var(--ink)}
 html.vt-cards .s{view-transition-name:var(--vt)}
 html.vt-cards .vt-a{view-transition-name:var(--va)}
 html.vt-cards .vt-b{view-transition-name:var(--vb)}
-html.vt-cards::view-transition-old(root),html.vt-sheet::view-transition-old(root){animation:none;opacity:0}
-html.vt-cards::view-transition-new(root),html.vt-sheet::view-transition-new(root){animation:none}
-html.vt-cards::view-transition-new(*):only-child{animation:vt-in .42s var(--enter) both}
-html.vt-cards::view-transition-old(*):only-child{animation:vt-out .2s var(--exit) both}
+html.vt-cards::view-transition-old(root),html.vt-sheet::view-transition-old(root),html.vt-focus::view-transition-old(root){animation:none;opacity:0}
+html.vt-cards::view-transition-new(root),html.vt-sheet::view-transition-new(root),html.vt-focus::view-transition-new(root){animation:none}
+html.vt-cards::view-transition-new(*):only-child,html.vt-focus::view-transition-new(*):only-child{animation:vt-in .42s var(--enter) both}
+html.vt-cards::view-transition-old(*):only-child,html.vt-focus::view-transition-old(*):only-child{animation:vt-out .2s var(--exit) both}
 @keyframes vt-in{from{opacity:0;transform:scale(.94) translateY(10px)}}
 @keyframes vt-out{to{opacity:0;transform:scale(.94)}}
 /* days: the content slides along the x axis, the date rolls */
@@ -329,6 +375,16 @@ html.still *,html.still *::before,html.still *::after{transition:none!important;
     </div>
     <button class="btn lime" id="openBill">send the bill</button>
   </header>
+
+  <section class="card focus" id="focus" style="--d:0">
+    <div class="fnow" id="fnow"></div>
+    <label class="capture" for="intend">
+      <svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>
+      <input id="intend" autocomplete="off" spellcheck="false" aria-label="what's next" placeholder="what's next? acme login fix by 5, about an hour">
+      <span class="toks" id="toks"></span><kbd>↵</kbd>
+    </label>
+    <div class="nexts" id="fnext"></div>
+  </section>
 
   <main>
     <section class="hero" style="--d:0">
@@ -525,9 +581,10 @@ async function boot(){
   pill.querySelector('span').textContent = st.model_ok ? `100% on-device · ${st.model}` : `${st.model} offline · keyword mode`;
   $('#foot').innerHTML = `<b>0 bytes</b> of your screen time left this laptop. labels by <b>${st.model}</b> via ollama on 127.0.0.1${st.demo ? ' · <b>demo week</b>' : ''}<br>open source — read every line of what watches you.`;
   S.day = S.days.at(-1) || iso(new Date());
-  await load();
+  await Promise.all([load(), loadFocus()]);
   setTimeout(() => document.body.classList.remove('intro'), 1800);  // the entrance plays once
-  ({'#settings': () => settings(), '#wrapped': () => wrapped(), '#bill': () => bill(), '#review': review})[location.hash]?.();  // deep links (island + docs)
+  const intend = () => { scrollTo({top: 0, behavior: REDUCED ? 'auto' : 'smooth'}); $('#intend').focus({preventScroll: true}); };
+  ({'#settings': () => settings(), '#wrapped': () => wrapped(), '#bill': () => bill(), '#review': review, '#intend': intend})[location.hash]?.();  // deep links (island + docs)
 }
 
 async function load(){
@@ -664,6 +721,119 @@ function shiftDay(n){
   if (S.week[next]) transition(n < 0 ? 'back' : 'fwd', () => { S.day = next; S.focus = 0; render(); });
   else { S.day = next; load(); }
 }
+
+/* ---------- intentions: one at a time, held to gently ---------- */
+const F = {data: null, aside: false};
+const RING = 2 * Math.PI * 24;
+const minutes = s => Math.round((s || 0) / 60);
+async function loadFocus(kind){
+  const data = await (await fetch('/api/intents')).json();
+  if (kind) await transition(kind, () => { F.data = data; renderFocus(); }); else { F.data = data; renderFocus(); }
+}
+const call = (url, body) => fetch(url, {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)}).then(r => r.json());
+function renderFocus(){
+  const d = F.data || {next: [], done: []}, n = d.now;
+  if (n){
+    const spent = minutes(n.spent_s), est = n.est_min, frac = est ? Math.min(1, spent / est) : 0;
+    const status = d.drift_min >= 1 && d.what ? `<span class="drift">drifting · ${esc(d.what)} ${d.drift_min}m</span>`
+      : d.verdict === 'on' ? `<span class="onit" style="--c:${n.color}"><i></i>on it</span>` : '';
+    $('#fnow').innerHTML = `
+      <div class="ring ${frac >= 1 ? 'full' : ''}" style="--c:${n.color}" title="time on it, against your estimate"><svg viewBox="0 0 56 56">
+        <circle class="bg" cx="28" cy="28" r="24"/><circle class="fg" cx="28" cy="28" r="24" stroke-dasharray="${RING}" stroke-dashoffset="${RING * (1 - frac)}"/></svg><b>${spent}m</b></div>
+      <div class="what vtf" style="--vt:f-${tag(n.id)}">
+        <div class="kick">now</div>
+        <h3 title="${esc(n.text)}">${esc(n.text)}</h3>
+        <div class="fline">${n.client ? `<span class="tag2 ${n.client === PERSONAL ? 'side' : ''}" style="--c:${n.color}">${esc(n.client)}</span>` : ''}
+          <span>${est ? `${spent} of ${est} min` : `${spent} min on it`}</span><i>·</i><span>${esc(n.reason)}</span>${status ? '<i>·</i>' + status : ''}</div>
+      </div>
+      <div class="factions">${F.aside
+        ? `<div class="seg" id="howfar"><span class="thumb"></span><button data-p="10">just started</button><button data-p="50">halfway</button><button data-p="80">almost</button></div>
+           <button class="btn quiet" id="faCancel">cancel</button>`
+        : `<button class="btn quiet" id="fAside" title="put it back in line, and say how far you got">set aside</button><button class="btn lime" id="fDone">done</button>`}</div>`;
+    if (F.aside) { $('#howfar').querySelectorAll('button').forEach(b => b.onclick = () => setAside(n, +b.dataset.p, b)); $('#faCancel').onclick = () => { F.aside = false; renderFocus(); }; }
+    else { $('#fAside').onclick = () => { F.aside = true; renderFocus(); }; $('#fDone').onclick = e => finish(n, e.currentTarget); }
+  } else {
+    const top = d.next[0];
+    $('#fnow').innerHTML = `<div class="ring" style="--c:var(--grey)"><svg viewBox="0 0 56 56"><circle class="bg" cx="28" cy="28" r="24"/></svg><b>—</b></div>
+      <div class="what"><div class="kick">now</div><h3>${top ? 'nothing on.' : 'nothing on yet.'}</h3>
+        <div class="fline">${top ? `next up is <b style="color:var(--ink)">${esc(top.text)}</b> · ${esc(top.reason)}` : 'say what you\'re about to do, and lowkey keeps you on it'}</div></div>
+      ${top ? `<div class="factions"><button class="btn lime" id="fStart">start it</button></div>` : ''}`;
+    if (top) $('#fStart').onclick = e => start(top, e.currentTarget);
+  }
+  const shown = F.all ? d.next : d.next.slice(0, 3), more = d.next.length - shown.length;
+  $('#fnext').innerHTML = (d.next.length ? `<span class="kick">next up</span>` : '') +
+    shown.map(x => `<button class="nx vtf" style="--c:${x.color};--vt:f-${tag(x.id)}" data-id="${x.id}" title="start it">
+      <i></i>${esc(x.text)} <small>${esc(x.reason)}</small><span class="x" data-drop="${x.id}" title="drop it" aria-label="drop">${ICON.x}</span></button>`).join('') +
+    (more ? `<button class="link" id="fMore" title="the rest of the queue">+${more} more</button>` : '') +
+    (d.done.length ? `<span class="donecount" title="${esc(d.done.map(x => x.text).join(' · '))}">${d.done.length} done today</span>` : '');
+  if (more) $('#fMore').onclick = () => transition('focus', () => { F.all = true; renderFocus(); });
+  $('#fnext').querySelectorAll('.nx').forEach(b => b.onclick = e => {
+    const x = d.next.find(i => i.id === b.dataset.id);
+    if (e.target.closest('[data-drop]')) return drop(x, b);
+    start(x, b);
+  });
+}
+async function start(x, el){
+  const r = el.getBoundingClientRect();
+  await call('/api/intents/act', {id: x.id, action: 'start'});
+  F.aside = false;
+  await loadFocus('focus');
+  fly(r, `now: ${x.text}`, x.color, `now: ${x.text}`, 'intend');
+}
+async function finish(n, el){
+  const r = el.getBoundingClientRect();
+  burst(el);
+  await call('/api/intents/act', {id: n.id, action: 'done'});
+  await loadFocus('focus');
+  const took = minutes(n.spent_s);
+  fly(r, `done · ${took}m`, n.color, `done · ${n.text} · ${took} min`, 'done');
+  snack(`done · ${n.text}`);
+}
+async function setAside(n, p, el){
+  const r = el.getBoundingClientRect(), how = {10: 'just started', 50: 'halfway', 80: 'almost there'}[p];
+  await call('/api/intents/act', {id: n.id, action: 'progress', value: p});
+  F.aside = false;
+  await loadFocus('focus');
+  fly(r, `set aside · ${how}`, n.color, `set aside · ${n.text} · ${how}`, 'aside');
+}
+async function drop(x, el){
+  await call('/api/intents/act', {id: x.id, action: 'drop'});
+  await loadFocus('focus');
+  snack(`dropped · ${x.text}`, async () => { await call('/api/intents', {text: x.text, start: false}); loadFocus('focus'); });
+}
+/* the one line: chips pop in as you type (plain parsing, instant); Enter sends it to the island */
+const EXAMPLES = ["acme login fix by 5, about an hour", "nimbus invoice tomorrow, 30m", "chai banner by friday, 2h", "reply to client emails ~20 min"];
+let parseT, exampleI = 0;
+$('#intend').oninput = () => { clearTimeout(parseT); parseT = setTimeout(previewIntent, 120); };
+async function previewIntent(){
+  const v = $('#intend').value.trim();
+  if (!v) return $('#toks').innerHTML = '';
+  const p = await call('/api/intents/parse', {text: v}), have = new Set([...$('#toks').children].map(c => c.dataset.k));
+  const due = p.due ? new Date(p.due * 1000) : null, today = due && due.toDateString() === new Date().toDateString();
+  const toks = [p.client && ['c', `<span class="tok c" style="--c:${client(p.client)?.color || 'var(--paper)'}" data-k="c:${esc(p.client)}">${esc(p.client)}</span>`],
+                due && ['d', `<span class="tok" data-k="d:${p.due}">${today ? '' : due.toLocaleDateString([], {weekday:'short'}).toLowerCase() + ' '}${due.toLocaleTimeString([], {hour:'numeric', minute:'2-digit'}).toLowerCase()}</span>`],
+                p.est_min && ['e', `<span class="tok" data-k="e:${p.est_min}">${p.est_min >= 60 ? (p.est_min / 60).toFixed(p.est_min % 60 ? 1 : 0) + 'h' : p.est_min + 'm'}</span>`]].filter(Boolean);
+  $('#toks').innerHTML = toks.map(([, h]) => h).join('');
+  [...$('#toks').children].forEach(c => { if (have.has(c.dataset.k)) c.style.animation = 'none'; });  // only new chips pop
+}
+$('#intend').onkeydown = async e => {
+  e.stopPropagation();
+  if (e.key === 'Escape') { e.target.value = ''; $('#toks').innerHTML = ''; return e.target.blur(); }
+  if (e.key !== 'Enter' || !e.target.value.trim()) return;
+  const r = $('.capture').getBoundingClientRect(), text = e.target.value.trim();
+  e.target.value = ''; $('#toks').innerHTML = '';
+  const it = await call('/api/intents', {text});
+  if (it.error) return snack("couldn't read that one");
+  await loadFocus('focus');
+  const where = it.state === 'now' ? 'now' : 'next up';
+  fly({left: r.left + r.width / 2 - 40, top: r.top, width: 80, height: r.height}, `${where}: ${it.text}`,
+      it.client ? client(it.client)?.color || '#9a9aa6' : '#9a9aa6', `${where}: ${it.text}`, 'intend');
+};
+setInterval(() => {  // rotate the examples, softly
+  const i = $('#intend'); if (document.activeElement === i || i.value) return;
+  i.classList.add('swap'); setTimeout(() => { exampleI = (exampleI + 1) % EXAMPLES.length; i.placeholder = `what's next? ${EXAMPLES[exampleI]}`; i.classList.remove('swap'); }, 300);
+}, 4500);
+setInterval(() => { if (!document.hidden && !F.aside && document.activeElement !== $('#intend')) loadFocus(); }, 20000);  // time and drift, live
 
 /* ---------- sheets ---------- */
 function openSheet(modal, from){  // the button you pressed grows into the sheet (when the browser can morph)
@@ -841,6 +1011,7 @@ document.addEventListener('keydown', e => {
   if (e.key==='w') return wrapped();
   if (e.key==='b') return bill();
   if (e.key==='s') return settings();
+  if (e.key==='i' || e.key==='/') { e.preventDefault(); return $('#intend').focus(); }
   if (!n) return;
   if (e.key==='j'||e.key==='k'){ S.focus = (S.focus + (e.key==='j'?1:-1) + n) % n; focusCard(S.focus); }
   if (e.key==='y') act(S.focus,'billed');

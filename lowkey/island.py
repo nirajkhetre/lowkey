@@ -17,6 +17,7 @@ from PySide6.QtGui import QBrush, QColor, QCursor, QFont, QFontMetricsF, QFontDa
 from PySide6.QtWidgets import QApplication, QWidget
 
 from . import jelly
+from . import focus
 from .config import PERSONAL, update_settings
 from .mascot import Mascot
 
@@ -42,7 +43,7 @@ def lerp_rect(a, b, u):
     return QRectF(*(x + (y - x) * u for x, y in zip(a.getRect(), b.getRect())))
 
 
-SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 214), "settings": (440, 230)}
+SIZES = {"lip": (150, 8), "pill": (330, 42), "toast": (360, 48), "open": (440, 214), "settings": (440, 230), "prompt": (440, 126)}
 FONTS = Path(__file__).parent / "web" / "fonts"  # Bricolage Grotesque, Instrument Serif, Geist Mono (all OFL)
 EAR, PAD = 10, 24  # concave ears where the notch meets the screen edge; room for the soft shadow
 UNDO_S = 5.0  # how long "not work" can be undone
@@ -185,7 +186,7 @@ class Island(QWidget):
         self.setAttribute(Qt.WA_MacAlwaysShowToolWindow)  # macOS hides tool windows when the app is inactive
         self.setMouseTracking(True)
         self.W, self.H = Spring(SIZES["lip"][0]), Spring(SIZES["lip"][1])
-        self.fade = {m: Spring(0, 320, 34) for m in ("pill", "toast", "open", "settings")}
+        self.fade = {m: Spring(0, 320, 34) for m in ("pill", "toast", "open", "settings", "prompt")}
         self.dark = Spring(0, 90, 19)  # 0 = on the record, 1 = midnight
         self.mode, self.force, self.pinned, self.click_open = "lip", None, False, False
         self.hover_since = self.left_at = None
@@ -202,6 +203,7 @@ class Island(QWidget):
         self.pin_s = Spring(0, 260, 20)
         self.in_settings, self.hold_until = False, 0.0  # after a change moves it, it waits open for you
         self.quitting = 0.0  # when "quit lowkey" was pressed: it tucks away, then the app ends
+        self.prompt_at, self.ring, self.last_prompt = None, (0.0, GREY), None  # the prompt on show; the info line's ring
         self.more, self.more_s = False, Spring(0, 300, 28)  # the footer's rarer actions
         self.notice, self.notice_until = "", 0.0
         self.thumbs = {}  # segmented-control thumbs, sliding between options
@@ -255,6 +257,11 @@ class Island(QWidget):
     def pick_mode(self, now):
         if self.force:
             return self.force
+        if (self.live.get("focus") or {}).get("prompt") and not self.in_settings and not self.quitting:
+            if self.frameGeometry().contains(QCursor.pos()):
+                self.left_at, self.hold_until = None, 0.0
+                self.hover_since = self.hover_since or now
+            return "prompt"  # it asked you something: it stays until you answer (or it times out)
         resting = "pill" if self.pinned or self.rest == "pill" else "lip"
         base = "toast" if now < self.toast_until else resting
         if self.frameGeometry().contains(QCursor.pos()):
@@ -267,8 +274,8 @@ class Island(QWidget):
             return "pill" if dwell > 0.12 else self.mode
         self.hover_since = None
         self.left_at = self.left_at or now
-        if now - self.left_at > 0.35 and now > self.hold_until:  # small grace so it doesn't flicker
-            self.click_open = self.in_settings = self.more = False
+        if (now - self.left_at > 0.35 and now > self.hold_until) or self.mode == "prompt":  # small grace so it doesn't flicker
+            self.click_open = self.in_settings = self.more = False  # (an answered question hands back at once)
             return base
         return self.mode
 
@@ -387,6 +394,7 @@ class Island(QWidget):
         self.over, self.rest = st.get("taskbar") == "over", st.get("rest", "lip")
         self.watch_events(now)
         self.catch_changes(now)
+        self.watch_prompt(now)
         self.fly_tick(now)
         self.quip = self.mascot.update(now)
         self.disabled = {"personal"} if (L.get("paused") or L.get("client") in (None, "", PERSONAL)) else set()
@@ -563,7 +571,7 @@ class Island(QWidget):
             self.draw_lip(p, b, now, min(1, lip))
         self.buttons = {}
         for mode, draw in (("pill", self.draw_pill), ("toast", self.draw_toast), ("open", self.draw_open),
-                           ("settings", self.draw_settings)):
+                           ("settings", self.draw_settings), ("prompt", self.draw_prompt)):
             a = max(0.0, min(1.0, self.fade[mode].x))
             if a > 0.02:
                 p.setOpacity(a)
@@ -636,16 +644,36 @@ class Island(QWidget):
         return now - start if start and not self.live.get("paused") else 0
 
     def draw_pill(self, p, b, now):
+        """Creature, name, then the time and today's money on the trailing edge. With an intention on, the name is
+        what you said you'd do and the time is minutes on it, with a small ring against your estimate."""
         L, col = self.live, self.color()
         cy = b.top() + 21
         self.avatar(p, QPointF(b.left() + 25, cy), 15, now)
-        title, _ = self.status()
+        fz = None if L.get("paused") else (L.get("focus") or {}).get("now")
+        live = L.get("client") and not L.get("paused")
+        right = b.right() - 100  # the time ends here; the money sits after it
+        if live or fz:
+            p.setFont(font(12.5, QFont.Normal, NUM))
+            spent = round(fz["spent_s"] / 60) if fz else 0
+            when = (f"{spent}/{fz['est_min']}m" if fz.get("est_min") else f"{spent}m") if fz else clock(self.session_s(now))
+            tw = QFontMetricsF(p.font()).horizontalAdvance(when)
+            p.setPen(DIM)
+            p.drawText(QRectF(right - tw - 2, b.top(), tw + 2, 42), Qt.AlignVCenter | Qt.AlignRight, when)
+            right -= tw + 8
+            if fz:  # the ring sits right before the minutes it measures
+                self.mini_ring(p, QPointF(right - 6, cy), 6.5, *self.focus_ring(fz))
+                right -= 20
+        if live:
+            p.setFont(font(13.5, QFont.Bold, NUM))
+            p.setPen(col)
+            p.drawText(QRectF(b.right() - 96, b.top(), 82, 42), Qt.AlignVCenter | Qt.AlignRight, f"{self.cur}{L.get('money', 0):,.0f}")
         p.setPen(TXT)
         p.setFont(font(14, QFont.Bold))
-        name = QFontMetricsF(p.font()).elidedText(title, Qt.ElideRight, 140)
-        p.drawText(QRectF(b.left() + 48, b.top(), 150, 42), Qt.AlignVCenter | Qt.AlignLeft, name)
-        if L.get("client") and not L.get("paused") and L.get("idle", 0) < 300:  # a tiny live squiggle
-            ex = b.left() + 48 + QFontMetricsF(p.font()).horizontalAdvance(name) + 12
+        room = max(40.0, right - 8 - (b.left() + 48))
+        name = QFontMetricsF(p.font()).elidedText(fz["text"] if fz else self.status()[0], Qt.ElideRight, room)
+        p.drawText(QRectF(b.left() + 48, b.top(), room + 4, 42), Qt.AlignVCenter | Qt.AlignLeft, name)
+        ex = b.left() + 48 + QFontMetricsF(p.font()).horizontalAdvance(name) + 12
+        if not fz and live and L.get("idle", 0) < 300 and ex + 22 < right:  # a tiny live squiggle, when there's room
             sq = QPainterPath(QPointF(ex, cy))
             for i in range(1, 21):
                 t = i / 20
@@ -653,13 +681,6 @@ class Island(QWidget):
             p.setPen(QPen(col, 2, Qt.SolidLine, Qt.RoundCap, Qt.RoundJoin))
             p.setBrush(Qt.NoBrush)
             p.drawPath(sq)
-        if L.get("client") and not L.get("paused"):
-            p.setFont(font(13.5, QFont.Bold, NUM))
-            p.setPen(col)
-            p.drawText(QRectF(b.right() - 96, b.top(), 82, 42), Qt.AlignVCenter | Qt.AlignRight, f"{self.cur}{L.get('money', 0):,.0f}")
-            p.setPen(DIM)
-            p.setFont(font(12.5, QFont.Normal, NUM))
-            p.drawText(QRectF(b.right() - 176, b.top(), 76, 42), Qt.AlignVCenter | Qt.AlignRight, clock(self.session_s(now)))
 
     def draw_toast(self, p, b, now):
         c = self.toast_color
@@ -719,6 +740,7 @@ class Island(QWidget):
         p.drawText(QRectF(x + W - 200, y + 38, 196, 18), Qt.AlignRight | Qt.AlignVCenter, "earned today")
 
         title, sub = self.status()
+        fz = None if paused else (L.get("focus") or {}).get("now")
         tw = hit.left() - 12 - (x + 52)
         p.setPen(TXT)
         p.setFont(font(23, QFont.Normal, SERIF, italic=True) if paused else font(17, QFont.ExtraBold))
@@ -755,11 +777,21 @@ class Island(QWidget):
             src, text, ink, icon = "cap:" + self.cap_key, cap, QColor(236, 238, 245), "info"
         elif self.quip:
             src, text, ink, icon = "quip:" + self.quip, self.quip, QColor(244, 244, 248), "bubble"
+        elif fz:  # what you said you'd do, how long you've been on it, or that you've drifted
+            fd = self.live.get("focus") or {}
+            spent, est = round(fz["spent_s"] / 60), fz.get("est_min")
+            drifting = fd.get("drift_min") and fd.get("what")
+            text = (f"drifting · {fd['what']} {fd['drift_min']}m · you said: {fz['text']}" if drifting else
+                    f"now: {fz['text']} · {spent}{f'/{est}' if est else ''} min")
+            src, ink, icon = f"focus:{fz['id']}:{bool(drifting)}", QColor(236, 238, 245), "ring"
+            self.ring = self.focus_ring(fz)
         else:
             src, text, ink, icon = "task", sub, QColor(214, 214, 220), None
         base = p.opacity()
         line, f = self.info_line(p, "open", src, text, ink, icon, x, y + 64, W, col, now,
                                  self.task_t0 if src == "task" and sub == self.task else None)
+        if src == "task" or src.startswith("focus:"):  # the line itself opens your intentions in the dashboard
+            self.buttons["intend"] = QRectF(x, y + 60, W, 40)
         if undo:  # the underline doubles as the countdown: it shrinks until the offer expires
             ux = line.left() + QFontMetricsF(f).horizontalAdvance("moved to side quests. ")
             uf = font(13.5, QFont.Bold)
@@ -1034,12 +1066,102 @@ class Island(QWidget):
             jelly.check(p, QPointF(tx + 8, top + 9), 8.5, age, bright, not self.calm)
         elif icon == "bubble":
             jelly.bubble(p, QPointF(tx + 9, top + 8), 8.5, jelly.PORCELAIN)
+        elif icon == "ring":
+            self.mini_ring(p, QPointF(tx + 8, top + 9), 6.5, *self.ring)
         p.setPen(ink)
         f = font(13.5, QFont.Medium)
         p.setFont(f)
         line = QRectF(tx + (24 if icon else 0), top, W - (24 if icon else 0), 38)
         p.drawText(line, Qt.TextWordWrap | Qt.AlignLeft | Qt.AlignTop, text)
         return line, f
+
+    # ---------- intentions: the island speaks up, rarely ----------
+    def watch_prompt(self, now):
+        """A prompt that nobody answers retracts on its own (an ignored nudge counts as "later"), so the island
+        never sits there nagging. The creature reacts when one appears: curious on a nudge, happy on a finish."""
+        pr = (self.live.get("focus") or {}).get("prompt")
+        if not pr:
+            self.prompt_at = None
+            return
+        if pr["at"] != self.prompt_at:
+            self.prompt_at = pr["at"]
+            self.mascot.react({"nudge": "curious", "ask": "surprised", "done": "party"}.get(pr["kind"], "surprised"), 2.5)
+        if not self.frameGeometry().contains(QCursor.pos()):
+            if now - pr["at"] > {"nudge": 30, "ask": 90, "next": 25, "done": 8}.get(pr["kind"], 30):
+                focus.respond("later" if pr["kind"] == "nudge" else "dismiss", now=now)
+
+    def draw_prompt(self, p, b, now):
+        """Three lines at most, and the answer is always one tap: a nudge when you've drifted, "how far did you
+        get?" when you've moved on, and what's next when something wraps up."""
+        pr = (self.live.get("focus") or {}).get("prompt") or self.last_prompt  # keep the words while it fades out
+        if not pr:
+            return
+        self.last_prompt = pr
+        it, kind = pr.get("item") or {}, pr["kind"]
+        col = QColor(it.get("color") or "#9a9aa6")
+        col = col if col.lightness() > 60 else QColor("#7AA2FF")
+        x, y0, W = b.left() + 20, b.top(), b.width() - 40
+        text, what = it.get("text", ""), pr.get("what")
+        title, sub = {
+            "nudge": (f"{pr.get('min', 0)} min on {what or 'something else'}", f"back to {text}?"),
+            "ask": ("how far did you get?", f"{text} · you've moved on to {what}" if what else f"{text} · it keeps its place in line"),
+            "next": (f"next up: {text}", it.get("reason", "") + (f" · nice, that took {focus.span(pr.get('spent', 0))}"
+                                                                 if pr.get("done") else "")),
+            "done": (f"done · {text}", f"{focus.span(pr.get('spent', 0))} on it. nothing else in line"),
+        }[kind]
+        y = y0 + self.row(p, 0, "prompt")
+        c = QPointF(x + 18, y + 36)
+        look = QPointF(c.x() + 30, c.y() + 140) if kind == "nudge" else None  # on a nudge it looks down at your screen
+        self.mascot.draw(p, c, 18, now, look)
+        p.setPen(TXT)
+        p.setFont(font(15.5, QFont.ExtraBold))
+        p.drawText(QRectF(x + 46, y + 16, W - 46, 22), Qt.AlignLeft | Qt.AlignVCenter,
+                   QFontMetricsF(p.font()).elidedText(title, Qt.ElideRight, W - 46))
+        p.setPen(DIM)
+        p.setFont(font(13, QFont.Medium))
+        p.drawText(QRectF(x + 46, y + 38, W - 46, 20), Qt.AlignLeft | Qt.AlignVCenter,
+                   QFontMetricsF(p.font()).elidedText(sub, Qt.ElideRight, W - 46))
+        y = y0 + self.row(p, 1, "prompt")
+        acts = {"nudge": [("switch", "switch"), ("later", "later"), ("back", "back on it")],
+                "ask": [("10", "just started"), ("50", "halfway"), ("80", "almost"), ("100", "done")],
+                "next": [("later", "later"), ("start", "start it")],
+                "done": [("ok", "nice")]}[kind]
+        n, base = len(acts), p.opacity()
+        bw = (W - 8 * (n - 1)) / n
+        for i, (a, label) in enumerate(acts):
+            key, primary = "p:" + a, i == n - 1
+            r = QRectF(x + i * (bw + 8), y + 72, bw, 36)
+            self.buttons[key] = r
+            h, pr_ = self.hv(key), self.pv(key)
+            r2 = QRectF(r.center().x() - bw * pr_ / 2, r.center().y() - 18 * pr_ - 1.5 * h, bw * pr_, 36 * pr_)
+            p.setPen(Qt.NoPen)
+            if primary:  # the answer it expects is filled with the intention's colour
+                fill = QLinearGradient(0, r2.top(), 0, r2.bottom())
+                fill.setColorAt(0, col.lighter(round(112 + 10 * h)))
+                fill.setColorAt(1, col.darker(108))
+                p.setBrush(fill)
+                ink = jelly.INK if col.lightness() > 140 else TXT
+            else:
+                p.setBrush(QColor(255, 255, 255, int(16 + 24 * h)))
+                ink = TXT
+            p.drawRoundedRect(r2, r2.height() / 2, r2.height() / 2)
+            p.setPen(ink)
+            p.setFont(font(13.5 if n < 4 else 12.5, QFont.Bold))
+            p.drawText(r2, Qt.AlignCenter, label)
+        p.setOpacity(base)
+
+    def focus_ring(self, fz):
+        col = QColor(fz.get("color") or "#9a9aa6")
+        est = fz.get("est_min")
+        return (min(1.0, fz["spent_s"] / 60 / est) if est else 0.0), (col if col.lightness() > 60 else QColor("#7AA2FF"))
+
+    def mini_ring(self, p, c, r, frac, col):
+        p.setBrush(Qt.NoBrush)
+        p.setPen(QPen(QColor(255, 255, 255, 46), 2.4))
+        p.drawEllipse(c, r, r)
+        if frac > 0:
+            p.setPen(QPen(col, 2.4, Qt.SolidLine, Qt.RoundCap))
+            p.drawArc(QRectF(c.x() - r, c.y() - r, 2 * r, 2 * r), 90 * 16, -round(frac * 360 * 16))
 
     # ---------- settings, inside the island ----------
     def draw_settings(self, p, b, now):
@@ -1504,6 +1626,17 @@ class Island(QWidget):
                 self.more = False
             elif key == "quit":
                 self.quitting = time.time()
+            elif key == "intend":
+                self.open_page("#intend")
+            elif key.startswith("p:"):  # an answer to the island's question
+                a, pr = key[2:], (self.live.get("focus") or {}).get("prompt") or {}
+                if a.isdigit():
+                    if a == "100":  # finished: a flash of its colour and a happy creature
+                        self.glow_c, self.glow_t0 = QColor((pr.get("item") or {}).get("color") or "#B8FF3B"), time.time()
+                        self.mascot.react("party", 2.5)
+                    focus.respond("progress", int(a))
+                else:
+                    focus.respond({"ok": "dismiss"}.get(a, a))
             elif key == "back":
                 self.in_settings = False
             elif key.startswith("set:"):  # applies at once; if it moves the island, it waits open where it lands
