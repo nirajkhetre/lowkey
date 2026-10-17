@@ -263,23 +263,23 @@ header.g-focus:after{inset:-8px}
 
 <header id="top" class="wrap hero">
   <div>
-    <h1>your timesheet, <em>written</em> for you.</h1>
+    <h1>your timesheet, <em class="scrib">written<svg viewBox="0 0 300 30" preserveAspectRatio="none" aria-hidden="true"><path d="M5 19 C 60 7, 118 27, 176 14 S 262 8, 295 17"/></svg></em> for you.</h1>
     <p class="lead">lowkey is a Dynamic Island for your laptop. It notices which client you're working on, lets <b>Gemma 4 running on your own machine</b> turn it into invoice-ready lines, and sends <b>nothing</b> anywhere.</p>
     <div class="ctas"><a class="btn go" href="demo/">try the live demo</a><a class="btn" href="#video">watch the 1:39 film</a></div>
-    <div class="chips"><span class="chip" style="background:var(--yellow)">open source · MIT</span><span class="chip">Gemma 4 via Ollama</span><span class="chip" style="background:var(--pink)">no account, no cloud</span></div>
+    <div class="chips"><span class="chip" tabindex="0" data-tip="read every line of what watches you" style="background:var(--yellow)">open source · MIT</span><span class="chip" tabindex="0" data-tip="Gemma 4 E2B on your GPU · ~0.46 s per label">Gemma 4 via Ollama</span><span class="chip" tabindex="0" data-tip="nothing to sign up for, nothing to upload" style="background:var(--pink)">no account, no cloud</span></div>
   </div>
-  <div class="stage" aria-hidden="true">
+  <div class="stage" aria-label="a live preview of lowkey: the island, and sessions waiting for review">
+    <div class="tilt">
     <div class="wall"></div>
     <div class="isl">
-      <div class="top"><div class="blob"><b></b><b></b></div><div><div class="nm">Acme Studio</div><div class="ses">● this session 1:24:07</div></div><div class="mo">₹5,220</div></div>
-      <div class="task"><span id="typed"></span></div>
-      <svg viewBox="0 0 460 46" preserveAspectRatio="none"><path d="M0 38 C 30 16, 56 10, 82 30 S 128 42, 152 16 S 204 10, 230 22 S 286 16, 316 18 S 356 42, 378 30 S 428 10, 458 8" fill="none" stroke="#B8FF3B" stroke-width="4" stroke-linecap="round"/></svg>
+      <div class="top"><span class="mb hb" data-mood="working"><span class="g-eyes"><span class="g-blink"><i></i><i></i></span></span><b class="g-z">z<small>z</small></b><span class="g-spk"></span></span><div><div class="nm">Acme Studio</div><div class="ses"><i></i>this session <span class="htm">1:24:07</span></div></div><div class="mo"><b class="hmo">₹5,220</b><span>earned today</span></div></div>
+      <div class="task"><span class="spk" aria-hidden="true">✦</span><span id="typed"></span></div>
+      <svg class="live" viewBox="0 0 460 50" preserveAspectRatio="none" aria-hidden="true"><defs><linearGradient id="hfill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#B8FF3B" stop-opacity=".3"/><stop offset="1" stop-color="#B8FF3B" stop-opacity="0"/></linearGradient></defs><g><path class="fill" fill="url(#hfill)"/><path class="ln" fill="none" stroke="#B8FF3B" stroke-width="3.5" stroke-linecap="round"/></g><circle class="dot" r="4.5" fill="#B8FF3B"/></svg>
+      <div class="foot"><span><b>4h 21m</b> today</span><span><i class="hdot"></i><b class="hrev">3</b> to review</span><span class="hmsg"></span></div>
     </div>
-    <div class="zero">0 bytes leave your laptop</div>
-    <div class="card rcpt"><span class="chip" style="background:var(--lime);font-size:13px">Acme Studio</span>
-      <div class="ln">Fixed the OAuth redirect and reviewed PR #42.</div>
-      <div class="mt">1h 37m · ₹1,940 · gemma4 · 87% backed</div>
-      <div class="row"><span class="mini go">bill it</span><span class="mini">nah</span></div></div>
+    <div class="rstack" aria-live="polite"></div>
+    <div class="zero" tabindex="0" data-tip="lowkey's only network call: Ollama, on 127.0.0.1">0 bytes leave your laptop</div>
+    </div>
   </div>
 </header>
 
@@ -351,14 +351,11 @@ python -m lowkey          # for real</pre></div>
 </div></footer>
 
 <script>
-// the island's line writes itself in, the way the model's lines do in the app
-const line = 'Fixed OAuth redirect bug on the login page, reviewed PR #42', el = document.getElementById('typed');
-const still = matchMedia('(prefers-reduced-motion: reduce)').matches;
-if (still) el.textContent = line; else [...line].forEach((c, i) => setTimeout(() => el.textContent += c, 700 + i * 28));
 const io = new IntersectionObserver(es => es.forEach(e => e.isIntersecting && (e.target.classList.add('in'), io.unobserve(e.target))), {threshold: .12});
 document.querySelectorAll('.rise').forEach(el => io.observe(el));
 </script>
 <script src="guide.js"></script>
 <script src="play.js"></script>
+<script src="hero.js"></script>
 </body>
 </html>

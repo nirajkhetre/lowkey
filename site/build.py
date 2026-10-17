@@ -17,7 +17,7 @@ shutil.rmtree(DIST, ignore_errors=True)
 (DIST / "img").mkdir()
 
 shutil.copy(SITE / "index.html", DIST / "index.html")
-for name in ("guide.js", "play.js", "play.css"):
+for name in ("guide.js", "play.js", "play.css", "hero.js"):
     shutil.copy(SITE / name, DIST / name)
 for d in (DIST / "fonts", DIST / "demo" / "fonts"):
     shutil.copytree(ROOT / "lowkey" / "web" / "fonts", d)

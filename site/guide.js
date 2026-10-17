@@ -329,7 +329,7 @@
 
   /* ---------- summon: double-click (or double-tap) a section ---------- */
   // A single click never summons the guide: clicks are for reading, links and buttons.
-  const SKIP = 'a, button, iframe, input, textarea, pre, code, #gbubble, #gisl, nav, .video, [data-play], .moods, .lg';
+  const SKIP = 'a, button, iframe, input, textarea, pre, code, #gbubble, #gisl, nav, .video, [data-play], .moods, .lg, .stage, [data-tip]';
   const SECTIONS = IDS.map(i => '#' + i).join(',');
   const sectionOf = node => {
     const el = node?.nodeType === 1 ? node : node?.parentElement, s = el?.closest(SECTIONS);
