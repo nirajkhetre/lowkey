@@ -24,10 +24,10 @@
 .feat[data-play]:hover{transform:translate(-3px,-3px);box-shadow:9px 9px 0 var(--ink)}
 .feat[data-play]:active{transform:translate(2px,2px);box-shadow:3px 3px 0 var(--ink)}
 .feat[data-play]:focus-visible{outline:3px solid var(--blue);outline-offset:4px}
-.feat[data-play] .pic{position:relative;overflow:hidden}
+.feat[data-play] .pic{position:relative;overflow:hidden;display:grid;place-items:center;gap:12px;padding-bottom:14px}
 .feat[data-play] .pic img{transition:transform .6s var(--spring)}
 .feat[data-play]:hover .pic img{transform:scale(1.035)}
-.play-chip{position:absolute;right:12px;bottom:12px;display:flex;align-items:center;gap:8px;padding:7px 13px 7px 9px;border-radius:999px;background:var(--paper);
+.play-chip{justify-self:end;display:flex;align-items:center;gap:8px;padding:7px 13px 7px 9px;border-radius:999px;background:var(--paper);
   border:2.5px solid var(--ink);box-shadow:3px 3px 0 var(--ink);font:700 13px var(--display);transition:transform .35s var(--spring)}
 .play-chip i{width:20px;height:20px;border-radius:50%;background:var(--lime);display:grid;place-items:center;font-style:normal;font-size:9px}
 .feat[data-play]:hover .play-chip{transform:scale(1.06)}
