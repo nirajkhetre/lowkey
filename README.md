@@ -255,22 +255,26 @@ Daily use is on Windows 11. The macOS and Linux trackers are covered by tests wi
 
 | Test | Gemma 4 E2B (local) | Keyword rules |
 |---|:---:|:---:|
-| Right client per 15-min slot, **synthetic** demo week (155 slots) | 152 / 155 (98.1%) | 150 / 155 (96.8%) |
-| Minutes billed to the right client, same week, by slot length | 5 min: **94.6%** · 10 min: 91.7% · 15 min: 91.7% | — |
+| Right client per 15-min slot, **synthetic** demo week (155 slots), 95% interval | 152 / 155 (98.1%, 94.5–99.3%) | 150 / 155 (96.8%, 92.7–98.6%) |
+| Minutes billed to the right client, same week, by slot length | 5 min: **94.6%** · 10 min: 91.7% · 15 min: 91.7% | 94.1% · 91.7% · 91.3% |
+| Same, with every client name and hint **cut out of the titles** (`--blind`) | 5 min: 56.7% · 10 min: 64.3% · 15 min: **68.6%** | 25.0% at every length |
 | Label latency, RTX 4050 Laptop (6 GB), thinking off | ~0.3–0.6 s | instant |
 | Same call with Gemma 4's thinking on | ~9.5 s | — |
 
 Shorter slots give the model less to go on per label (it picks the slot's main client 95.7% of the time at 5 minutes, 98.1% at 15), but they sweep far less of your time into the wrong client, so more of the money lands right. That's why 5 minutes is the default: under half a second of GPU per label, 12 slots an hour.
 
-The synthetic week is deliberately easy for keywords, since its window titles contain client names. The model earns its place on real days, where titles don't name the client, and in writing invoice lines, which rules can't do.
+The synthetic week is deliberately easy for keywords, since its window titles contain client names: with them in, the rules land within half a point of the model, so that row mostly measures string matching. The `--blind` row is the model on its own. With every client name and hint cut out of the titles, the rules have nothing to match and only get the personal time right (25%), while Gemma still bills 56.7–68.6% of the minutes right from what's left in a title: a `.liquid` file, a product name, an API path.
+
+Without names, longer slots help: the model needs the context, and 15 minutes beats 5. So 5 minutes is the right default when your titles carry your client hints (repo names, domains, project names); if they mostly don't, try 15 in **reads every**. The model also writes the invoice lines, which rules can't do.
 
 ### Re-run the numbers
 
 ```bash
-python -m lowkey.eval
+python -m lowkey.eval            # the table above, with 95% intervals and how good the "check me" flag is
+python -m lowkey.eval --blind    # the same with every client name and hint cut out of the titles first
 ```
 
-It labels every slot of the demo week at 5, 10 and 15 minutes, with the model and with the keyword rules, and prints a table like the one above (slots, right client per slot, minutes billed right, ms per label). The answer key is the client hints: a slot's client is whoever owns most of its seconds. It calls the model directly, skips the cache and writes nothing. Without Ollama it prints the rules rows and says the model rows were skipped. Latency depends on your hardware.
+It labels every slot of the demo week at 5, 10 and 15 minutes, with the model and with the keyword rules, and prints a table like the one above (slots, right client per slot, minutes billed right, ms per label). The answer key is the client hints: a slot's client is whoever owns most of its seconds. It also scores the "check me" flag per session (precision: of the sessions it flags, how many were wrong; recall: of the wrong ones, how many it flagged). On the demo week that score can't say much: once slots merge into sessions none end up wrong, and since the answer key and the flag both come from the hints, a wrong session would always be flagged anyway. It calls the model directly, skips the cache and writes nothing. Without Ollama it prints the rules rows and says the model rows were skipped. Latency depends on your hardware.
 
 ## ❓ FAQ
 
