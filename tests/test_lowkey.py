@@ -267,13 +267,18 @@ def test_eval_slices_and_scores_against_hints():
             five, fifteen = ev.slots(5), ev.slots(15)
         finally:
             labeler.DATA = real
-    assert [sum(w.values()) for w in five] == [300, 300] and len(fifteen) == 1
-    assert [ev.truth(w)[0] for w in five] == ["Acme Studio", "Personal"]   # second slot: 200 s Instagram, 100 s acme
+    assert [sum(w.values()) for _, w in five] == [300, 300] and len(fifteen) == 1
+    assert [ev.truth(w)[0] for _, w in five] == ["Acme Studio", "Personal"]   # second slot: 200 s Instagram, 100 s acme
     # rules picks any hinted client over Personal: right on slot 1, wrong on slot 2, which still bills 100 s right
-    n, slot_pct, min_pct, _, _ = ev.score(five, labeler.rules)
-    assert (n, slot_pct, round(min_pct, 1)) == (2, 50, 66.7)
-    n, slot_pct, min_pct, _, _ = ev.score(fifteen, labeler.rules)
-    assert (n, slot_pct, round(min_pct, 1)) == (1, 100, 66.7)                # one slot, Acme's by majority
+    n, hits, min_pct, *_ = ev.score(five, labeler.rules)
+    assert (n, hits, round(min_pct, 1)) == (2, 1, 66.7)
+    n, hits, min_pct, *_ = ev.score(fifteen, labeler.rules)
+    assert (n, hits, round(min_pct, 1)) == (1, 1, 66.7)                      # one slot, Acme's by majority
+    assert list(ev.hide({("Code.exe", "auth.ts - acme-website"): 5})) == [("Code.exe", "auth.ts -")]  # --blind
+    assert [round(x, 1) for x in ev.wilson(152, 155)] == [94.5, 99.3]
+    # "check me": two wrong labels, each under 60% backed, so both flagged; one right session that's 67% backed isn't
+    assert ev.check_me(five, ["Personal", "Acme Studio"]) == (2, 2, 2, 2)
+    assert ev.check_me(five, ["Acme Studio", "Acme Studio"]) == (1, 0, 0, 0)  # merged: 400 of 600 s acme
 
 
 if __name__ == "__main__":
